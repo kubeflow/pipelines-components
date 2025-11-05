@@ -47,11 +47,6 @@ assignees: []
 - **Cloud Provider/Platform:** <!-- e.g., GCP, AWS, OpenShift, on-premises -->
 - **Component/Pipeline Package Version:** <!-- e.g., kfp-components==2.14.6 -->
 
-## Dependencies
-<!-- List any relevant dependencies and their versions -->
-- 
-- 
-
 ## Additional Context
 <!-- Add any other context about the problem here. -->
 
