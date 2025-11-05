@@ -41,7 +41,6 @@ The Kubeflow Pipelines Components repository serves as:
 - **Evaluation**: Model evaluation, metrics calculation, and performance analysis
 - **Data Processing**: Data preparation, transformation, and feature engineering
 - **Deployment**: Model serving, endpoint management, and production deployment
-- **Monitoring**: Model monitoring, drift detection, and observability
 
 ## 🚀 Installation
 

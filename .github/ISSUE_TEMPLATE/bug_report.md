@@ -17,7 +17,7 @@ assignees: []
 
 **Tier:** <!-- core or third_party -->
 
-**Category:** <!-- e.g., training, evaluation, data_processing, monitoring, deployment -->
+**Category:** <!-- e.g., training, evaluation, data_processing, deployment -->
 
 ## Steps to Reproduce
 <!-- Steps to reproduce the behavior: -->

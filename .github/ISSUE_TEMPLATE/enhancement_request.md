@@ -19,7 +19,7 @@ assignees: []
 <!-- Only fill this section if the enhancement request is for an EXISTING component/pipeline -->
 **Name:** <!-- e.g., training/my_component or evaluation/my_pipeline -->
 
-**Category:** <!-- e.g., training, evaluation, data_processing, monitoring, deployment -->
+**Category:** <!-- e.g., training, evaluation, data_processing, deployment -->
 
 **Tier:** <!-- core or third_party -->
 
