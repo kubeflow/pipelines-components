@@ -44,7 +44,7 @@ assignees: []
 - **Kubernetes Version:** <!-- e.g., 1.28 -->
 - **Python Version:** <!-- e.g., 3.10 -->
 - **Operating System:** <!-- e.g., Fedora 43, macOS Tahoe -->
-- **Cloud Provider/Platform:** <!-- e.g., GCP, AWS, OpenShift, on-premises -->
+- **Kubernetes Distribution:** <!-- e.g., OpenShift, GKE, Kind, Minikube -->
 - **Component/Pipeline Package Version:** <!-- e.g., kfp-components==2.14.6 -->
 
 ## Additional Context
