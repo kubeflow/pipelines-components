@@ -44,30 +44,37 @@ The Kubeflow Pipelines Components repository serves as:
 
 ## 🚀 Installation
 
+> ⚠️ **Work in Progress**: This repository is currently under development. The packages described below are not yet available on PyPI. This section outlines the planned installation process for when the packages are released.
+
 ### Prerequisites
 
 - Python 3.10 or later
 - Kubeflow Pipelines SDK
 
-### Install Core Components
+### Install Core Components (Coming Soon)
 
 Install the official Kubeflow Pipelines Components package:
 
 ```bash
+# Not yet available - coming soon!
 pip install kfp-components
 ```
 
-### Install Third-Party Components (Optional)
+### Install Third-Party Components (Coming Soon)
 
 For vetted third-party contributions:
 
 ```bash
+# Not yet available - coming soon!
 pip install kfp-components-third-party
 ```
 
 ### Verify Installation
 
+Once the packages are available, you'll be able to verify the installation:
+
 ```python
+# Coming soon - example verification code
 from kfp_components import training, evaluation, data_processing
 
 # Example: Use a training component
