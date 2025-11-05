@@ -10,8 +10,3 @@ Usage:
 
 from . import components
 from . import pipelines
-
-__all__ = [
-    'components',
-    'pipelines',
-]
