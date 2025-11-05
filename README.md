@@ -17,19 +17,15 @@ The Kubeflow Pipelines Components repository serves as:
 ## 📦 Repository Structure
 
 ```
-├── components/          # Core reusable components
-│   ├── training/        # Training-related components
-│   ├── evaluation/      # Model evaluation components
-│   ├── data_processing/ # Data processing components
-│   ├── deployment/      # Deployment components
-│   └── monitoring/      # Monitoring components
+├── components/ # Core reusable components
+│   ├── <component category>/
+│   ├── <component category>/
+│   └── <component category>/
 │
-├── pipelines/           # Complete AI pipelines
-│   ├── training/        # Training pipelines
-│   ├── evaluation/      # Evaluation pipelines
-│   ├── data_processing/ # Data processing pipelines
-│   ├── deployment/      # Deployment pipelines
-│   └── monitoring/      # Monitoring pipelines
+├── pipelines/ # Complete AI pipelines
+│   ├── <component category>/
+│   ├── <component category>/
+│   └── <component category>/
 │
 ├── third_party/         # Third-party contributions
 │   ├── components/      # Third-party components
