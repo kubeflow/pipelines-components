@@ -99,6 +99,9 @@ poetry.toml
 .pdm-python
 .pdm-build/
 
+# uv
+uv.lock
+
 # PEP 582
 __pypackages__/
 

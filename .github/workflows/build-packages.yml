@@ -13,9 +13,116 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    
-    name: Placeholder
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.13"]
+
+    name: Build packages (Python ${{ matrix.python-version }})
 
     steps:
-      - name: Placeholder
-        run: echo "Coming soon..."
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed for proper versioning
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            third_party/pyproject.toml
+
+      - name: Display uv version
+        run: |
+          uv --version
+          echo "Python version: $(python --version)"
+
+      - name: Build Core Package
+        run: |
+          echo "Building core package (kfp-components)..."
+          uv build --out-dir dist/
+          echo "Core package built successfully"
+          ls -lah dist/
+
+      - name: Build Third-Party Package
+        run: |
+          echo "Building third-party package (kfp-components-third-party)..."
+          cd third_party
+          uv build --out-dir ../dist-third-party/
+          cd ..
+          echo "Third-party package built successfully"
+          ls -lah dist-third-party/
+
+      - name: Validate Wheel Contents - Core
+        run: |
+          echo "Validating core package wheel contents..."
+          for wheel in dist/*.whl; do
+            python .github/scripts/validate_wheel.py "$wheel" --type core
+          done
+
+      - name: Validate Wheel Contents - Third-Party
+        run: |
+          echo "Validating third-party package wheel contents..."
+          for wheel in dist-third-party/*.whl; do
+            python .github/scripts/validate_wheel.py "$wheel" --type third-party
+          done
+
+      - name: Create test environment
+        run: |
+          uv venv test-env
+          echo "Virtual environment created"
+
+      - name: Test Core Package Installation and Imports
+        run: |
+          echo "Installing core package..."
+          uv pip install --python test-env dist/*.whl
+          
+          echo "Testing core package imports..."
+          test-env/bin/python .github/scripts/test_package_imports.py --type core
+
+      - name: Test Third-Party Package Installation and Imports
+        run: |
+          # Create a new environment for third-party testing
+          uv venv test-env-third-party
+          
+          echo "Installing third-party package..."
+          uv pip install --python test-env-third-party dist-third-party/*.whl
+          
+          echo "Testing third-party package imports..."
+          test-env-third-party/bin/python .github/scripts/test_package_imports.py --type third-party
+
+      - name: Validate Package Metadata
+        run: |
+          echo "Extracting and validating package metadata..."
+          
+          # Validate core package
+          for wheel in dist/*.whl; do
+            echo "Validating core package metadata: $wheel"
+            python .github/scripts/validate_wheel.py "$wheel" --type core
+          done
+          
+          # Validate third-party package
+          for wheel in dist-third-party/*.whl; do
+            echo "Validating third-party package metadata: $wheel"
+            python .github/scripts/validate_wheel.py "$wheel" --type third-party
+          done
+
+      - name: Upload Core Package Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-package-py${{ matrix.python-version }}
+          path: dist/
+          retention-days: 30
+
+      - name: Upload Third-Party Package Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: third-party-package-py${{ matrix.python-version }}
+          path: dist-third-party/
+          retention-days: 30

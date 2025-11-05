@@ -142,28 +142,13 @@ Each component includes standardized metadata:
 
 ## 🤝 Contributing
 
-We welcome contributions from the community! To contribute:
+We welcome contributions from the community! 
 
-1. **Review Guidelines**: Read our [Contributing Guidelines](docs/CONTRIBUTING.md)
-2. **Choose a Tier**: Decide between core (community-maintained) or third-party contribution
-3. **Follow Standards**: Ensure your component includes:
-   - `component.py` or `pipeline.py` - The implementation
-   - `metadata.yaml` - Standardized metadata
-   - `README.md` - Component documentation
-   - `OWNERS` - Maintainer information
-   - `tests/` - Unit tests
-   - `example_pipelines.py` - Usage examples
-
-4. **Submit PR**: Open a pull request with your contribution
-
-### Quality Standards
-
-All contributions must:
-- Pass linting and formatting checks (Black, pydocstyle)
-- Include comprehensive docstrings
-- Compile successfully with `kfp.compiler`
-- Include metadata with fresh `lastVerified` date
-- Pass automated CI/CD checks
+Please read our [Contributing Guidelines](docs/CONTRIBUTING.md) for:
+- Development setup with `uv`
+- Component structure and requirements
+- Testing and quality standards
+- Submission process
 
 ## 🔧 Maintenance
 
