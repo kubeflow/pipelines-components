@@ -27,6 +27,20 @@ All contributors must follow the [Kubeflow Community Code of Conduct](https://gi
 
 ## Quick Setup
 
+### Installing uv
+
+This project uses `uv` for fast Python package management.
+
+Follow the installation instructions at: <https://docs.astral.sh/uv/getting-started/installation/>
+
+Verify installation:
+
+```bash
+uv --version
+```
+
+### Setting Up Your Environment
+
 Get your development environment ready with these commands:
 
 ```bash
@@ -38,13 +52,40 @@ git remote add upstream https://github.com/kubeflow/pipelines-components.git
 # Set up Python environment
 uv venv
 source .venv/bin/activate
-uv pip install -r requirements-dev.txt
+uv sync          # Installs package in editable mode
+uv sync --dev    # Include dev dependencies if defined
 
 # Install pre-commit hooks for automatic code quality checks
 pre-commit install
 
 # Verify your setup works
 pytest
+```
+
+### Building Packages
+
+```bash
+# Build core package
+uv build
+
+# Build third-party package
+cd third_party && uv build && cd ..
+```
+
+### Installing and Testing the Built Package
+
+After building, you can install and test the wheel locally:
+
+```bash
+# Install the built wheel
+uv pip install dist/kfp_components-*.whl
+
+# Test imports work correctly
+python -c "from kubeflow.pipelines.components import components, pipelines; print('Core package imports OK')"
+
+# For third-party package
+uv pip install dist-third-party/kfp_components_third_party-*.whl
+python -c "from kubeflow.pipelines.components.third_party import components, pipelines; print('Third-party package imports OK')"
 ```
 
 ## What We Accept
@@ -144,8 +185,6 @@ The `OWNERS` file enables code review automation by leveraging PROW commands:
 - If a PR has been labeled with both `lgtm` and `approve`, and all required CI checks are passing, PROW will merge the PR into the destination branch.
 
 See [full Prow documentation](https://docs.prow.k8s.io/docs/components/plugins/approve/approvers/#lgtm-label) for usage details.
-
-
 
 ## Development Workflow
 

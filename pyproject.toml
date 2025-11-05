@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kfp-components"
+version = "1.11.0"
+description = "A collection of reusable components and pipelines for Kubeflow Pipelines"
+authors = [
+    {name = "Kubeflow Community"}
+]
+license = "Apache-2.0"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "kfp>=2.5.0",
+]
+
+[project.urls]
+Homepage = "https://www.kubeflow.org/docs/components/pipelines/"
+Documentation = "https://github.com/kubeflow/pipelines-components/tree/main/docs"
+Repository = "https://github.com/kubeflow/pipelines-components"
+Issues = "https://github.com/kubeflow/pipelines-components/issues"
+
+[tool.setuptools]
+packages = [
+    "kubeflow.pipelines.components",
+    "kubeflow.pipelines.components.components",
+    "kubeflow.pipelines.components.components.training",
+    "kubeflow.pipelines.components.components.evaluation", 
+    "kubeflow.pipelines.components.components.data_processing",
+    "kubeflow.pipelines.components.components.deployment",
+    "kubeflow.pipelines.components.pipelines",
+    "kubeflow.pipelines.components.pipelines.training",
+    "kubeflow.pipelines.components.pipelines.evaluation",
+    "kubeflow.pipelines.components.pipelines.data_processing",
+    "kubeflow.pipelines.components.pipelines.deployment"
+]
+
+[tool.setuptools.package-dir]
+"kubeflow.pipelines.components" = "."
+"kubeflow.pipelines.components.components" = "components"
+"kubeflow.pipelines.components.pipelines" = "pipelines"
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml", "*.yml", "*.json"]
