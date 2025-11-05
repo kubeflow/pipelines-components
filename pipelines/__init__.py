@@ -6,19 +6,16 @@ This module auto-imports all pipelines for clean usage:
     from kfp_components.pipelines import evaluation
     from kfp_components.pipelines import data_processing
     from kfp_components.pipelines import deployment
-    from kfp_components.pipelines import monitoring
 """
 
 from . import training
 from . import evaluation
 from . import data_processing
 from . import deployment
-from . import monitoring
 
 __all__ = [
     'training',
     'evaluation',
     'data_processing',
     'deployment',
-    'monitoring',
 ]

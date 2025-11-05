@@ -15,7 +15,7 @@ assignees: []
 
 **Name:** <!-- Component/pipeline name following naming convention -->
 
-**Category:** <!-- training, evaluation, data_processing, monitoring, deployment, or other -->
+**Category:** <!-- training, evaluation, data_processing, deployment, or other -->
 
 **Proposed Tier:** <!-- core (Kubeflow community maintained) or third_party -->
 
