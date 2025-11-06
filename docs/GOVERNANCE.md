@@ -198,6 +198,8 @@ This governance model ensures quality, sustainability, and community collaborati
 - **[Contributing Guide](CONTRIBUTING.md)** - How to contribute components
 - **[Onboarding Guide](ONBOARDING.md)** - Getting started as a contributor  
 - **[Testing Guide](TESTING.md)** - Code quality and testing standards
+- **[Best Practices Guide](BESTPRACTICES.md)** - Component development best practices *(coming soon)*
+- **[Agents Guide](AGENTS.md)** - AI agent components and patterns *(coming soon)*
 
 ## Background
 

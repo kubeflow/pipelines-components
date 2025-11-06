@@ -238,6 +238,8 @@ Each component needs a comprehensive README.md with:
 - **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
 - **Testing**: [TESTING.md](TESTING.md)
 - **Governance**: [GOVERNANCE.md](GOVERNANCE.md)
+- **Best Practices**: [BESTPRACTICES.md](BESTPRACTICES.md) *(coming soon)*
+- **Agents**: [AGENTS.md](AGENTS.md) *(coming soon)*
 - **Community**: [#kubeflow-pipelines Slack](https://kubeflow.slack.com/channels/kubeflow-pipelines)
 - **Issues**: [GitHub Issues](https://github.com/kubeflow/pipeline-components/issues) for bugs and questions
 
