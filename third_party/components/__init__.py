@@ -4,9 +4,9 @@ This module provides access to third-party contributed components.
 These components are not maintained by the Kubeflow community.
 
 Usage:
-    from kfp_components_third_party.components import training
-    from kfp_components_third_party.components import evaluation
-    from kfp_components_third_party.components import data_processing
+    from kubeflow.pipelines.components.third_party.components import training
+    from kubeflow.pipelines.components.third_party.components import evaluation
+    from kubeflow.pipelines.components.third_party.components import data_processing
 """
 
 from . import training

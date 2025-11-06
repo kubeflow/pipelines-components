@@ -1,11 +1,11 @@
 """Kubeflow Pipelines Components - Core Pipelines Package
 
 This module auto-imports all pipelines for clean usage:
-    from kfp_components import pipelines
-    from kfp_components.pipelines import training
-    from kfp_components.pipelines import evaluation
-    from kfp_components.pipelines import data_processing
-    from kfp_components.pipelines import deployment
+    from kubeflow.pipelines import pipelines
+    from kubeflow.pipelines.pipelines import training
+    from kubeflow.pipelines.pipelines import evaluation
+    from kubeflow.pipelines.pipelines import data_processing
+    from kubeflow.pipelines.pipelines import deployment
 """
 
 from . import training

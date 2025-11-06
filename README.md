@@ -53,11 +53,11 @@ The Kubeflow Pipelines Components repository serves as:
 
 ### Install Core Components (Coming Soon)
 
-Install the official Kubeflow Pipelines Components package:
+Install the official Kubeflow SDK with components:
 
 ```bash
 # Not yet available - coming soon!
-pip install kfp-components
+pip install kubeflow
 ```
 
 ### Install Third-Party Components (Coming Soon)
@@ -75,10 +75,10 @@ Once the packages are available, you'll be able to verify the installation:
 
 ```python
 # Coming soon - example verification code
-from kfp_components import training, evaluation, data_processing
+from kubeflow.pipelines.components import training, evaluation, data_processing
 
 # Example: Use a training component
-from kfp_components.training import my_component
+from kubeflow.pipelines.components.training import my_component
 
 # List available components
 print(dir(training))
@@ -90,8 +90,8 @@ print(dir(training))
 
 ```python
 from kfp import dsl
-from kfp_components.training import model_trainer
-from kfp_components.evaluation import model_evaluator
+from kubeflow.pipelines.components.training import model_trainer
+from kubeflow.pipelines.components.evaluation import model_evaluator
 
 @dsl.pipeline(
     name="my-ai-pipeline",
@@ -186,7 +186,7 @@ Each component has designated owners listed in its `OWNERS` file who:
 
 ## 📦 Releases
 
-- **Core Package**: `kfp-components` - Official community-maintained components
+- **Core Package**: `kubeflow` - Official Kubeflow SDK including community-maintained components
 - **Third-Party Package**: `kfp-components-third-party` - Vetted third-party contributions
 - **Versioning**: Follows semantic versioning aligned with Kubeflow releases
 - **Release Cadence**: Regular releases aligned with Kubeflow Pipelines SDK
