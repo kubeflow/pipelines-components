@@ -1,0 +1,21 @@
+name: Build and Test Python Packages
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    
+    name: Placeholder
+
+    steps:
+      - name: Placeholder
+        run: echo "Coming soon..."
