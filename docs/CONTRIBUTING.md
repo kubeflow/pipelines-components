@@ -134,7 +134,7 @@ from kfp import dsl
 
 @dsl.component(
     packages_to_install=["pandas==2.2.1"],  # Or use requirements.txt
-    base_image="python:3.10-slim"
+    base_image="python:3.13-slim"
 )
 def my_component(
     input_path: str,
