@@ -1,7 +1,7 @@
 # Kubeflow Pipelines Components Repository
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/downloads/)
 
 Welcome to the official Kubeflow Pipelines Components repository! This is the centralized hub for reusable components and pipelines within the Kubeflow ecosystem, providing a structured collection of AI workflow building blocks for Kubernetes.
 
@@ -48,7 +48,7 @@ The Kubeflow Pipelines Components repository serves as:
 
 ### Prerequisites
 
-- Python 3.10 or later
+- Python 3.9 or later
 - Kubeflow Pipelines SDK
 
 ### Install Core Components (Coming Soon)
@@ -75,10 +75,11 @@ Once the packages are available, you'll be able to verify the installation:
 
 ```python
 # Coming soon - example verification code
-from kubeflow.pipelines.components import training, evaluation, data_processing
+from kubeflow.pipelines.components import components, pipelines
+from kubeflow.pipelines.components.components import training, evaluation, data_processing
 
 # Example: Use a training component
-from kubeflow.pipelines.components.training import my_component
+from kubeflow.pipelines.components.components.training import my_component
 
 # List available components
 print(dir(training))
@@ -90,8 +91,8 @@ print(dir(training))
 
 ```python
 from kfp import dsl
-from kubeflow.pipelines.components.training import model_trainer
-from kubeflow.pipelines.components.evaluation import model_evaluator
+from kubeflow.pipelines.components.components.training import model_trainer
+from kubeflow.pipelines.components.components.evaluation import model_evaluator
 
 @dsl.pipeline(
     name="my-ai-pipeline",
@@ -142,28 +143,13 @@ Each component includes standardized metadata:
 
 ## 🤝 Contributing
 
-We welcome contributions from the community! To contribute:
+We welcome contributions from the community! 
 
-1. **Review Guidelines**: Read our [Contributing Guidelines](docs/CONTRIBUTING.md)
-2. **Choose a Tier**: Decide between core (community-maintained) or third-party contribution
-3. **Follow Standards**: Ensure your component includes:
-   - `component.py` or `pipeline.py` - The implementation
-   - `metadata.yaml` - Standardized metadata
-   - `README.md` - Component documentation
-   - `OWNERS` - Maintainer information
-   - `tests/` - Unit tests
-   - `example_pipelines.py` - Usage examples
-
-4. **Submit PR**: Open a pull request with your contribution
-
-### Quality Standards
-
-All contributions must:
-- Pass linting and formatting checks (Black, pydocstyle)
-- Include comprehensive docstrings
-- Compile successfully with `kfp.compiler`
-- Include metadata with fresh `lastVerified` date
-- Pass automated CI/CD checks
+Please read our [Contributing Guidelines](docs/CONTRIBUTING.md) for:
+- Development setup with `uv`
+- Component structure and requirements
+- Testing and quality standards
+- Submission process
 
 ## 🔧 Maintenance
 
