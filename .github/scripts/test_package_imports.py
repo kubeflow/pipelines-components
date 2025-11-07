@@ -3,7 +3,8 @@
 Test that installed packages can be imported successfully.
 
 This script verifies that all expected modules from the kfp-components
-or kfp-components-third-party packages can be imported.
+or kfp-components-third-party packages can be imported using the
+kubeflow.pipelines.components namespace.
 """
 
 import argparse
@@ -29,11 +30,11 @@ def test_imports(package_type: str = "core") -> bool:
     # Test main modules
     try:
         if package_type == "third-party":
-            import third_party
-            from third_party import components, pipelines
+            import kubeflow.pipelines.components.third_party as third_party
+            from kubeflow.pipelines.components.third_party import components, pipelines
         else:
-            import kfp_components
-            from kfp_components import components, pipelines
+            import kubeflow.pipelines.components as kfp_components
+            from kubeflow.pipelines.components import components, pipelines
         print("✓ Main modules imported successfully")
     except ImportError as e:
         print(f"✗ Failed to import main modules: {e}")
@@ -45,11 +46,11 @@ def test_imports(package_type: str = "core") -> bool:
     
     for category in categories:
         if package_type == "third-party":
-            comp_module = f"third_party.components.{category}"
-            pipe_module = f"third_party.pipelines.{category}"
+            comp_module = f"kubeflow.pipelines.components.third_party.components.{category}"
+            pipe_module = f"kubeflow.pipelines.components.third_party.pipelines.{category}"
         else:
-            comp_module = f"kfp_components.components.{category}"
-            pipe_module = f"kfp_components.pipelines.{category}"
+            comp_module = f"kubeflow.pipelines.components.components.{category}"
+            pipe_module = f"kubeflow.pipelines.components.pipelines.{category}"
             
         try:
             importlib.import_module(comp_module)

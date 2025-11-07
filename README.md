@@ -1,4 +1,4 @@
-# Kubeflow Pipelines Components Repository
+run# Kubeflow Pipelines Components Repository
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
@@ -75,10 +75,11 @@ Once the packages are available, you'll be able to verify the installation:
 
 ```python
 # Coming soon - example verification code
-from kubeflow.pipelines.components import training, evaluation, data_processing
+from kubeflow.pipelines.components import components, pipelines
+from kubeflow.pipelines.components.components import training, evaluation, data_processing
 
 # Example: Use a training component
-from kubeflow.pipelines.components.training import my_component
+from kubeflow.pipelines.components.components.training import my_component
 
 # List available components
 print(dir(training))
@@ -90,8 +91,8 @@ print(dir(training))
 
 ```python
 from kfp import dsl
-from kubeflow.pipelines.components.training import model_trainer
-from kubeflow.pipelines.components.evaluation import model_evaluator
+from kubeflow.pipelines.components.components.training import model_trainer
+from kubeflow.pipelines.components.components.evaluation import model_evaluator
 
 @dsl.pipeline(
     name="my-ai-pipeline",

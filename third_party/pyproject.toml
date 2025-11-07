@@ -24,23 +24,23 @@ Issues = "https://github.com/kubeflow/pipelines-components/issues"
 
 [tool.setuptools]
 packages = [
-    "third_party",
-    "third_party.components",
-    "third_party.components.training",
-    "third_party.components.evaluation",
-    "third_party.components.data_processing",
-    "third_party.components.deployment",
-    "third_party.pipelines",
-    "third_party.pipelines.training",
-    "third_party.pipelines.evaluation",
-    "third_party.pipelines.data_processing",
-    "third_party.pipelines.deployment"
+    "kubeflow.pipelines.components.third_party",
+    "kubeflow.pipelines.components.third_party.components",
+    "kubeflow.pipelines.components.third_party.components.training",
+    "kubeflow.pipelines.components.third_party.components.evaluation",
+    "kubeflow.pipelines.components.third_party.components.data_processing",
+    "kubeflow.pipelines.components.third_party.components.deployment",
+    "kubeflow.pipelines.components.third_party.pipelines",
+    "kubeflow.pipelines.components.third_party.pipelines.training",
+    "kubeflow.pipelines.components.third_party.pipelines.evaluation",
+    "kubeflow.pipelines.components.third_party.pipelines.data_processing",
+    "kubeflow.pipelines.components.third_party.pipelines.deployment"
 ]
 
 [tool.setuptools.package-dir]
-"third_party" = "."
-"third_party.components" = "components"
-"third_party.pipelines" = "pipelines"
+"kubeflow.pipelines.components.third_party" = "."
+"kubeflow.pipelines.components.third_party.components" = "components"
+"kubeflow.pipelines.components.third_party.pipelines" = "pipelines"
 
 [tool.setuptools.package-data]
 "*" = ["*.yaml", "*.yml", "*.json"]
