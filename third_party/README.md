@@ -17,12 +17,13 @@ pip install kfp-components-third-party
 Import third-party components and pipelines from this package:
 
 ```python
-from third_party.components import ...
-from third_party.pipelines import ...
+from kubeflow.pipelines.components.third_party import components, pipelines
+from kubeflow.pipelines.components.third_party.components import training, evaluation, data_processing, deployment
+from kubeflow.pipelines.components.third_party.pipelines import training, evaluation, data_processing, deployment
 
 # For example:
-from third_party.components.training import my_training_component
-from third_party.pipelines.evaluation import my_evaluation_pipeline
+from kubeflow.pipelines.components.third_party.components.training import my_training_component
+from kubeflow.pipelines.components.third_party.pipelines.evaluation import my_evaluation_pipeline
 ```
 
 ## Contributing
