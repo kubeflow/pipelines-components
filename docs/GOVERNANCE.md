@@ -102,7 +102,7 @@ After 12 months of inactivity:
 1. **Notice**: 30-day removal notice
 2. **Community input**: 2-week feedback period
 3. **Final decision**: Steering committee
-4. **Archive**: Move to archived repository
+4. **Removal**: Delete component code from repository
 
 ### Emergency Removal
 Immediate removal for:
@@ -127,11 +127,6 @@ Components deprecated for 2 Kubeflow releases before removal.
 
 *Key roles and responsibilities for governing and maintaining the repository.*
 
-### Steering Committee
-- **Role**: Strategic decisions and governance
-- **Members**: 5-7 senior community members
-- **Term**: 2 years, staggered
-
 ### Repository Maintainers
 - **Role**: Day-to-day repository management
 - **Responsibilities**: Reviews, releases, community support
@@ -141,6 +136,10 @@ Components deprecated for 2 Kubeflow releases before removal.
 - **Role**: Individual component maintenance
 - **Responsibilities**: Updates, bug fixes, user support
 - **Requirements**: Technical expertise, time commitment
+
+### Kubeflow Steering Committee Member
+- **Role**: Organization-scope strategic decisions and governance
+- **Responsibilities**: Defined in the organization-wide [Kubeflow governance documentation](https://www.kubeflow.org/docs/about/governance/#2-kubeflow-steering-committee-ksc)
 
 ## Decision Making
 
