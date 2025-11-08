@@ -104,17 +104,60 @@ pipelines/my_pipeline           # or third_party/pipelines/my_pipeline
 
 ### 3. Test and Submit
 
+Thoroughly test your component before submitting. See [TESTING.md](TESTING.md) for detailed testing guidelines and commands.
+
+**Quick test checklist:**
+- [ ] Run `./scripts/lint.sh` for code quality checks
+- [ ] Run `pytest --cov=src` for unit tests with coverage
+- [ ] Build and test your container image
+- [ ] Verify component works with sample data
+
+### 4. Commit Your Changes
+
+Create Commit(s) following logical steps, including summaries in the commit message
+
 ```bash
-# Test your changes
-./scripts/lint.sh
-pytest --cov=src
-
-# Commit and push
+# Stage your changes
 git add .
-git commit -m "feat: add my component"
-git push origin component/my-component
 
-# Create PR on GitHub
+# Check what you're committing
+git status
+git diff --cached
+
+# Commit with descriptive message following Conventional Commits
+git commit -m "feat: add data preprocessing component
+- Implements StandardScaler and MinMaxScaler
+- Adds comprehensive unit and integration tests
+- Includes usage examples and documentation
+- Resolves #123"
+
+# For bug fixes:
+git commit -m "fix: resolve memory leak in data loader
+- Fix buffer overflow in large dataset processing
+- Add memory usage tests
+- Update documentation with memory requirements
+- Fixes #456"
+```
+
+### 5. Push and Create Pull Request
+
+```bash
+# Push to your fork
+git push origin component/my_component
+
+# If this is your first push for this branch:
+git push --set-upstream origin component/my_component
+```
+
+**Create PR on GitHub:**
+1. Navigate to your fork on GitHub
+2. Click "Compare & pull request" button
+3. Fill out the PR template:
+   - **Title**: Clear, descriptive title
+   - **Description**: What does this PR do?
+   - **Testing**: How was this tested?
+   - **Checklist**: Complete the provided checklist
+   - **Related Issues**: Link to relevant issues
 ```
 
 ## Component Implementation
@@ -122,6 +165,8 @@ git push origin component/my-component
 *Guidelines and examples for implementing components with proper structure.*
 
 ### Basic Structure
+
+Below is the basic structure of a component:
 
 ```python
 # src/main.py
@@ -147,11 +192,16 @@ if __name__ == '__main__':
     main()
 ```
 
-### metadata.yaml
+
+### Required Files
+
+*Essential files that every component must include with examples.*
+
+#### metadata.yaml
 
 ```yaml
 name: my_component
-description: Brief description of what the component does
+description: Brief description
 version: 1.0.0
 inputs:
   - name: input_data
@@ -160,11 +210,28 @@ inputs:
 outputs:
   - name: output_data
     type: Dataset
-    description: Processed output
+    description: Output dataset
 image: gcr.io/project/my-component:1.0.0
 ```
 
-### Containerfile (required only for custom images)
+#### README.md
+
+Must include:
+- Component overview
+- Input/output specifications  
+- Usage examples
+- Configuration options
+
+#### OWNERS
+
+```yaml
+approvers:
+  - maintainer1
+reviewers:
+  - reviewer1
+```
+
+#### Containerfile (required only for custom images)
 
 ```dockerfile
 FROM python:3.9-slim
