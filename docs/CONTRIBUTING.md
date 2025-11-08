@@ -114,11 +114,11 @@ ENTRYPOINT ["python", "main.py"]
 
 ```bash
 # Fork the repository on GitHub first, then clone your fork
-git clone https://github.com/YOUR_USERNAME/pipeline-components.git
-cd pipeline-components
+git clone https://github.com/YOUR_USERNAME/pipelines-components.git
+cd pipelines-components
 
 # Add upstream remote to sync with main repository
-git remote add upstream https://github.com/kubeflow/pipeline-components.git
+git remote add upstream https://github.com/kubeflow/pipelines-components.git
 
 # Verify remotes are set up correctly
 git remote -v

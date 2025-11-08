@@ -152,7 +152,7 @@ Our GitHub Actions automatically run:
 
 *Resources and support channels for testing and code quality questions.*
 
-- Open a [GitHub Issue](https://github.com/kubeflow/pipeline-components/issues) for testing infrastructure problems
+- Open a [GitHub Issue](https://github.com/kubeflow/pipelines-components/issues) for testing infrastructure problems
 - Ask in [#kubeflow-pipelines Slack](https://kubeflow.slack.com/channels/kubeflow-pipelines)
 - See [Contributing Guide](CONTRIBUTING.md) for more details
 

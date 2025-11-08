@@ -33,9 +33,9 @@ Ensure you have these tools installed:
 
 ```bash
 # Fork and clone
-git clone https://github.com/YOUR_USERNAME/pipeline-components.git
-cd pipeline-components
-git remote add upstream https://github.com/kubeflow/pipeline-components.git
+git clone https://github.com/YOUR_USERNAME/pipelines-components.git
+cd pipelines-components
+git remote add upstream https://github.com/kubeflow/pipelines-components.git
 
 # Set up environment
 uv venv
@@ -241,7 +241,7 @@ Each component needs a comprehensive README.md with:
 - **Best Practices**: [BESTPRACTICES.md](BESTPRACTICES.md) *(coming soon)*
 - **Agents**: [AGENTS.md](AGENTS.md) *(coming soon)*
 - **Community**: [#kubeflow-pipelines Slack](https://kubeflow.slack.com/channels/kubeflow-pipelines)
-- **Issues**: [GitHub Issues](https://github.com/kubeflow/pipeline-components/issues) for bugs and questions
+- **Issues**: [GitHub Issues](https://github.com/kubeflow/pipelines-components/issues) for bugs and questions
 
 ## Next Steps
 
