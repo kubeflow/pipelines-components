@@ -7,7 +7,6 @@ Welcome! This guide covers how to contribute components to the Kubeflow Pipeline
 - [Quick Start](#quick-start)
 - [What We Accept](#what-we-accept)
 - [Component Structure](#component-structure)
-- [Required Files](#required-files)
 - [Development Workflow](#development-workflow)
 - [Testing Requirements](#testing-requirements)
 - [Review Process](#review-process)

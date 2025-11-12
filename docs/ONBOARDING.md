@@ -7,10 +7,16 @@ Welcome to the Kubeflow Pipelines Components Repository! This guide will get you
 - [Prerequisites](#prerequisites)
 - [Quick Setup](#quick-setup)
 - [Development Workflow](#development-workflow)
+  - [1. Create Feature Branch](#1-create-feature-branch)
+  - [2. Develop Component or Pipeline](#2-develop-component-or-pipeline)
+  - [3. Test and Submit](#3-test-and-submit)
+  - [4. Commit Your Changes](#4-commit-your-changes)
+  - [5. Push and Create Pull Request](#5-push-and-create-pull-request)
 - [Component Implementation](#component-implementation)
-- [Testing](#testing)
 - [Code Quality](#code-quality)
-- [Documentation](#documentation)
+  - [Quick Reference](#quick-reference)
+  - [Testing](#testing)
+  - [Documentation](#documentation)
 - [Getting Help](#getting-help)
 - [Next Steps](#next-steps)
 - [References](#references)
@@ -158,7 +164,6 @@ git push --set-upstream origin component/my_component
    - **Testing**: How was this tested?
    - **Checklist**: Complete the provided checklist
    - **Related Issues**: Link to relevant issues
-```
 
 ## Component Implementation
 
@@ -242,28 +247,6 @@ COPY src/ .
 ENTRYPOINT ["python", "main.py"]
 ```
 
-## Testing
-
-*How to write and run tests to ensure your component works correctly.*
-
-Write comprehensive tests:
-
-```python
-# tests/test_main.py
-import pytest
-from src.main import process_data
-
-def test_process_data():
-    """Test basic functionality."""
-    # Test implementation
-    assert True  # Replace with actual tests
-
-def test_error_handling():
-    """Test error scenarios."""
-    with pytest.raises(ValueError):
-        process_data("invalid", "output")
-```
-
 ## Code Quality
 
 *Tools and standards for maintaining high code quality and consistency.*
@@ -286,7 +269,29 @@ mypy .
 pytest --cov=src --cov-report=html
 ```
 
-## Documentation
+### Testing
+
+*How to write and run tests to ensure your component works correctly.*
+
+Write comprehensive tests:
+
+```python
+# tests/test_main.py
+import pytest
+from src.main import process_data
+
+def test_process_data():
+    """Test basic functionality."""
+    # Test implementation
+    assert True  # Replace with actual tests
+
+def test_error_handling():
+    """Test error scenarios."""
+    with pytest.raises(ValueError):
+        process_data("invalid", "output")
+```
+
+### Documentation
 
 *Requirements for documenting your component clearly and comprehensively.*
 
@@ -301,7 +306,6 @@ Each component needs a comprehensive README.md with:
 
 *Resources and channels for getting support during your contribution journey.*
 
-- **Setup Issues**: [ONBOARDING.md](ONBOARDING.md) (this guide)
 - **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
 - **Testing**: [TESTING.md](TESTING.md)
 - **Governance**: [GOVERNANCE.md](GOVERNANCE.md)
