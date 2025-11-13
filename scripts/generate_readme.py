@@ -14,7 +14,6 @@ Usage:
 
 import argparse
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
 
 
 def validate_component_file(file_path: str) -> Path:
@@ -54,9 +53,9 @@ def parse_arguments():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python scripts/generate_readme.py components/my_component/src/main.py
-  python scripts/generate_readme.py --output custom_readme.md src/component.py
-  python scripts/generate_readme.py --verbose src/component.py
+  python scripts/generate_readme.py components/my_component/component.py
+  python scripts/generate_readme.py --output custom_readme.md components/my_component/component.py
+  python scripts/generate_readme.py --verbose components/my_component/component.py
         """
     )
     
@@ -90,7 +89,7 @@ Examples:
 def main():
     """Main entry point for the script."""
     args = parse_arguments()
-    print(args)
+    print(args.component_file)
 
 if __name__ == "__main__":
     main()
