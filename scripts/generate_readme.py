@@ -274,95 +274,381 @@ class ComponentMetadataParser:
 
 
 
-
-def validate_component_file(file_path: str) -> Path:
-    """Validate that the component file exists and is a valid Python file.
+class ReadmeContentGenerator:
+    """Generates README.md documentation content for KFP components."""
     
-    Args:
-        file_path: String path to the component file.
+    def __init__(self, metadata: Dict[str, Any]):
+        """Initialize the generator with component metadata.
         
-    Returns:
-        Path: Validated Path object.
-        
-    Raises:
-        argparse.ArgumentTypeError: If validation fails.
-    """
-    path = Path(file_path)
-    
-    if not path.exists():
-        raise argparse.ArgumentTypeError(f"Component file '{file_path}' does not exist")
-    
-    if not path.is_file():
-        raise argparse.ArgumentTypeError(f"'{file_path}' is not a file")
-    
-    if path.suffix != '.py':
-        raise argparse.ArgumentTypeError(f"'{file_path}' is not a Python file (must have .py extension)")
-    
-    return path
-
-
-def parse_arguments():
-    """Parse and validate command-line arguments.
-    
-    Returns:
-        argparse.Namespace: Parsed and validated arguments.
-    """
-    parser = argparse.ArgumentParser(
-        description="Generate README.md documentation for Kubeflow Pipelines components",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  uv run scripts/generate_readme.py components/my_component/component.py
-  uv run scripts/generate_readme.py --output custom_readme.md components/my_component/component.py
-  uv run scripts/generate_readme.py --verbose components/my_component/component.py
+        Args:
+            metadata: Component metadata extracted by ComponentIntrospector.
         """
-    )
+        self.metadata = metadata
     
-    parser.add_argument(
-        'component_file',
-        type=validate_component_file,
-        help='Path to the Python file containing the @dsl.component decorated function'
-    )
+    def generate_readme(self) -> str:
+        """Generate complete README.md content following KEP-913 template.
+        
+        Returns:
+            Complete README.md content as a string.
+        """
+        sections = [
+            self._generate_title(),
+            self._generate_overview(),
+            self._generate_quick_start(),
+            self._generate_inputs(),
+            self._generate_outputs(),
+            self._generate_usage_examples(),
+            self._generate_configuration_options(),
+            self._generate_development(),
+            self._generate_examples(),
+            self._generate_troubleshooting(),
+            self._generate_contributing(),
+            self._generate_license(),
+            self._generate_changelog()
+        ]
+        
+        return '\n\n'.join(filter(None, sections))
     
-    parser.add_argument(
-        '-o', '--output',
-        type=Path,
-        help='Output path for the generated README.md (default: README.md in component directory)'
-    )
+    def _generate_title(self) -> str:
+        """Generate the title section."""
+        component_name = self.metadata.get('name', 'Component')
+        # Convert snake_case to Title Case
+        title = ' '.join(word.capitalize() for word in component_name.split('_'))
+        return f"# {title} Component"
     
-    parser.add_argument(
-        '-v', '--verbose',
-        action='store_true',
-        help='Enable verbose output'
-    )
+    def _generate_overview(self) -> str:
+        """Generate the overview section."""
+        overview = self.metadata.get('overview', '')
+        if not overview:
+            component_name = self.metadata.get('name', 'processing').replace('_', ' ')
+            overview = f"A Kubeflow Pipelines component for {component_name}."
+        
+        return f"## Overview\n\n{overview}"
     
-    parser.add_argument(
-        '--overwrite',
-        action='store_true',
-        help='Overwrite existing README.md without prompting'
-    )
+    def _generate_quick_start(self) -> str:
+        """Generate the quick start section."""
+        component_name = self.metadata.get('name', 'component')
+        
+        content = [
+            "## Quick Start",
+            "",
+            "```python",
+            "from kfp import dsl",
+            f"from .{component_name} import {component_name}",
+            "",
+            "@dsl.pipeline(name='example-pipeline')",
+            "def my_pipeline():",
+            f"    result = {component_name}(",
+        ]
+        
+        # Add basic parameter examples
+        parameters = self.metadata.get('parameters', {})
+        for param_name, param_info in list(parameters.items())[:2]:  # Show first 2 params
+            param_type = param_info.get('type', 'Any')
+            if 'str' in param_type.lower():
+                example_value = f'"{param_name}_value"'
+            elif 'int' in param_type.lower():
+                example_value = '42'
+            elif 'bool' in param_type.lower():
+                example_value = 'True'
+            else:
+                example_value = f'{param_name}_input'
+            
+            content.append(f"        {param_name}={example_value},")
+        
+        content.extend([
+            "    )",
+            "```"
+        ])
+        
+        return '\n'.join(content)
     
-    return parser.parse_args()
+    def _generate_inputs(self) -> str:
+        """Generate the inputs section."""
+        parameters = self.metadata.get('parameters', {})
+        if not parameters:
+            return "## Inputs\n\nThis component has no input parameters."
+        
+        content = ["## Inputs", ""]
+        content.append("| Parameter | Type | Required | Default | Description |")
+        content.append("|-----------|------|----------|---------|-------------|")
+        
+        for param_name, param_info in parameters.items():
+            param_type = param_info.get('type', 'Any')
+            default = param_info.get('default')
+            required = "No" if default is not None else "Yes"
+            default_str = str(default) if default is not None else "-"
+            description = param_info.get('description', 'No description provided')
+            
+            content.append(f"| `{param_name}` | {param_type} | {required} | {default_str} | {description} |")
+        
+        return '\n'.join(content)
+    
+    def _generate_outputs(self) -> str:
+        """Generate the outputs section."""
+        returns = self.metadata.get('returns', {})
+        
+        content = ["## Outputs", ""]
+        
+        if returns:
+            return_type = returns.get('type', 'Any')
+            description = returns.get('description', 'Component output')
+            content.append("| Output | Type | Description |")
+            content.append("|--------|------|-------------|")
+            content.append(f"| result | {return_type} | {description} |")
+        else:
+            content.append("This component does not return any outputs.")
+        
+        return '\n'.join(content)
+    
+    def _generate_usage_examples(self) -> str:
+        """Generate the usage examples section."""
+        component_name = self.metadata.get('name', 'component')
+        
+        content = [
+            "## Usage Examples",
+            "",
+            "### Basic Usage",
+            "",
+            "```python",
+            f"from .{component_name} import {component_name}",
+            "",
+            f"# Simple usage with default parameters",
+            f"result = {component_name}(",
+        ]
+        
+        # Add basic parameter examples (required params only)
+        parameters = self.metadata.get('parameters', {})
+        required_params = {k: v for k, v in parameters.items() if v.get('default') is None}
+        
+        for param_name, param_info in required_params.items():
+            param_type = param_info.get('type', 'Any')
+            if 'str' in param_type.lower():
+                example_value = f'"{param_name}_value"'
+            elif 'int' in param_type.lower():
+                example_value = '42'
+            else:
+                example_value = f'{param_name}_input'
+            
+            content.append(f"    {param_name}={example_value},")
+        
+        content.extend([
+            ")",
+            "```",
+            "",
+            "### Advanced Configuration",
+            "",
+            "```python",
+            f"# Usage with all parameters",
+            f"result = {component_name}(",
+        ])
+        
+        # Add all parameter examples
+        for param_name, param_info in parameters.items():
+            param_type = param_info.get('type', 'Any')
+            default = param_info.get('default')
+            
+            if 'str' in param_type.lower():
+                example_value = f'"{param_name}_value"' if default is None else f'"{default}"'
+            elif 'int' in param_type.lower():
+                example_value = '42' if default is None else str(default)
+            elif 'bool' in param_type.lower():
+                example_value = 'True' if default is None else str(default)
+            else:
+                example_value = f'{param_name}_input' if default is None else str(default)
+            
+            content.append(f"    {param_name}={example_value},")
+        
+        content.extend([
+            ")",
+            "```",
+            "",
+            "### In a Complete Pipeline",
+            "",
+            "```python",
+            "from kfp import dsl",
+            f"from .{component_name} import {component_name}",
+            "",
+            "@dsl.pipeline(name='ml-pipeline')",
+            "def ml_pipeline():",
+            f"    # Use the component in a pipeline",
+            f"    step1 = {component_name}(",
+        ])
+        
+        # Add required params for pipeline example
+        for param_name, param_info in list(required_params.items())[:2]:
+            param_type = param_info.get('type', 'Any')
+            if 'str' in param_type.lower():
+                example_value = f'"{param_name}_value"'
+            else:
+                example_value = f'{param_name}_input'
+            content.append(f"        {param_name}={example_value},")
+        
+        content.extend([
+            "    )",
+            "    ",
+            "    return step1.outputs",
+            "```"
+        ])
+        
+        return '\n'.join(content)
+    
+    def _generate_configuration_options(self) -> str:
+        """Generate the configuration options section."""
+        parameters = self.metadata.get('parameters', {})
+        if not parameters:
+            return ""
+        
+        content = [
+            "## Configuration Options",
+            "",
+            "This component supports the following configuration parameters:",
+            ""
+        ]
+        
+        for param_name, param_info in parameters.items():
+            param_type = param_info.get('type', 'Any')
+            default = param_info.get('default')
+            description = param_info.get('description', 'No description provided')
+            
+            content.append(f"### {param_name}")
+            content.append(f"- **Type**: {param_type}")
+            content.append(f"- **Required**: {'No' if default is not None else 'Yes'}")
+            if default is not None:
+                content.append(f"- **Default**: `{default}`")
+            content.append(f"- **Description**: {description}")
+            content.append("")
+        
+        return '\n'.join(content)
+    
+    def _generate_development(self) -> str:
+        """Generate the development section."""
+        component_name = self.metadata.get('name', 'component')
+        
+        return f"""## Development
+
+### Building the Container
+
+```bash
+docker build -t {component_name}:latest .
+```
+
+### Running Tests
+
+```bash
+# Install test dependencies
+pip install -r requirements-test.txt
+
+# Run unit tests
+pytest tests/
+
+# Run with coverage
+pytest --cov=src tests/
+```"""
+    
+    def _generate_examples(self) -> str:
+        """Generate the examples section."""
+        return """## Examples
+
+See the `examples/` directory for complete pipeline examples using this component.
+
+### Basic Example
+
+```python
+# Add specific usage examples here
+```
+
+### Advanced Example
+
+```python
+# Add advanced usage examples here
+```"""
+    
+    def _generate_troubleshooting(self) -> str:
+        """Generate the troubleshooting section."""
+        return """## Troubleshooting
+
+### Common Issues
+
+1. **Component fails to start**: Check that all required parameters are provided
+2. **Memory errors**: Increase memory limits in your pipeline configuration
+3. **Permission errors**: Ensure proper access to input/output paths
+
+### Debug Mode
+
+Enable debug logging by setting the environment variable:
+```bash
+export LOG_LEVEL=DEBUG
+```
+
+### Getting Help
+
+If you encounter issues:
+- Check the component logs for detailed error messages
+- Verify input data format and requirements
+- Consult the [troubleshooting guide](../../docs/troubleshooting.md)"""
+    
+    def _generate_contributing(self) -> str:
+        """Generate the contributing section."""
+        return """## Contributing
+
+Contributions to improve this component are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Submit a pull request
+
+See [CONTRIBUTING.md](../../CONTRIBUTING.md) for detailed guidelines."""
+    
+    def _generate_license(self) -> str:
+        """Generate the license section."""
+        return """## License
+
+This component is licensed under the Apache License 2.0. See [LICENSE](../../LICENSE) for details."""
+    
+    def _generate_changelog(self) -> str:
+        """Generate the changelog section."""
+        component_name = self.metadata.get('name', 'component')
+        version = "1.0.0"  # Default version, could be extracted from metadata
+        
+        return f"""## Changelog
+
+### v{version} (Initial Release)
+- Initial implementation of {component_name} component
+- Support for all documented input parameters
+- Comprehensive error handling and validation
+- Complete test coverage"""
+
+
 
 
 class ReadmeGenerator:
     """Generates README documentation for Kubeflow Pipelines components."""
     
-    def __init__(self, component_file: Path, output_file: Optional[Path] = None, 
+    def __init__(self, component_dir: Path, output_file: Optional[Path] = None, 
                  verbose: bool = False, overwrite: bool = False):
         """Initialize the README generator.
         
         Args:
-            component_file: Path to the component Python file.
+            component_dir: Path to the component directory (must contain component.py and metadata.yaml).
             output_file: Optional output path for the generated README.
             verbose: Enable verbose logging output.
             overwrite: Overwrite existing README without prompting.
         """
-        self.component_file = component_file
-        self.output_file = output_file
+        self.component_dir = component_dir
+        self.component_file = component_dir / 'component.py'
+        self.metadata_file = component_dir / 'metadata.yaml'
+        self.readme_file = output_file if output_file else component_dir / "README.md"
         self.verbose = verbose
         self.overwrite = overwrite
-        self.parser = ComponentMetadataParser(component_file)
+        
+        # Validate that required files exist
+        assert self.component_file.exists(), f"component.py not found in {component_dir}"
+        assert self.metadata_file.exists(), f"metadata.yaml not found in {component_dir}"
+        
+        self.parser = ComponentMetadataParser(self.component_file)
         
         # Configure logging
         self._configure_logging()
@@ -374,6 +660,27 @@ class ReadmeGenerator:
             level=log_level,
             format='%(levelname)s: %(message)s'
         )
+
+    def _write_readme_file(self, readme_content: str) -> None:
+        """Write the README content to the README.md file.
+        
+        Args:
+            readme_content: The content to write to the README.md file.
+        """
+        # Check if file exists and handle overwrite
+        if self.readme_file.exists() and not self.overwrite:
+            response = input(f"README.md already exists at {self.readme_file}. Overwrite? (y/N): ")
+            if response.lower() not in ['y', 'yes']:
+                print("Operation cancelled.")
+                sys.exit(0)
+
+        # Write README.md
+        with open(self.readme_file, 'w', encoding='utf-8') as f:
+            logger.debug(f"Writing README.md to {self.readme_file}")
+            logger.debug(f"README content: {readme_content}")
+            f.write(readme_content)
+        logger.info(f"README.md generated successfully at {self.readme_file}")
+
     
     def generate(self) -> None:
         """Generate the README documentation.
@@ -399,8 +706,89 @@ class ReadmeGenerator:
         
         logger.debug(f"Extracted metadata for {len(metadata.get('parameters', {}))} parameters")
         
-        # TODO: Generate README content from metadata
-        # TODO: Write README to file
+        # Generate README content
+        readme_content_generator = ReadmeContentGenerator(metadata)
+        readme_content = readme_content_generator.generate_readme()
+        
+        # Write README.md file
+        self._write_readme_file(readme_content)
+
+        # Log metadata statistics
+        logger.debug(f"README content length: {len(readme_content)} characters")
+        logger.debug(f"Component name: {metadata.get('name', 'Unknown')}")
+        logger.debug(f"Parameters: {len(metadata.get('parameters', {}))}")
+        logger.debug(f"Has return type: {'Yes' if metadata.get('returns') else 'No'}")
+        
+
+def validate_component_directory(dir_path: str) -> Path:
+    """Validate that the component directory exists and contains a component.py file.
+    
+    Args:
+        dir_path: String path to the component directory.
+        
+    Returns:
+        Path: Validated Path object to the component directory.
+        
+    Raises:
+        argparse.ArgumentTypeError: If validation fails.
+    """
+    path = Path(dir_path)
+    
+    if not path.exists():
+        raise argparse.ArgumentTypeError(f"Component directory '{dir_path}' does not exist")
+    
+    if not path.is_dir():
+        raise argparse.ArgumentTypeError(f"'{dir_path}' is not a directory")
+    
+    component_file = path / 'component.py'
+    if not component_file.exists():
+        raise argparse.ArgumentTypeError(f"'{dir_path}' does not contain a component.py file")
+    
+    return path
+
+
+def parse_arguments():
+    """Parse and validate command-line arguments.
+    
+    Returns:
+        argparse.Namespace: Parsed and validated arguments.
+    """
+    parser = argparse.ArgumentParser(
+        description="Generate README.md documentation for Kubeflow Pipelines components",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  uv run scripts/generate_readme.py components/my_component
+  uv run scripts/generate_readme.py --output custom_readme.md components/my_component
+  uv run scripts/generate_readme.py --verbose components/my_component
+        """
+    )
+    
+    parser.add_argument(
+        'component_dir',
+        type=validate_component_directory,
+        help='Path to the component directory (must contain component.py)'
+    )
+    
+    parser.add_argument(
+        '-o', '--output',
+        type=Path,
+        help='Output path for the generated README.md (default: README.md in component directory)'
+    )
+    
+    parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        help='Enable verbose output'
+    )
+    
+    parser.add_argument(
+        '--overwrite',
+        action='store_true',
+        help='Overwrite existing README.md without prompting'
+    )
+    
+    return parser.parse_args()
 
 
 def main():
@@ -409,7 +797,7 @@ def main():
     
     # Create and run the generator
     generator = ReadmeGenerator(
-        component_file=args.component_file,
+        component_dir=args.component_dir,
         output_file=args.output,
         verbose=args.verbose,
         overwrite=args.overwrite
