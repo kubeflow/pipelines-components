@@ -345,37 +345,77 @@ Examples:
     return parser.parse_args()
 
 
+class ReadmeGenerator:
+    """Generates README documentation for Kubeflow Pipelines components."""
+    
+    def __init__(self, component_file: Path, output_file: Optional[Path] = None, 
+                 verbose: bool = False, overwrite: bool = False):
+        """Initialize the README generator.
+        
+        Args:
+            component_file: Path to the component Python file.
+            output_file: Optional output path for the generated README.
+            verbose: Enable verbose logging output.
+            overwrite: Overwrite existing README without prompting.
+        """
+        self.component_file = component_file
+        self.output_file = output_file
+        self.verbose = verbose
+        self.overwrite = overwrite
+        self.parser = ComponentMetadataParser(component_file)
+        
+        # Configure logging
+        self._configure_logging()
+    
+    def _configure_logging(self) -> None:
+        """Configure logging based on verbose flag."""
+        log_level = logging.DEBUG if self.verbose else logging.INFO
+        logging.basicConfig(
+            level=log_level,
+            format='%(levelname)s: %(message)s'
+        )
+    
+    def generate(self) -> None:
+        """Generate the README documentation.
+        
+        Raises:
+            SystemExit: If component function is not found or metadata extraction fails.
+        """
+        # Find the component function
+        logger.debug(f"Analyzing component file: {self.component_file}")
+        
+        function_name = self.parser.find_component_function()
+        if not function_name:
+            logger.error(f"No function decorated with @dsl.component found in {self.component_file}")
+            sys.exit(1)
+        
+        logger.debug(f"Found component function: {function_name}")
+        
+        # Extract metadata
+        metadata = self.parser.extract_component_metadata(function_name)
+        if not metadata:
+            logger.error(f"Could not extract metadata from function {function_name}")
+            sys.exit(1)
+        
+        logger.debug(f"Extracted metadata for {len(metadata.get('parameters', {}))} parameters")
+        
+        # TODO: Generate README content from metadata
+        # TODO: Write README to file
+
+
 def main():
     """Main entry point for the script."""
     args = parse_arguments()
     
-    # Configure logging based on verbose flag
-    log_level = logging.DEBUG if args.verbose else logging.INFO
-    logging.basicConfig(
-        level=log_level,
-        format='%(levelname)s: %(message)s'
+    # Create and run the generator
+    generator = ReadmeGenerator(
+        component_file=args.component_file,
+        output_file=args.output,
+        verbose=args.verbose,
+        overwrite=args.overwrite
     )
-    
-    # Initialize introspector
-    component_parser = ComponentMetadataParser(args.component_file)
+    generator.generate()
 
-    # Find the component function
-    logger.debug(f"Analyzing component file: {args.component_file}")
-    
-    function_name = component_parser.find_component_function()
-    if not function_name:
-        logger.error(f"No function decorated with @dsl.component found in {args.component_file}")
-        sys.exit(1)
-    
-    logger.debug(f"Found component function: {function_name}")
-    
-    metadata = component_parser.extract_component_metadata(function_name)
-    if not metadata:
-        logger.error(f"Could not extract metadata from function {function_name}")
-        sys.exit(1)
-    
-    logger.debug(f"Extracted metadata for {len(metadata.get('parameters', {}))} parameters")
-    
 
 if __name__ == "__main__":
     main()
