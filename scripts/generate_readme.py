@@ -580,18 +580,53 @@ class ReadmeGenerator:
             format='%(levelname)s: %(message)s'
         )
 
+    def _extract_custom_content(self) -> Optional[str]:
+        """Extract custom content from existing README if it has a custom-content marker.
+        
+        Returns:
+            The custom content (including marker) if found, None otherwise.
+        """
+        if not self.readme_file.exists():
+            return None
+        
+        try:
+            with open(self.readme_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            marker = '<!-- custom-content -->'
+            if marker in content:
+                marker_index = content.find(marker)
+                custom_content = content[marker_index:]
+                logger.debug(f"Found custom content marker, preserving {len(custom_content)} characters")
+                return custom_content
+            
+            return None
+        except Exception as e:
+            logger.warning(f"Error reading existing README for custom content: {e}")
+            return None
+
     def _write_readme_file(self, readme_content: str) -> None:
         """Write the README content to the README.md file.
+        
+        Preserves any custom content after the <!-- custom-content --> marker.
         
         Args:
             readme_content: The content to write to the README.md file.
         """
+        # Extract any custom content before checking for overwrite
+        custom_content = self._extract_custom_content()
+        
         # Check if file exists and handle overwrite
         if self.readme_file.exists() and not self.overwrite:
             response = input(f"README.md already exists at {self.readme_file}. Overwrite? (y/N): ")
             if response.lower() not in ['y', 'yes']:
                 print("Operation cancelled.")
                 sys.exit(0)
+
+        # Append custom content if it was found
+        if custom_content:
+            readme_content = f"{readme_content}\n\n{custom_content}"
+            logger.info("Preserved custom content from existing README")
 
         # Write README.md
         with open(self.readme_file, 'w', encoding='utf-8') as f:
