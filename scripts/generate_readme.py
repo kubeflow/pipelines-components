@@ -19,9 +19,13 @@ import sys
 from typing import Any, Optional, Dict, Union
 import ast
 import inspect
+import logging
 import re
 import argparse
 import importlib.util
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 
 class ComponentMetadataParser:
@@ -62,7 +66,7 @@ class ComponentMetadataParser:
             
             return None
         except Exception as e:
-            print(f"Error parsing file {self.component_file}: {e}")
+            logger.error(f"Error parsing file {self.component_file}: {e}")
             return None
     
     def _is_component_decorator(self, decorator: ast.AST) -> bool:
@@ -161,7 +165,7 @@ class ComponentMetadataParser:
             return metadata
             
         except Exception as e:
-            print(f"Error extracting metadata for function {function_name}: {e}")
+            logger.error(f"Error extracting metadata for function {function_name}: {e}")
             return {}
     
     def _parse_google_docstring(self, docstring: str) -> Dict[str, Any]:
@@ -345,28 +349,32 @@ def main():
     """Main entry point for the script."""
     args = parse_arguments()
     
+    # Configure logging based on verbose flag
+    log_level = logging.DEBUG if args.verbose else logging.INFO
+    logging.basicConfig(
+        level=log_level,
+        format='%(levelname)s: %(message)s'
+    )
+    
     # Initialize introspector
     component_parser = ComponentMetadataParser(args.component_file)
 
-     # Find the component function
-    if args.verbose:
-        print(f"Analyzing component file: {args.component_file}")
+    # Find the component function
+    logger.debug(f"Analyzing component file: {args.component_file}")
     
     function_name = component_parser.find_component_function()
     if not function_name:
-        print(f"Error: No function decorated with @dsl.component found in {args.component_file}")
+        logger.error(f"No function decorated with @dsl.component found in {args.component_file}")
         sys.exit(1)
     
-    if args.verbose:
-        print(f"Found component function: {function_name}")
+    logger.debug(f"Found component function: {function_name}")
     
     metadata = component_parser.extract_component_metadata(function_name)
     if not metadata:
-        print(f"Error: Could not extract metadata from function {function_name}")
+        logger.error(f"Could not extract metadata from function {function_name}")
         sys.exit(1)
     
-    if args.verbose:
-        print(f"Extracted metadata for {len(metadata.get('parameters', {}))} parameters")
+    logger.debug(f"Extracted metadata for {len(metadata.get('parameters', {}))} parameters")
     
 
 if __name__ == "__main__":
