@@ -101,6 +101,174 @@ class ComponentMetadataParser:
             return decorator.id == 'component'
         return False
 
+        
+    def extract_component_metadata(self, function_name: str) -> Dict[str, Any]:
+        """Extract metadata from the component function.
+        
+        Args:
+            function_name: Name of the component function to introspect.
+            
+        Returns:
+            Dictionary containing extracted metadata.
+        """
+        try:
+            # Import the module to get the actual function object
+            spec = importlib.util.spec_from_file_location("component_module", self.component_file)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            
+            component_obj = getattr(module, function_name)
+            
+            # The @dsl.component decorator wraps the function, so we need to access the underlying function
+            # KFP components store the original function in the 'python_func' attribute
+            if hasattr(component_obj, 'python_func'):
+                func = component_obj.python_func
+            else:
+                # Fallback to the component object itself if python_func is not available
+                func = component_obj
+            
+            # Extract basic function information
+            metadata = {
+                'name': function_name,
+                'docstring': inspect.getdoc(func) or '',
+                'signature': inspect.signature(func),
+                'parameters': {},
+                'returns': {}
+            }
+            
+            # Parse docstring for Args and Returns sections
+            docstring_info = self._parse_google_docstring(metadata['docstring'])
+            metadata.update(docstring_info)
+            
+            # Extract parameter information
+            for param_name, param in metadata['signature'].parameters.items():
+                param_info = {
+                    'name': param_name,
+                    'type': self._get_type_string(param.annotation),
+                    'default': param.default if param.default != inspect.Parameter.empty else None,
+                    'description': metadata.get('args', {}).get(param_name, '')
+                }
+                metadata['parameters'][param_name] = param_info
+            
+            # Extract return type information
+            return_annotation = metadata['signature'].return_annotation
+            if return_annotation != inspect.Signature.empty:
+                metadata['returns'] = {
+                    'type': self._get_type_string(return_annotation),
+                    'description': metadata.get('returns_description', '')
+                }
+            
+            return metadata
+            
+        except Exception as e:
+            print(f"Error extracting metadata for function {function_name}: {e}")
+            return {}
+    
+    def _parse_google_docstring(self, docstring: str) -> Dict[str, Any]:
+        """Parse Google-style docstring to extract Args and Returns sections.
+        
+        Args:
+            docstring: The function's docstring.
+            
+        Returns:
+            Dictionary containing parsed docstring information.
+        """
+        if not docstring:
+            return {'overview': '', 'args': {}, 'returns_description': ''}
+        
+        # Split docstring into lines
+        lines = docstring.strip().split('\n')
+        
+        # Extract overview (everything before Args/Returns sections)
+        overview_lines = []
+        current_section = None
+        args = {}
+        returns_description = ''
+        
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            
+            if line.lower().startswith('args:'):
+                current_section = 'args'
+                i += 1
+                continue
+            elif line.lower().startswith('returns:'):
+                current_section = 'returns'
+                i += 1
+                continue
+            elif line.lower().startswith(('raises:', 'yields:', 'note:', 'example:')):
+                current_section = 'other'
+                i += 1
+                continue
+            
+            if current_section is None:
+                # Still in overview section
+                overview_lines.append(lines[i])
+            elif current_section == 'args':
+                # Parse argument line
+                arg_match = re.match(self.GOOGLE_ARG_REGEX_PATTERN, line)
+                if arg_match:
+                    arg_name, arg_type, arg_desc = arg_match.groups()
+                    args[arg_name] = arg_desc.strip()
+                elif line and args:
+                    # Continuation of previous argument description
+                    last_arg = list(args.keys())[-1]
+                    args[last_arg] += ' ' + line
+            elif current_section == 'returns':
+                # Parse returns section
+                if line:
+                    returns_description += line + ' '
+            
+            i += 1
+        
+        return {
+            'overview': '\n'.join(overview_lines).strip(),
+            'args': args,
+            'returns_description': returns_description.strip()
+        }
+    
+    def _get_type_string(self, annotation: Any) -> str:
+        """Convert type annotation to string representation.
+        
+        Args:
+            annotation: The type annotation object.
+            
+        Returns:
+            String representation of the type.
+        """
+        if annotation == inspect.Parameter.empty or annotation == inspect.Signature.empty:
+            return 'Any'
+        
+        if hasattr(annotation, '__name__'):
+            return annotation.__name__
+        elif hasattr(annotation, '__origin__'):
+            # Handle generic types like List[str], Dict[str, int], etc.
+            origin = annotation.__origin__
+            args = getattr(annotation, '__args__', ())
+            
+            if origin is Union:
+                # Handle Optional[T] and Union types
+                if len(args) == 2 and type(None) in args:
+                    # Optional type
+                    non_none_type = args[0] if args[1] is type(None) else args[1]
+                    return f"Optional[{self._get_type_string(non_none_type)}]"
+                else:
+                    # Union type
+                    type_strings = [self._get_type_string(arg) for arg in args]
+                    return f"Union[{', '.join(type_strings)}]"
+            elif args:
+                # Generic type with arguments
+                origin_name = getattr(origin, '__name__', str(origin))
+                arg_strings = [self._get_type_string(arg) for arg in args]
+                return f"{origin_name}[{', '.join(arg_strings)}]"
+            else:
+                # Generic type without arguments
+                return getattr(origin, '__name__', str(origin))
+        else:
+            return str(annotation)
+
+
 
 
 def validate_component_file(file_path: str) -> Path:
@@ -191,6 +359,14 @@ def main():
     
     if args.verbose:
         print(f"Found component function: {function_name}")
+    
+    metadata = component_parser.extract_component_metadata(function_name)
+    if not metadata:
+        print(f"Error: Could not extract metadata from function {function_name}")
+        sys.exit(1)
+    
+    if args.verbose:
+        print(f"Extracted metadata for {len(metadata.get('parameters', {}))} parameters")
     
 
 if __name__ == "__main__":
