@@ -23,6 +23,7 @@ import logging
 import re
 import argparse
 import importlib.util
+import yaml
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -277,13 +278,35 @@ class ComponentMetadataParser:
 class ReadmeContentGenerator:
     """Generates README.md documentation content for KFP components."""
     
-    def __init__(self, metadata: Dict[str, Any]):
+    def __init__(self, metadata: Dict[str, Any], metadata_file: Path):
         """Initialize the generator with component metadata.
         
         Args:
             metadata: Component metadata extracted by ComponentIntrospector.
+            metadata_file: Path to the metadata.yaml file.
         """
         self.metadata = metadata
+        self.metadata_file = metadata_file
+        self.yaml_metadata = self._load_yaml_metadata()
+    
+    def _load_yaml_metadata(self) -> Dict[str, Any]:
+        """Load and parse the metadata.yaml file, excluding the 'ci' field.
+        
+        Returns:
+            Dictionary containing the YAML metadata without the 'ci' field.
+        """
+        try:
+            with open(self.metadata_file, 'r', encoding='utf-8') as f:
+                yaml_data = yaml.safe_load(f)
+            
+            # Remove 'ci' field if present
+            if yaml_data and 'ci' in yaml_data:
+                yaml_data.pop('ci')
+            
+            return yaml_data or {}
+        except Exception as e:
+            logger.warning(f"Could not load metadata.yaml: {e}")
+            return {}
     
     def generate_readme(self) -> str:
         """Generate complete README.md content following KEP-913 template.
@@ -294,6 +317,7 @@ class ReadmeContentGenerator:
         sections = [
             self._generate_title(),
             self._generate_overview(),
+            self._generate_metadata(),
             self._generate_quick_start(),
             self._generate_inputs(),
             self._generate_outputs(),
@@ -324,6 +348,24 @@ class ReadmeContentGenerator:
             overview = f"A Kubeflow Pipelines component for {component_name}."
         
         return f"## Overview\n\n{overview}"
+    
+    def _generate_metadata(self) -> str:
+        """Generate the metadata section from metadata.yaml.
+        
+        Returns:
+            Metadata section as a formatted string with YAML content.
+        """
+        if not self.yaml_metadata:
+            return ""
+        
+        # Convert metadata dict back to YAML format
+        yaml_content = yaml.dump(self.yaml_metadata, default_flow_style=False, sort_keys=False)
+        
+        return f"""## Component Metadata
+
+```yaml
+{yaml_content.strip()}
+```"""
     
     def _generate_quick_start(self) -> str:
         """Generate the quick start section."""
@@ -707,7 +749,7 @@ class ReadmeGenerator:
         logger.debug(f"Extracted metadata for {len(metadata.get('parameters', {}))} parameters")
         
         # Generate README content
-        readme_content_generator = ReadmeContentGenerator(metadata)
+        readme_content_generator = ReadmeContentGenerator(metadata, self.metadata_file)
         readme_content = readme_content_generator.generate_readme()
         
         # Write README.md file
