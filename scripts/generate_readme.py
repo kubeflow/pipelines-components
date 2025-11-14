@@ -317,18 +317,9 @@ class ReadmeContentGenerator:
         sections = [
             self._generate_title(),
             self._generate_overview(),
-            self._generate_metadata(),
-            self._generate_quick_start(),
-            self._generate_inputs(),
-            self._generate_outputs(),
-            self._generate_usage_examples(),
-            self._generate_configuration_options(),
-            self._generate_development(),
-            self._generate_examples(),
-            self._generate_troubleshooting(),
-            self._generate_contributing(),
-            self._generate_license(),
-            self._generate_changelog()
+            self._generate_inputs_outputs(),
+            self._generate_usage_example(),
+            self._generate_metadata()
         ]
         
         return '\n\n'.join(filter(None, sections))
@@ -338,7 +329,7 @@ class ReadmeContentGenerator:
         component_name = self.metadata.get('name', 'Component')
         # Convert snake_case to Title Case
         title = ' '.join(word.capitalize() for word in component_name.split('_'))
-        return f"# {title} Component"
+        return f"# {title} ✨"
     
     def _generate_overview(self) -> str:
         """Generate the overview section."""
@@ -347,7 +338,7 @@ class ReadmeContentGenerator:
             component_name = self.metadata.get('name', 'processing').replace('_', ' ')
             overview = f"A Kubeflow Pipelines component for {component_name}."
         
-        return f"## Overview\n\n{overview}"
+        return f"## Overview 🧾\n\n{overview}"
     
     def _generate_metadata(self) -> str:
         """Generate the metadata section from metadata.yaml.
@@ -367,25 +358,28 @@ class ReadmeContentGenerator:
 {yaml_content.strip()}
 ```"""
     
-    def _generate_quick_start(self) -> str:
-        """Generate the quick start section."""
+    def _generate_usage_example(self) -> str:
+        """Generate a concise usage example section."""
         component_name = self.metadata.get('name', 'component')
+        parameters = self.metadata.get('parameters', {})
         
         content = [
-            "## Quick Start",
+            "## Usage Example 🧪",
             "",
             "```python",
             "from kfp import dsl",
-            f"from .{component_name} import {component_name}",
+            f"from kfp_components.{component_name} import {component_name}",
             "",
             "@dsl.pipeline(name='example-pipeline')",
             "def my_pipeline():",
-            f"    result = {component_name}(",
+            f"    {component_name}_task = {component_name}(",
         ]
         
-        # Add basic parameter examples
-        parameters = self.metadata.get('parameters', {})
-        for param_name, param_info in list(parameters.items())[:2]:  # Show first 2 params
+        # Add parameter examples (show required params or first 2 params)
+        required_params = {k: v for k, v in parameters.items() if v.get('default') is None}
+        params_to_show = required_params if required_params else dict(list(parameters.items())[:2])
+        
+        for param_name, param_info in params_to_show.items():
             param_type = param_info.get('type', 'Any')
             if 'str' in param_type.lower():
                 example_value = f'"{param_name}_value"'
@@ -405,265 +399,37 @@ class ReadmeContentGenerator:
         
         return '\n'.join(content)
     
-    def _generate_inputs(self) -> str:
-        """Generate the inputs section."""
+    def _generate_inputs_outputs(self) -> str:
+        """Generate combined inputs and outputs section."""
         parameters = self.metadata.get('parameters', {})
-        if not parameters:
-            return "## Inputs\n\nThis component has no input parameters."
-        
-        content = ["## Inputs", ""]
-        content.append("| Parameter | Type | Required | Default | Description |")
-        content.append("|-----------|------|----------|---------|-------------|")
-        
-        for param_name, param_info in parameters.items():
-            param_type = param_info.get('type', 'Any')
-            default = param_info.get('default')
-            required = "No" if default is not None else "Yes"
-            default_str = str(default) if default is not None else "-"
-            description = param_info.get('description', 'No description provided')
-            
-            content.append(f"| `{param_name}` | {param_type} | {required} | {default_str} | {description} |")
-        
-        return '\n'.join(content)
-    
-    def _generate_outputs(self) -> str:
-        """Generate the outputs section."""
         returns = self.metadata.get('returns', {})
         
-        content = ["## Outputs", ""]
+        content = []
         
+        # Inputs section
+        if parameters:
+            content.extend(["## Inputs 📥", ""])
+            content.append("| Parameter | Type | Default | Description |")
+            content.append("|-----------|------|---------|-------------|")
+            
+            for param_name, param_info in parameters.items():
+                param_type = param_info.get('type', 'Any')
+                default = param_info.get('default')
+                default_str = f"`{default}`" if default is not None else "Required"
+                description = param_info.get('description', '')
+                
+                content.append(f"| `{param_name}` | `{param_type}` | {default_str} | {description} |")
+        
+        # Outputs section
         if returns:
             return_type = returns.get('type', 'Any')
             description = returns.get('description', 'Component output')
-            content.append("| Output | Type | Description |")
-            content.append("|--------|------|-------------|")
-            content.append(f"| result | {return_type} | {description} |")
-        else:
-            content.append("This component does not return any outputs.")
+            content.extend(["", "## Outputs 📤", ""])
+            content.append("| Name | Type | Description |")
+            content.append("|------|------|-------------|")
+            content.append(f"| Output | `{return_type}` | {description} |")
         
         return '\n'.join(content)
-    
-    def _generate_usage_examples(self) -> str:
-        """Generate the usage examples section."""
-        component_name = self.metadata.get('name', 'component')
-        
-        content = [
-            "## Usage Examples",
-            "",
-            "### Basic Usage",
-            "",
-            "```python",
-            f"from .{component_name} import {component_name}",
-            "",
-            f"# Simple usage with default parameters",
-            f"result = {component_name}(",
-        ]
-        
-        # Add basic parameter examples (required params only)
-        parameters = self.metadata.get('parameters', {})
-        required_params = {k: v for k, v in parameters.items() if v.get('default') is None}
-        
-        for param_name, param_info in required_params.items():
-            param_type = param_info.get('type', 'Any')
-            if 'str' in param_type.lower():
-                example_value = f'"{param_name}_value"'
-            elif 'int' in param_type.lower():
-                example_value = '42'
-            else:
-                example_value = f'{param_name}_input'
-            
-            content.append(f"    {param_name}={example_value},")
-        
-        content.extend([
-            ")",
-            "```",
-            "",
-            "### Advanced Configuration",
-            "",
-            "```python",
-            f"# Usage with all parameters",
-            f"result = {component_name}(",
-        ])
-        
-        # Add all parameter examples
-        for param_name, param_info in parameters.items():
-            param_type = param_info.get('type', 'Any')
-            default = param_info.get('default')
-            
-            if 'str' in param_type.lower():
-                example_value = f'"{param_name}_value"' if default is None else f'"{default}"'
-            elif 'int' in param_type.lower():
-                example_value = '42' if default is None else str(default)
-            elif 'bool' in param_type.lower():
-                example_value = 'True' if default is None else str(default)
-            else:
-                example_value = f'{param_name}_input' if default is None else str(default)
-            
-            content.append(f"    {param_name}={example_value},")
-        
-        content.extend([
-            ")",
-            "```",
-            "",
-            "### In a Complete Pipeline",
-            "",
-            "```python",
-            "from kfp import dsl",
-            f"from .{component_name} import {component_name}",
-            "",
-            "@dsl.pipeline(name='ml-pipeline')",
-            "def ml_pipeline():",
-            f"    # Use the component in a pipeline",
-            f"    step1 = {component_name}(",
-        ])
-        
-        # Add required params for pipeline example
-        for param_name, param_info in list(required_params.items())[:2]:
-            param_type = param_info.get('type', 'Any')
-            if 'str' in param_type.lower():
-                example_value = f'"{param_name}_value"'
-            else:
-                example_value = f'{param_name}_input'
-            content.append(f"        {param_name}={example_value},")
-        
-        content.extend([
-            "    )",
-            "    ",
-            "    return step1.outputs",
-            "```"
-        ])
-        
-        return '\n'.join(content)
-    
-    def _generate_configuration_options(self) -> str:
-        """Generate the configuration options section."""
-        parameters = self.metadata.get('parameters', {})
-        if not parameters:
-            return ""
-        
-        content = [
-            "## Configuration Options",
-            "",
-            "This component supports the following configuration parameters:",
-            ""
-        ]
-        
-        for param_name, param_info in parameters.items():
-            param_type = param_info.get('type', 'Any')
-            default = param_info.get('default')
-            description = param_info.get('description', 'No description provided')
-            
-            content.append(f"### {param_name}")
-            content.append(f"- **Type**: {param_type}")
-            content.append(f"- **Required**: {'No' if default is not None else 'Yes'}")
-            if default is not None:
-                content.append(f"- **Default**: `{default}`")
-            content.append(f"- **Description**: {description}")
-            content.append("")
-        
-        return '\n'.join(content)
-    
-    def _generate_development(self) -> str:
-        """Generate the development section."""
-        component_name = self.metadata.get('name', 'component')
-        
-        return f"""## Development
-
-### Building the Container
-
-```bash
-docker build -t {component_name}:latest .
-```
-
-### Running Tests
-
-```bash
-# Install test dependencies
-pip install -r requirements-test.txt
-
-# Run unit tests
-pytest tests/
-
-# Run with coverage
-pytest --cov=src tests/
-```"""
-    
-    def _generate_examples(self) -> str:
-        """Generate the examples section."""
-        return """## Examples
-
-See the `examples/` directory for complete pipeline examples using this component.
-
-### Basic Example
-
-```python
-# Add specific usage examples here
-```
-
-### Advanced Example
-
-```python
-# Add advanced usage examples here
-```"""
-    
-    def _generate_troubleshooting(self) -> str:
-        """Generate the troubleshooting section."""
-        return """## Troubleshooting
-
-### Common Issues
-
-1. **Component fails to start**: Check that all required parameters are provided
-2. **Memory errors**: Increase memory limits in your pipeline configuration
-3. **Permission errors**: Ensure proper access to input/output paths
-
-### Debug Mode
-
-Enable debug logging by setting the environment variable:
-```bash
-export LOG_LEVEL=DEBUG
-```
-
-### Getting Help
-
-If you encounter issues:
-- Check the component logs for detailed error messages
-- Verify input data format and requirements
-- Consult the [troubleshooting guide](../../docs/troubleshooting.md)"""
-    
-    def _generate_contributing(self) -> str:
-        """Generate the contributing section."""
-        return """## Contributing
-
-Contributions to improve this component are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Submit a pull request
-
-See [CONTRIBUTING.md](../../CONTRIBUTING.md) for detailed guidelines."""
-    
-    def _generate_license(self) -> str:
-        """Generate the license section."""
-        return """## License
-
-This component is licensed under the Apache License 2.0. See [LICENSE](../../LICENSE) for details."""
-    
-    def _generate_changelog(self) -> str:
-        """Generate the changelog section."""
-        component_name = self.metadata.get('name', 'component')
-        version = "1.0.0"  # Default version, could be extracted from metadata
-        
-        return f"""## Changelog
-
-### v{version} (Initial Release)
-- Initial implementation of {component_name} component
-- Support for all documented input parameters
-- Comprehensive error handling and validation
-- Complete test coverage"""
-
-
 
 
 class ReadmeGenerator:
