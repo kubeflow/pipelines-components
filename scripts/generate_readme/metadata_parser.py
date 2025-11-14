@@ -260,7 +260,6 @@ class MetadataParser:
         - @dsl.component (from kfp import dsl)
         - @kfp.dsl.component (import kfp)
         - All of the above with parentheses: @component(), @dsl.component(), etc.
-
         Args:
             decorator: AST node representing the decorator.
             decoration_type: The type of decoration to check for (e.g. 'component', 'pipeline').

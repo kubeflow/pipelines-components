@@ -74,7 +74,6 @@ def validate_pipeline_directory(dir_path: str) -> Path:
 
 def parse_arguments():
     """Parse and validate command-line arguments.
-
     Returns:
         argparse.Namespace: Parsed and validated arguments.
     """
@@ -88,7 +87,6 @@ Examples:
   python -m scripts.generate_readme --pipeline pipelines/some_category/my_pipeline
   python -m scripts.generate_readme --component components/some_category/my_component --output custom_readme.md
   python -m scripts.generate_readme --component components/some_category/my_component --verbose --overwrite
-
   # Or with uv:
   uv run python -m scripts.generate_readme --component components/some_category/my_component
         """
@@ -99,31 +97,26 @@ Examples:
         type=validate_component_directory,
         help='Path to the component directory (must contain component.py and metadata.yaml)'
     )
-
     group.add_argument(
         '--pipeline',
         type=validate_pipeline_directory,
         help='Path to the pipeline directory (must contain pipeline.py and metadata.yaml)'
     )
-
     parser.add_argument(
         '-o', '--output',
         type=Path,
         help='Output path for the generated README.md (default: README.md in component/pipeline directory)'
     )
-
     parser.add_argument(
         '-v', '--verbose',
         action='store_true',
         help='Enable verbose output'
     )
-
     parser.add_argument(
         '--overwrite',
         action='store_true',
         help='Overwrite existing README.md without prompting'
     )
-
     return parser.parse_args()
 
 
