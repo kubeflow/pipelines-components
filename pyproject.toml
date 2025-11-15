@@ -17,8 +17,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# CI
 ci = [
+    "pyyaml",
     "pytest",
+    "docstring-parser",
+    "jinja2",
 ]
 # Local development (extends ci with additional tools)
 dev = [
