@@ -1,0 +1,60 @@
+name: README Validation
+
+on:
+  pull_request:
+    paths:
+      - 'components/**'
+      - 'pipelines/**'
+      - 'third_party/components/**'
+      - 'third_party/pipelines/**'
+      - 'scripts/generate_readme/**'
+      - '.github/workflows/readme-check.yml'
+      - '.github/scripts/**'
+
+jobs:
+  check-readme-sync:
+    name: Check README files are up-to-date
+    runs-on: ubuntu-24.04
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v47
+        with:
+          files: |
+            components/**
+            pipelines/**
+            third_party/components/**
+            third_party/pipelines/**
+            scripts/generate_readme/**
+            .github/scripts/**
+          files_ignore: |
+            **/*.md
+          
+      - name: Setup Python CI
+        uses: ./.github/actions/setup-python-ci
+        with:
+          python-version: 3.11
+      
+      - name: Extract component and pipeline directories
+        id: find-targets
+        run: |
+          echo "Changed files:"
+          echo "${{ steps.changed-files.outputs.all_changed_files }}"
+          
+          # Extract unique component/pipeline directories from changed files
+          targets=$(./.github/scripts/find-changed-components-and-pipelines.sh ${{ steps.changed-files.outputs.all_changed_files }})
+          
+          echo "targets=$targets" >> $GITHUB_OUTPUT
+          echo "Targets to check: $targets"
+      
+      - name: Validate READMEs
+        if: steps.find-targets.outputs.targets != ''
+        run: |
+          ./.github/scripts/test-readme-check.sh --ci ${{ steps.find-targets.outputs.targets }}
+      
