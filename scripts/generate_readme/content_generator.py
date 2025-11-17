@@ -1,7 +1,8 @@
 """README content generator for KFP components and pipelines."""
 
+import re
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List, Union
 
 import yaml
 from jinja2 import Environment, FileSystemLoader
@@ -53,6 +54,105 @@ class ReadmeContentGenerator:
             logger.warning(f"Could not load metadata.yaml: {e}")
             return {}
     
+    def _format_title(self, title: str) -> str:
+        """Format a title from snake_case or camelCase to Title Case.
+        
+        Args:
+            title: The title to format.
+            
+        Returns:
+            Formatted title in Title Case with spaces.
+        """
+        # First, handle camelCase by inserting spaces before capitals
+        title = re.sub(r'([a-z])([A-Z])', r'\1 \2', title)
+        
+        # Replace underscores with spaces
+        title = title.replace('_', ' ')
+        
+        # Split into words and capitalize each
+        words = title.split()
+        formatted_words = []
+        
+        for word in words:
+            # Keep known acronyms in uppercase
+            if word.upper() in ['KFP', 'API', 'URL', 'ID', 'UI', 'CI', 'CD']:
+                formatted_words.append(word.upper())
+            else:
+                formatted_words.append(word.capitalize())
+        
+        return ' '.join(formatted_words)
+    
+    def _format_key(self, key: str) -> str:
+        """Format a metadata key for human-readable display.
+        
+        Args:
+            key: The key to format.
+            
+        Returns:
+            Formatted key as a string.
+        """
+        return self._format_title(key)
+
+    def _format_value(self, value: Any, depth: int = 0) -> str:
+        """Format a metadata value for human-readable display.
+        
+        Args:
+            value: The value to format.
+            depth: Current nesting depth (0 = top level).
+            
+        Returns:
+            Formatted value as a string with proper markdown list indentation.
+        """
+        indent = '  ' * depth  # 2 spaces per depth level
+        
+        if isinstance(value, bool):
+            return 'Yes' if value else 'No'
+        
+        elif isinstance(value, list):
+            if not value:
+                return 'None'
+            items = []
+            for item in value:
+                if isinstance(item, dict):
+                    # Dict in list: format as comma-separated key-value pairs
+                    parts = [f"{self._format_key(k)}: {v}" for k, v in item.items()]
+                    items.append(', '.join(parts))
+                else:
+                    # Simple item: just convert to string
+                    items.append(str(item))
+            return '\n' + indent + '  - ' + f'\n{indent}  - '.join(items)
+        
+        elif isinstance(value, dict):
+            if not value:
+                return 'None'
+            items = []
+            for k, v in value.items():
+                key = self._format_key(k)
+                val = self._format_value(v, depth + 1)
+                # If value has newlines (nested structure), format with colon on same line
+                if '\n' in val:
+                    items.append(f"{key}:{val}")
+                else:
+                    items.append(f"{key}: {val}")
+            return '\n' + indent + '  - ' + f'\n{indent}  - '.join(items)
+        
+        elif value is None:
+            return 'None'
+        
+        else:
+            return str(value)
+    
+    def _format_metadata(self) -> Dict[str, str]:
+        """Format the YAML metadata for human-readable display.
+        
+        Returns:
+            Dictionary with formatted keys and values.
+        """
+        return {
+            self._format_title(key): self._format_value(value)
+            for key, value in self.yaml_metadata.items()
+        }
+    
     def generate_readme(self) -> str:
         """Dynamically generate complete README.md content from component or pipeline metadata
         
@@ -71,7 +171,7 @@ class ReadmeContentGenerator:
         component_name = self.metadata.get('name', 'Component')
         
         # Prepare title
-        title = ' '.join(word.capitalize() for word in component_name.split('_'))
+        title = self._format_title(component_name)
         
         # Prepare overview
         overview = self.metadata.get('overview', '')
@@ -102,10 +202,8 @@ class ReadmeContentGenerator:
         # Prepare usage example parameters
         usage_params = self._prepare_usage_params()
         
-        # Prepare YAML metadata content
-        yaml_content = ''
-        if self.yaml_metadata:
-            yaml_content = yaml.dump(self.yaml_metadata, default_flow_style=False, sort_keys=False).strip()
+        # Prepare formatted metadata for human-readable display
+        formatted_metadata = self._format_metadata() if self.yaml_metadata else {}
         
         return {
             'title': title,
@@ -115,8 +213,7 @@ class ReadmeContentGenerator:
             'is_component': self.is_component,
             'component_name': component_name,
             'usage_params': usage_params,
-            'yaml_metadata': self.yaml_metadata,
-            'yaml_content': yaml_content,
+            'formatted_metadata': formatted_metadata,
         }
     
     def _prepare_usage_params(self) -> Dict[str, str]:

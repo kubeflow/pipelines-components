@@ -39,11 +39,11 @@ def my_pipeline():
 ```
 {% endif %}
 
-{% if yaml_metadata %}
+{% if formatted_metadata %}
 ## Metadata 🗂️
 
-```yaml
-{{ yaml_content }}
-```
+{% for key, value in formatted_metadata.items() %}
+- **{{ key }}**: {{ value }}
+{% endfor %}
 {% endif %}
 
