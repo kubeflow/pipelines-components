@@ -200,13 +200,11 @@ def sample_extracted_metadata():
             'input_path': {
                 'name': 'input_path',
                 'type': 'str',
-                'default': None,
                 'description': 'Path to input file.'
             },
             'output_path': {
                 'name': 'output_path',
                 'type': 'str',
-                'default': None,
                 'description': 'Path to output file.'
             },
             'num_iterations': {

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 import yaml
+from jinja2 import Environment, FileSystemLoader
 
 from .constants import logger
 
@@ -23,6 +24,15 @@ class ReadmeContentGenerator:
         self.metadata_file = metadata_file
         self.is_component = is_component
         self.yaml_metadata = self._load_yaml_metadata()
+        
+        # Set up Jinja2 environment
+        template_dir = Path(__file__).parent
+        self.env = Environment(
+            loader=FileSystemLoader(template_dir),
+            trim_blocks=True,
+            lstrip_blocks=True,
+        )
+        self.template = self.env.get_template('README.md.j2')
     
     def _load_yaml_metadata(self) -> Dict[str, Any]:
         """Load and parse the metadata.yaml file, excluding the 'ci' field.
@@ -49,75 +59,79 @@ class ReadmeContentGenerator:
         Returns:
             Complete README.md content as a string.
         """
-        sections = [
-            self._generate_title(),
-            self._generate_overview(),
-            self._generate_inputs_outputs(),
-        ]
-        
-        # Only add usage example for components, not pipelines
-        if self.is_component:
-            sections.append(self._generate_usage_example())
-        
-        sections.append(self._generate_metadata())
-        
-        return '\n\n'.join(filter(None, sections))
+        context = self._prepare_template_context()
+        return self.template.render(**context)
     
-    def _generate_title(self) -> str:
-        """Generate the title section."""
-        component_name = self.metadata.get('name', 'Component')
-        # Convert snake_case to Title Case
-        title = ' '.join(word.capitalize() for word in component_name.split('_'))
-        return f"# {title} ✨"
-    
-    def _generate_overview(self) -> str:
-        """Generate the overview section."""
-        overview = self.metadata.get('overview', '')
-        if not overview:
-            component_name = self.metadata.get('name', 'processing').replace('_', ' ')
-            overview = f"A Kubeflow Pipelines component for {component_name}."
-        
-        return f"## Overview 🧾\n\n{overview}"
-    
-    def _generate_metadata(self) -> str:
-        """Generate the metadata section from metadata.yaml.
+    def _prepare_template_context(self) -> Dict[str, Any]:
+        """Prepare the context data for the Jinja2 template.
         
         Returns:
-            Metadata section as a formatted string with YAML content.
+            Dictionary containing all variables needed by the template.
         """
-        if not self.yaml_metadata:
-            return ""
+        component_name = self.metadata.get('name', 'Component')
         
-        # Convert metadata dict back to YAML format
-        yaml_content = yaml.dump(self.yaml_metadata, default_flow_style=False, sort_keys=False)
+        # Prepare title
+        title = ' '.join(word.capitalize() for word in component_name.split('_'))
         
-        return f"""## Metadata 🗂️
-
-```yaml
-{yaml_content.strip()}
-```"""
+        # Prepare overview
+        overview = self.metadata.get('overview', '')
+        if not overview:
+            overview = f"A Kubeflow Pipelines component for {component_name.replace('_', ' ')}."
+        
+        # Prepare parameters with formatted defaults
+        parameters = {}
+        for param_name, param_info in self.metadata.get('parameters', {}).items():
+            param_type = param_info.get('type', 'Any')
+            default_str = f"`{param_info['default']}`" if 'default' in param_info else "Required"
+            description = param_info.get('description', '')
+            
+            parameters[param_name] = {
+                'type': param_type,
+                'default_str': default_str,
+                'description': description,
+            }
+        
+        # Prepare returns
+        returns = self.metadata.get('returns', {})
+        if returns:
+            returns = {
+                'type': returns.get('type', 'Any'),
+                'description': returns.get('description', 'Component output'),
+            }
+        
+        # Prepare usage example parameters
+        usage_params = self._prepare_usage_params()
+        
+        # Prepare YAML metadata content
+        yaml_content = ''
+        if self.yaml_metadata:
+            yaml_content = yaml.dump(self.yaml_metadata, default_flow_style=False, sort_keys=False).strip()
+        
+        return {
+            'title': title,
+            'overview': overview,
+            'parameters': parameters,
+            'returns': returns,
+            'is_component': self.is_component,
+            'component_name': component_name,
+            'usage_params': usage_params,
+            'yaml_metadata': self.yaml_metadata,
+            'yaml_content': yaml_content,
+        }
     
-    def _generate_usage_example(self) -> str:
-        """Generate a concise usage example section."""
-        component_name = self.metadata.get('name', 'component')
+    def _prepare_usage_params(self) -> Dict[str, str]:
+        """Prepare example parameters for the usage example.
+        
+        Returns:
+            Dictionary mapping parameter names to example values as strings.
+        """
         parameters = self.metadata.get('parameters', {})
         
-        content = [
-            "## Usage Example 🧪",
-            "",
-            "```python",
-            "from kfp import dsl",
-            f"from kfp_components.{component_name} import {component_name}",
-            "",
-            "@dsl.pipeline(name='example-pipeline')",
-            "def my_pipeline():",
-            f"    {component_name}_task = {component_name}(",
-        ]
-        
-        # Add parameter examples (show required params or first 2 params)
+        # Show required params or first 2 params
         required_params = {k: v for k, v in parameters.items() if v.get('default') is None}
         params_to_show = required_params if required_params else dict(list(parameters.items())[:2])
         
+        usage_params = {}
         for param_name, param_info in params_to_show.items():
             param_type = param_info.get('type', 'Any')
             if 'str' in param_type.lower():
@@ -129,44 +143,7 @@ class ReadmeContentGenerator:
             else:
                 example_value = f'{param_name}_input'
             
-            content.append(f"        {param_name}={example_value},")
+            usage_params[param_name] = example_value
         
-        content.extend([
-            "    )",
-            "```"
-        ])
-        
-        return '\n'.join(content)
-    
-    def _generate_inputs_outputs(self) -> str:
-        """Generate combined inputs and outputs section."""
-        parameters = self.metadata.get('parameters', {})
-        returns = self.metadata.get('returns', {})
-        
-        content = []
-        
-        # Inputs section
-        if parameters:
-            content.extend(["## Inputs 📥", ""])
-            content.append("| Parameter | Type | Default | Description |")
-            content.append("|-----------|------|---------|-------------|")
-            
-            for param_name, param_info in parameters.items():
-                param_type = param_info.get('type', 'Any')
-                default = param_info.get('default')
-                default_str = f"`{default}`" if default is not None else "Required"
-                description = param_info.get('description', '')
-                
-                content.append(f"| `{param_name}` | `{param_type}` | {default_str} | {description} |")
-        
-        # Outputs section
-        if returns:
-            return_type = returns.get('type', 'Any')
-            description = returns.get('description', 'Component output')
-            content.extend(["", "## Outputs 📤", ""])
-            content.append("| Name | Type | Description |")
-            content.append("|------|------|-------------|")
-            content.append(f"| Output | `{return_type}` | {description} |")
-        
-        return '\n'.join(content)
+        return usage_params
 
