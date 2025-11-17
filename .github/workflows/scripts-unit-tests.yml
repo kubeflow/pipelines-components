@@ -1,0 +1,30 @@
+name: scripts-unit-tests
+env:
+  PYTHON_VERSION: 3.11
+on:
+  pull_request:
+    paths:
+      - 'scripts/validate_metadata/**'
+jobs:
+  execute-scripts-unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install test dependencies
+        run: |
+          pip install -r scripts/validate_metadata/requirements.txt
+
+      - name: Install Test dependencies
+        run: |
+          pip install -r scripts/validate_metadata/requirements.txt
+
+      - name: Run tests
+        run: pytest scripts/validate_metadata

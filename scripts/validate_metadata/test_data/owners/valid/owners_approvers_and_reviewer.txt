@@ -1,0 +1,5 @@
+approvers:
+- sample-approver
+
+reviewers:
+- sample-reviewer
