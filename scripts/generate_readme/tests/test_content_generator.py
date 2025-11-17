@@ -65,8 +65,8 @@ ci:
         assert 'name' in generator.yaml_metadata
         assert 'tier' in generator.yaml_metadata
     
-    def test_generate_title(self, component_dir, sample_extracted_metadata):
-        """Test title generation."""
+    def test_prepare_template_context(self, component_dir, sample_extracted_metadata):
+        """Test template context preparation."""
         metadata_file = component_dir / "metadata.yaml"
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
@@ -74,27 +74,26 @@ ci:
             is_component=True
         )
         
-        title = generator._generate_title()
+        context = generator._prepare_template_context()
         
-        assert '# Sample Component ✨' in title
-        assert 'sample_component' not in title  # Should be title cased
-    
-    def test_generate_overview(self, component_dir, sample_extracted_metadata):
-        """Test overview generation."""
-        metadata_file = component_dir / "metadata.yaml"
-        generator = ReadmeContentGenerator(
-            sample_extracted_metadata,
-            metadata_file,
-            is_component=True
-        )
+        # Check all required context keys are present
+        assert 'title' in context
+        assert 'overview' in context
+        assert 'parameters' in context
+        assert 'returns' in context
+        assert 'is_component' in context
+        assert 'component_name' in context
+        assert 'usage_params' in context
+        assert 'yaml_metadata' in context
+        assert 'yaml_content' in context
         
-        overview = generator._generate_overview()
+        # Check title is properly formatted
+        assert context['title'] == 'Sample Component'
+        assert context['component_name'] == 'sample_component'
+        assert context['is_component'] is True
         
-        assert '## Overview' in overview
-        assert 'sample component' in overview.lower()
-    
-    def test_generate_overview_with_custom_text(self, component_dir):
-        """Test overview generation with custom overview text."""
+    def test_prepare_template_context_custom_overview(self, component_dir):
+        """Test template context with custom overview text."""
         metadata_file = component_dir / "metadata.yaml"
         custom_metadata = {
             'name': 'test_component',
@@ -109,12 +108,12 @@ ci:
             is_component=True
         )
         
-        overview = generator._generate_overview()
+        context = generator._prepare_template_context()
         
-        assert 'custom overview text' in overview
+        assert context['overview'] == 'This is a custom overview text.'
     
-    def test_generate_inputs_outputs(self, component_dir, sample_extracted_metadata):
-        """Test inputs and outputs section generation."""
+    def test_prepare_template_context_parameters(self, component_dir, sample_extracted_metadata):
+        """Test that parameters are properly formatted in context."""
         metadata_file = component_dir / "metadata.yaml"
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
@@ -122,18 +121,20 @@ ci:
             is_component=True
         )
         
-        content = generator._generate_inputs_outputs()
+        context = generator._prepare_template_context()
         
-        assert '## Inputs' in content
-        assert '## Outputs' in content
-        assert 'input_path' in content
-        assert 'output_path' in content
-        assert 'num_iterations' in content
-        assert 'str' in content
-        assert 'int' in content
+        # Check parameters have required fields
+        assert 'input_path' in context['parameters']
+        assert 'type' in context['parameters']['input_path']
+        assert 'default_str' in context['parameters']['input_path']
+        assert 'description' in context['parameters']['input_path']
+        
+        # Check defaults are formatted correctly
+        assert context['parameters']['input_path']['default_str'] == 'Required'
+        assert context['parameters']['num_iterations']['default_str'] == '`10`'
     
-    def test_generate_inputs_outputs_with_defaults(self, component_dir, sample_extracted_metadata):
-        """Test that default values are shown correctly."""
+    def test_prepare_usage_params(self, component_dir, sample_extracted_metadata):
+        """Test usage example parameter preparation."""
         metadata_file = component_dir / "metadata.yaml"
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
@@ -141,44 +142,11 @@ ci:
             is_component=True
         )
         
-        content = generator._generate_inputs_outputs()
+        usage_params = generator._prepare_usage_params()
         
-        assert 'Required' in content  # For params without defaults
-        assert '`10`' in content  # For num_iterations default
-    
-    def test_generate_usage_example_component(self, component_dir, sample_extracted_metadata):
-        """Test usage example generation for components."""
-        metadata_file = component_dir / "metadata.yaml"
-        generator = ReadmeContentGenerator(
-            sample_extracted_metadata,
-            metadata_file,
-            is_component=True
-        )
-        
-        example = generator._generate_usage_example()
-        
-        assert '## Usage Example' in example
-        assert 'from kfp import dsl' in example
-        assert 'sample_component' in example
-        assert '@dsl.pipeline' in example
-        assert 'input_path' in example
-        assert 'output_path' in example
-    
-    def test_generate_metadata_section(self, component_dir, sample_extracted_metadata):
-        """Test metadata section generation."""
-        metadata_file = component_dir / "metadata.yaml"
-        generator = ReadmeContentGenerator(
-            sample_extracted_metadata,
-            metadata_file,
-            is_component=True
-        )
-        
-        metadata = generator._generate_metadata()
-        
-        assert '## Metadata' in metadata
-        assert '```yaml' in metadata
-        assert 'name: sample_component' in metadata
-        assert 'tier: core' in metadata
+        # Should show required params (input_path, output_path have no defaults)
+        assert 'input_path' in usage_params
+        assert 'output_path' in usage_params
     
     def test_generate_readme_component(self, component_dir, sample_extracted_metadata):
         """Test complete README generation for a component."""
@@ -265,11 +233,11 @@ ci:
             is_component=True
         )
         
-        example = generator._generate_usage_example()
+        usage_params = generator._prepare_usage_params()
         
         # Check type-specific example values
-        assert '"str_param_value"' in example  # String should have quotes
-        assert '42' in example  # Int should be numeric
-        assert 'True' in example  # Bool should be boolean
-        assert 'other_param_input' in example  # Custom type uses generic format
+        assert '"str_param_value"' == usage_params['str_param']  # String should have quotes
+        assert '42' == usage_params['int_param']  # Int should be numeric
+        assert 'True' == usage_params['bool_param']  # Bool should be boolean
+        assert 'other_param_input' == usage_params['other_param']  # Custom type uses generic format
 

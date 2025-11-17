@@ -1,0 +1,49 @@
+# {{ title }} ✨
+
+## Overview 🧾
+
+{{ overview }}
+
+{% if parameters %}
+## Inputs 📥
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+{% for param_name, param_info in parameters.items() %}
+| `{{ param_name }}` | `{{ param_info.type }}` | {{ param_info.default_str }} | {{ param_info.description }} |
+{% endfor %}
+{% endif %}
+
+{% if returns %}
+## Outputs 📤
+
+| Name | Type | Description |
+|------|------|-------------|
+| Output | `{{ returns.type }}` | {{ returns.description }} |
+{% endif %}
+
+{% if is_component and parameters %}
+## Usage Example 🧪
+
+```python
+from kfp import dsl
+from kfp_components.{{ component_name }} import {{ component_name }}
+
+@dsl.pipeline(name='example-pipeline')
+def my_pipeline():
+    {{ component_name }}_task = {{ component_name }}(
+{% for param_name, example_value in usage_params.items() %}
+        {{ param_name }}={{ example_value }},
+{% endfor %}
+    )
+```
+{% endif %}
+
+{% if yaml_metadata %}
+## Metadata 🗂️
+
+```yaml
+{{ yaml_content }}
+```
+{% endif %}
+
