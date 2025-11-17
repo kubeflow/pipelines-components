@@ -55,6 +55,7 @@ uv venv
 source .venv/bin/activate
 uv sync          # Installs package in editable mode
 uv sync --dev    # Include dev dependencies if defined
+uv sync --extra lint # Include linting dependencies (ruff, yamllint)
 
 # Install pre-commit hooks for automatic code quality checks
 pre-commit install
@@ -259,11 +260,22 @@ pytest tests/test_my_component.py -v
 Ensure your code meets quality standards:
 
 ```bash
-# Format checking (120 character line length)
-black --check --line-length 120 .
+# Format and lint with ruff
+uv run ruff format --check .      # Check formatting (120 char line length)
+uv run ruff check .                # Check linting, docstrings, and import order
 
-# Docstring validation (Google convention)
-pydocstyle --convention=google .
+# Or use make commands for convenience
+make lint                          # Run all linting checks
+make format                        # Auto-format and auto-fix issues
+
+# Validate import guard (enforces stdlib-only top-level imports)
+uv run python .github/scripts/check_imports/check_imports.py --config .github/scripts/check_imports/import_exceptions.json --restrict-to components pipelines scripts
+
+# Validate YAML files
+uv run yamllint -c .yamllint.yml .
+
+# Validate Markdown files
+markdownlint -c .markdownlint.json **/*.md
 
 # Validate metadata schema
 python scripts/validate_metadata.py
@@ -271,6 +283,8 @@ python scripts/validate_metadata.py
 # Run all pre-commit hooks
 pre-commit run --all-files
 ```
+
+**Import Guard**: This repository enforces that top-level imports must be limited to Python's standard library. Heavy dependencies (like `kfp`, `pandas`, etc.) should be imported within function/pipeline bodies. Exceptions can be added to `.github/scripts/check_imports/import_exceptions.json` when justified (e.g., for test files importing `pytest`).
 
 ### Building Custom Container Images
 
@@ -288,7 +302,10 @@ docker run --rm my-component:test echo "Hello, world!"
 
 GitHub Actions automatically runs these checks on every pull request:
 
-- Code formatting (Black), linting (Flake8), docstring validation (pydocstyle), type checking (MyPy)
+- **Python linting**: Code formatting, style checks, docstring validation, and import sorting
+- **Import guard**: Validates that top-level imports are limited to Python's standard library
+- **YAML linting**: Validates YAML file syntax and style (yamllint)
+- **Markdown linting**: Validates Markdown formatting and style (markdownlint)
 - Unit and integration tests with coverage reporting
 - Container image builds for components with Containerfiles
 - Security vulnerability scans

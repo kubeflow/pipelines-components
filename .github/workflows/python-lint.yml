@@ -1,0 +1,52 @@
+name: Python Lint
+
+on:
+  pull_request: {}
+  push:
+    branches:
+      - main
+      - release-*
+
+jobs:
+  python-lint:
+    name: python-lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python & deps
+        uses: ./.github/actions/setup-python-ci
+        with:
+          python-version: "3.11"
+          extra: lint
+
+      - name: Determine changed Python files
+        id: changed-python
+        uses: ./.github/actions/changed-files
+        with:
+          patterns: "**/*.py"
+
+      - name: Run ruff format check (changed files)
+        if: steps.changed-python.outputs.any_changed == 'true'
+        run: |
+          uv run ruff format --check ${{ steps.changed-python.outputs.files }}
+
+      - name: Run ruff lint (changed files)
+        if: steps.changed-python.outputs.any_changed == 'true'
+        run: |
+          uv run ruff check ${{ steps.changed-python.outputs.files }}
+
+      - name: Run custom import guard
+        if: steps.changed-python.outputs.any_changed == 'true'
+        run: |
+          uv run python .github/scripts/check_imports/check_imports.py \
+            --config .github/scripts/check_imports/import_exceptions.json \
+            --restrict-to components pipelines \
+            ${{ steps.changed-python.outputs.files }}

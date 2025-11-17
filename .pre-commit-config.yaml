@@ -1,0 +1,30 @@
+---
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types: [python]
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check
+        language: system
+        types: [python]
+      - id: yamllint
+        name: yamllint
+        entry: uv run yamllint -c .yamllint.yml
+        language: system
+        types: [yaml]
+      - id: import-guard
+        name: import-guard
+        entry: uv run python .github/scripts/check_imports/check_imports.py --config .github/scripts/check_imports/import_exceptions.json --restrict-to components pipelines
+        language: system
+        types: [python]
+        files: ^(components|pipelines)/
+      - id: markdownlint
+        name: markdownlint
+        entry: npx markdownlint-cli@0.39.0 -c .markdownlint.json
+        language: system
+        types: [markdown]

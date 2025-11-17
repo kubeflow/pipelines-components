@@ -1,0 +1,48 @@
+name: Get Changed Files
+description: Get changed files by extension
+inputs:
+  patterns:
+    description: 'File patterns to match (e.g., "*.py" or "*.md")'
+    required: true
+outputs:
+  files:
+    description: 'Space-separated list of changed files'
+    value: ${{ steps.get-files.outputs.files }}
+  any_changed:
+    description: 'Whether any files changed'
+    value: ${{ steps.get-files.outputs.any_changed }}
+runs:
+  using: composite
+  steps:
+    - name: Get changed files
+      id: get-files
+      shell: bash
+      run: |
+        PATTERNS="${{ inputs.patterns }}"
+        # Expand patterns into an array to avoid word-splitting issues.
+        read -r -a PATTERN_ARRAY <<< "$PATTERNS"
+        
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          # Fetch both commits explicitly; works even when base ref is missing or shallow.
+          git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA" || true
+
+          # Prefer symmetric diff (merge-base) to capture all PR changes
+          FILES=$(git diff --name-only --diff-filter=ACMRT "${BASE_SHA}...${HEAD_SHA}" -- "${PATTERN_ARRAY[@]}" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')
+          if [ -z "$FILES" ]; then
+            FILES=$(git diff --name-only --diff-filter=ACMRT "${BASE_SHA}" "${HEAD_SHA}" -- "${PATTERN_ARRAY[@]}" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')
+          fi
+        else
+          BEFORE="${{ github.event.before }}"
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            # First push or force push - check all files
+            FILES=$(git ls-files -- "${PATTERN_ARRAY[@]}" | xargs)
+          else
+            FILES=$(git diff --name-only --diff-filter=ACMRT "$BEFORE" "${{ github.sha }}" -- "${PATTERN_ARRAY[@]}" | xargs)
+          fi
+        fi
+        
+        echo "files=$FILES" >> $GITHUB_OUTPUT
+        [ -n "$FILES" ] && echo "any_changed=true" >> $GITHUB_OUTPUT || echo "any_changed=false" >> $GITHUB_OUTPUT
