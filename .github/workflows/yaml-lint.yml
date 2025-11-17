@@ -1,0 +1,42 @@
+---
+name: YAML Lint
+
+on:
+  pull_request: {}
+  push:
+    branches:
+      - main
+      - release-*
+
+jobs:
+  yaml-lint:
+    name: yaml-lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python & deps
+        uses: ./.github/actions/setup-python-ci
+        with:
+          python-version: "3.11"
+          extra: lint
+
+      - name: Determine changed YAML files
+        id: changed-yaml
+        uses: ./.github/actions/detect-changed-assets
+        with:
+          filter: '\.(yml|yaml)$'
+
+      - name: Run yamllint (changed files)
+        if: steps.changed-yaml.outputs.filtered-changed-files != ''
+        env:
+          CHANGED_FILES: ${{ steps.changed-yaml.outputs.filtered-changed-files }}
+        run: |
+          uv run yamllint -c .yamllint.yml -- $CHANGED_FILES
