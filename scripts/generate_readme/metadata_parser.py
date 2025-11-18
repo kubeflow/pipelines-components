@@ -3,12 +3,13 @@
 import ast
 import importlib.util
 import inspect
-import re
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 from abc import ABC, abstractmethod
 
-from .constants import GOOGLE_ARG_REGEX_PATTERN, logger
+from docstring_parser import parse as parse_docstring
+
+from .constants import logger
 
 # For Union type checking in _get_type_string
 try:
@@ -40,56 +41,27 @@ class MetadataParser(ABC):
         if not docstring:
             return {'overview': '', 'args': {}, 'returns_description': ''}
         
-        # Split docstring into lines
-        lines = docstring.strip().split('\n')
+        # Parse docstring using docstring-parser library
+        parsed = parse_docstring(docstring)
         
-        # Extract overview (everything before Args/Returns sections)
-        overview_lines = []
-        current_section = None
-        args = {}
-        returns_description = ''
+        # Extract overview (short description + long description)
+        overview_parts = []
+        if parsed.short_description:
+            overview_parts.append(parsed.short_description)
+        if parsed.long_description:
+            overview_parts.append(parsed.long_description)
+        overview = '\n\n'.join(overview_parts)
         
-        i = 0
-        while i < len(lines):
-            line = lines[i].strip()
-            
-            if line.lower().startswith('args:'):
-                current_section = 'args'
-                i += 1
-                continue
-            elif line.lower().startswith('returns:'):
-                current_section = 'returns'
-                i += 1
-                continue
-            elif line.lower().startswith(('raises:', 'yields:', 'note:', 'example:')):
-                current_section = 'other'
-                i += 1
-                continue
-            
-            if current_section is None:
-                # Still in overview section
-                overview_lines.append(lines[i])
-            elif current_section == 'args':
-                # Parse argument line
-                arg_match = re.match(GOOGLE_ARG_REGEX_PATTERN, line)
-                if arg_match:
-                    arg_name, arg_type, arg_desc = arg_match.groups()
-                    args[arg_name] = arg_desc.strip()
-                elif line and args:
-                    # Continuation of previous argument description
-                    last_arg = list(args.keys())[-1]
-                    args[last_arg] += ' ' + line
-            elif current_section == 'returns':
-                # Parse returns section
-                if line:
-                    returns_description += line + ' '
-            
-            i += 1
+        # Extract arguments
+        args = {param.arg_name: param.description for param in parsed.params}
+        
+        # Extract returns description
+        returns_description = parsed.returns.description if parsed.returns else ''
         
         return {
-            'overview': '\n'.join(overview_lines).strip(),
+            'overview': overview,
             'args': args,
-            'returns_description': returns_description.strip()
+            'returns_description': returns_description
         }
     
     def _get_type_string(self, annotation: Any) -> str:
