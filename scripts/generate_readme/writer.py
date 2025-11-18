@@ -144,7 +144,7 @@ class ReadmeWriter:
         logger.debug(f"Extracted metadata for {len(metadata.get('parameters', {}))} parameters")
         
         # Generate README content
-        readme_content_generator = ReadmeContentGenerator(metadata, self.metadata_file, self.is_component)
+        readme_content_generator = ReadmeContentGenerator(metadata, self.source_dir)
         readme_content = readme_content_generator.generate_readme()
         
         # Write README.md file

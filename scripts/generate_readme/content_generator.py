@@ -2,28 +2,26 @@
 
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Union
-
+from typing import Any, Dict
 import yaml
 from jinja2 import Environment, FileSystemLoader
-
 from .constants import logger
 
 
 class ReadmeContentGenerator:
     """Generates README.md documentation content for KFP components and pipelines."""
     
-    def __init__(self, metadata: Dict[str, Any], metadata_file: Path, is_component: bool = True):
+    def __init__(self, metadata: Dict[str, Any], source_dir: Path):
         """Initialize the generator with metadata.
         
         Args:
             metadata: Metadata extracted by ComponentMetadataParser or PipelineMetadataParser.
-            metadata_file: Path to the metadata.yaml file.
-            is_component: True if generating for a component, False for a pipeline.
+            source_dir: Path to the component/pipeline directory.
         """
         self.metadata = metadata
-        self.metadata_file = metadata_file
-        self.is_component = is_component
+        self.source_dir = source_dir
+        self.metadata_file = source_dir / 'metadata.yaml'
+        self.example_file = source_dir / 'example_pipeline.py'
         self.yaml_metadata = self._load_yaml_metadata()
         
         # Set up Jinja2 environment
@@ -53,6 +51,21 @@ class ReadmeContentGenerator:
         except Exception as e:
             logger.warning(f"Could not load metadata.yaml: {e}")
             return {}
+    
+    def _load_example_pipeline(self) -> str:
+        """Load the Example Pipeline file if it exists.
+        
+        Returns:
+            Contents of Example Pipeline file if it exists, empty string otherwise.
+        """
+        if self.example_file.exists():
+            try:
+                with open(self.example_file, 'r', encoding='utf-8') as f:
+                    return f.read()
+            except Exception as e:
+                logger.warning(f"Error reading Example Pipeline file ({self.example_file}): {e}")
+                return ''
+        return ''
     
     def _format_title(self, title: str) -> str:
         """Format a title from snake_case or camelCase to Title Case.
@@ -199,8 +212,8 @@ class ReadmeContentGenerator:
                 'description': returns.get('description', 'Component output'),
             }
         
-        # Prepare usage example parameters
-        usage_params = self._prepare_usage_params()
+        # Load example pipeline if it exists
+        example_code = self._load_example_pipeline()
         
         # Prepare formatted metadata for human-readable display
         formatted_metadata = self._format_metadata() if self.yaml_metadata else {}
@@ -210,37 +223,8 @@ class ReadmeContentGenerator:
             'overview': overview,
             'parameters': parameters,
             'returns': returns,
-            'is_component': self.is_component,
             'component_name': component_name,
-            'usage_params': usage_params,
+            'example_code': example_code,
             'formatted_metadata': formatted_metadata,
         }
-    
-    def _prepare_usage_params(self) -> Dict[str, str]:
-        """Prepare example parameters for the usage example.
-        
-        Returns:
-            Dictionary mapping parameter names to example values as strings.
-        """
-        parameters = self.metadata.get('parameters', {})
-        
-        # Show required params or first 2 params
-        required_params = {k: v for k, v in parameters.items() if v.get('default') is None}
-        params_to_show = required_params if required_params else dict(list(parameters.items())[:2])
-        
-        usage_params = {}
-        for param_name, param_info in params_to_show.items():
-            param_type = param_info.get('type', 'Any')
-            if 'str' in param_type.lower():
-                example_value = f'"{param_name}_value"'
-            elif 'int' in param_type.lower():
-                example_value = '42'
-            elif 'bool' in param_type.lower():
-                example_value = 'True'
-            else:
-                example_value = f'{param_name}_input'
-            
-            usage_params[param_name] = example_value
-        
-        return usage_params
 

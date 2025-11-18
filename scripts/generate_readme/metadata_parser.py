@@ -4,18 +4,12 @@ import ast
 import importlib.util
 import inspect
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 from abc import ABC, abstractmethod
 
 from docstring_parser import parse as parse_docstring
 
 from .constants import logger
-
-# For Union type checking in _get_type_string
-try:
-    from types import UnionType
-except ImportError:
-    UnionType = type(Union[int, str])  # Fallback for older Python versions
 
 
 class MetadataParser(ABC):
@@ -76,33 +70,13 @@ class MetadataParser(ABC):
         if annotation == inspect.Parameter.empty or annotation == inspect.Signature.empty:
             return 'Any'
         
-        if hasattr(annotation, '__name__'):
+        # For simple types (classes without generic parameters), use __name__ directly
+        if hasattr(annotation, '__name__') and not hasattr(annotation, '__origin__'):
             return annotation.__name__
-        elif hasattr(annotation, '__origin__'):
-            # Handle generic types like List[str], Dict[str, int], etc.
-            origin = annotation.__origin__
-            args = getattr(annotation, '__args__', ())
-            
-            if origin is Union:
-                # Handle Optional[T] and Union types
-                if len(args) == 2 and type(None) in args:
-                    # Optional type
-                    non_none_type = args[0] if args[1] is type(None) else args[1]
-                    return f"Optional[{self._get_type_string(non_none_type)}]"
-                else:
-                    # Union type
-                    type_strings = [self._get_type_string(arg) for arg in args]
-                    return f"Union[{', '.join(type_strings)}]"
-            elif args:
-                # Generic type with arguments
-                origin_name = getattr(origin, '__name__', str(origin))
-                arg_strings = [self._get_type_string(arg) for arg in args]
-                return f"{origin_name}[{', '.join(arg_strings)}]"
-            else:
-                # Generic type without arguments
-                return getattr(origin, '__name__', str(origin))
-        else:
-            return str(annotation)
+        
+        # For generic types (List[str], Dict[str, int], etc.), use string representation
+        # and clean up the typing module prefix
+        return str(annotation).replace('typing.', '')
     
     def _extract_function_metadata(self, function_name: str, module_name: str = "module") -> Dict[str, Any]:
         """Extract metadata from a KFP function (component or pipeline).
