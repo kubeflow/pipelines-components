@@ -32,7 +32,8 @@ class TestMetadataParser:
         
         result = parser._parse_google_docstring(docstring)
         
-        assert result['overview'] == "A sample function.\n        \n        This does something useful."
+        # docstring-parser normalizes whitespace and joins short + long description
+        assert result['overview'] == "A sample function.\n\nThis does something useful."
         assert 'param1' in result['args']
         assert result['args']['param1'] == "First parameter description."
         assert result['args']['param2'] == "Second parameter description."
