@@ -13,7 +13,7 @@ class TestReadmeContentGenerator:
         )
         
         assert generator.metadata == sample_extracted_metadata
-        assert generator.yaml_metadata is not None
+        assert generator.feature_metadata is not None
     
     def test_init_with_pipeline(self, pipeline_dir, sample_extracted_metadata):
         """Test initialization with pipeline metadata."""
@@ -24,18 +24,18 @@ class TestReadmeContentGenerator:
         
         assert generator.metadata == sample_extracted_metadata
     
-    def test_load_yaml_metadata(self, component_dir, sample_extracted_metadata):
+    def test_load_feature_metadata(self, component_dir, sample_extracted_metadata):
         """Test loading YAML metadata from file."""
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
             component_dir
         )
         
-        assert 'name' in generator.yaml_metadata
-        assert generator.yaml_metadata['name'] == 'sample_component'
-        assert 'tier' in generator.yaml_metadata
+        assert 'name' in generator.feature_metadata
+        assert generator.feature_metadata['name'] == 'sample_component'
+        assert 'tier' in generator.feature_metadata
     
-    def test_load_yaml_metadata_excludes_ci(self, temp_dir, sample_extracted_metadata):
+    def test_load_feature_metadata_excludes_ci(self, temp_dir, sample_extracted_metadata):
         """Test that 'ci' field is excluded from YAML metadata."""
         metadata_file = temp_dir / "metadata.yaml"
         metadata_file.write_text("""name: test
@@ -50,9 +50,69 @@ ci:
             temp_dir
         )
         
-        assert 'ci' not in generator.yaml_metadata
-        assert 'name' in generator.yaml_metadata
-        assert 'tier' in generator.yaml_metadata
+        assert 'ci' not in generator.feature_metadata
+        assert 'name' in generator.feature_metadata
+        assert 'tier' in generator.feature_metadata
+    
+    def test_load_owners_file_exists(self, component_dir, sample_extracted_metadata):
+        """Test loading OWNERS file when it exists."""
+        # Create an OWNERS file
+        owners_file = component_dir / "OWNERS"
+        owners_file.write_text("""approvers:
+  - user1
+  - user2
+reviewers:
+  - user3
+  - user4
+""")
+        
+        generator = ReadmeContentGenerator(
+            sample_extracted_metadata,
+            component_dir
+        )
+        
+        # Check that owners were loaded into feature_metadata
+        assert 'owners' in generator.feature_metadata
+        assert 'approvers' in generator.feature_metadata['owners']
+        assert 'reviewers' in generator.feature_metadata['owners']
+        assert generator.feature_metadata['owners']['approvers'] == ['user1', 'user2']
+        assert generator.feature_metadata['owners']['reviewers'] == ['user3', 'user4']
+    
+    def test_load_owners_file_not_exists(self, component_dir, sample_extracted_metadata):
+        """Test that missing OWNERS file doesn't cause errors."""
+        generator = ReadmeContentGenerator(
+            sample_extracted_metadata,
+            component_dir
+        )
+        
+        # Should not have owners in feature_metadata when OWNERS doesn't exist
+        assert 'owners' not in generator.feature_metadata
+    
+    def test_owners_in_generated_readme(self, component_dir, sample_extracted_metadata):
+        """Test that OWNERS data appears in generated README."""
+        # Create an OWNERS file
+        owners_file = component_dir / "OWNERS"
+        owners_file.write_text("""approvers:
+  - alice
+  - bob
+reviewers:
+  - charlie
+""")
+        
+        generator = ReadmeContentGenerator(
+            sample_extracted_metadata,
+            component_dir
+        )
+        
+        readme = generator.generate_readme()
+        
+        # Check that owners appear in the README
+        assert 'Owners' in readme
+        assert 'alice' in readme
+        assert 'bob' in readme
+        assert 'charlie' in readme
+        assert 'Approvers' in readme or 'approvers' in readme.lower()
+        assert 'Reviewers' in readme or 'reviewers' in readme.lower()
     
     def test_prepare_template_context(self, component_dir, sample_extracted_metadata):
         """Test template context preparation."""

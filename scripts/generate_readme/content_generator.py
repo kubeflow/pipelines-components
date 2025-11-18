@@ -22,7 +22,8 @@ class ReadmeContentGenerator:
         self.source_dir = source_dir
         self.metadata_file = source_dir / 'metadata.yaml'
         self.example_file = source_dir / 'example_pipeline.py'
-        self.yaml_metadata = self._load_yaml_metadata()
+        self.owners_file = source_dir / 'OWNERS'
+        self.feature_metadata = self._load_feature_metadata()
         
         # Set up Jinja2 environment
         template_dir = Path(__file__).parent
@@ -33,11 +34,14 @@ class ReadmeContentGenerator:
         )
         self.template = self.env.get_template('README.md.j2')
     
-    def _load_yaml_metadata(self) -> Dict[str, Any]:
-        """Load and parse the metadata.yaml file, excluding the 'ci' field.
+    def _load_feature_metadata(self) -> Dict[str, Any]:
+        """Load and parse feature metadata from metadata.yaml and OWNERS files.
+        
+        Loads metadata from metadata.yaml (excluding 'ci' field) and augments it
+        with owners information from OWNERS file if it exists.
         
         Returns:
-            Dictionary containing the YAML metadata without the 'ci' field.
+            Dictionary containing the aggregated feature metadata.
         """
         try:
             with open(self.metadata_file, 'r', encoding='utf-8') as f:
@@ -47,10 +51,33 @@ class ReadmeContentGenerator:
             if yaml_data and 'ci' in yaml_data:
                 yaml_data.pop('ci')
             
-            return yaml_data or {}
+            yaml_data = yaml_data or {}
         except Exception as e:
             logger.warning(f"Could not load metadata.yaml: {e}")
-            return {}
+            yaml_data = {}
+        
+        # Augment with owners information from OWNERS file
+        owners_data = self._load_owners()
+        if owners_data:
+            yaml_data['owners'] = owners_data
+        
+        return yaml_data
+    
+    def _load_owners(self) -> Dict[str, Any]:
+        """Load the OWNERS file if it exists.
+        
+        Returns:
+            Dictionary containing owners data (approvers and reviewers) if file exists, empty dict otherwise.
+        """
+        if self.owners_file.exists():
+            try:
+                with open(self.owners_file, 'r', encoding='utf-8') as f:
+                    owners_data = yaml.safe_load(f)
+                return owners_data or {}
+            except Exception as e:
+                logger.warning(f"Error reading OWNERS file ({self.owners_file}): {e}")
+                return {}
+        return {}
     
     def _load_example_pipeline(self) -> str:
         """Load the Example Pipeline file if it exists.
@@ -163,7 +190,7 @@ class ReadmeContentGenerator:
         """
         return {
             self._format_title(key): self._format_value(value)
-            for key, value in self.yaml_metadata.items()
+            for key, value in self.feature_metadata.items()
         }
     
     def generate_readme(self) -> str:
@@ -216,7 +243,7 @@ class ReadmeContentGenerator:
         example_code = self._load_example_pipeline()
         
         # Prepare formatted metadata for human-readable display
-        formatted_metadata = self._format_metadata() if self.yaml_metadata else {}
+        formatted_metadata = self._format_metadata() if self.feature_metadata else {}
         
         return {
             'title': title,
