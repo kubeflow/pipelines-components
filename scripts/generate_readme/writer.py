@@ -1,4 +1,4 @@
-"""README generator for KFP components and pipelines."""
+"""README writer for KFP components and pipelines."""
 
 import logging
 import sys
@@ -10,12 +10,12 @@ from .content_generator import ReadmeContentGenerator
 from .metadata_parser import ComponentMetadataParser, PipelineMetadataParser
 
 
-class ReadmeGenerator:
-    """Generates README documentation for Kubeflow Pipelines components and pipelines."""
+class ReadmeWriter:
+    """Writes README documentation for Kubeflow Pipelines components and pipelines."""
     
     def __init__(self, component_dir: Optional[Path] = None, pipeline_dir: Optional[Path] = None,
                  output_file: Optional[Path] = None, verbose: bool = False, overwrite: bool = False):
-        """Initialize the README generator.
+        """Initialize the README writer.
         
         Args:
             component_dir: Path to the component directory (must contain component.py and metadata.yaml).
@@ -90,16 +90,18 @@ class ReadmeGenerator:
         
         Args:
             readme_content: The content to write to the README.md file.
+            
+        Raises:
+            SystemExit: If README exists and --overwrite flag is not provided.
         """
         # Extract any custom content before checking for overwrite
         custom_content = self._extract_custom_content()
         
         # Check if file exists and handle overwrite
         if self.readme_file.exists() and not self.overwrite:
-            response = input(f"README.md already exists at {self.readme_file}. Overwrite? (y/N): ")
-            if response.lower() not in ['y', 'yes']:
-                print("Operation cancelled.")
-                sys.exit(0)
+            logger.error(f"README.md already exists at {self.readme_file}")
+            logger.error("Use --overwrite flag to overwrite existing README")
+            sys.exit(1)
 
         # Append custom content if it was found
         if custom_content:

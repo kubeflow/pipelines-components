@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 
 from .constants import logger
-from .generator import ReadmeGenerator
+from .writer import ReadmeWriter
 
 
 def validate_component_directory(dir_path: str) -> Path:
@@ -129,14 +129,14 @@ def main():
     """Main entry point for the CLI."""
     # Parse arguments
     args = parse_arguments()
-       
+    
     # Create and run the README writer
-    generator = ReadmeGenerator(
+    writer = ReadmeWriter(
         component_dir=args.component,
         pipeline_dir=args.pipeline,
         output_file=args.output,
         verbose=args.verbose,
         overwrite=args.overwrite
     )
-    generator.generate()
+    writer.generate()
 

@@ -1,17 +1,17 @@
-"""Tests for generator.py module."""
+"""Tests for writer.py module."""
 
 import pytest
 
 from ..constants import CUSTOM_CONTENT_MARKER
-from ..generator import ReadmeGenerator
+from ..writer import ReadmeWriter
 
 
-class TestReadmeGenerator:
-    """Tests for ReadmeGenerator."""
+class TestReadmeWriter:
+    """Tests for ReadmeWriter."""
     
     def test_init_with_component(self, component_dir):
         """Test initialization with component directory."""
-        generator = ReadmeGenerator(
+        generator = ReadmeWriter(
             component_dir=component_dir,
             verbose=False,
             overwrite=True
@@ -24,7 +24,7 @@ class TestReadmeGenerator:
     
     def test_init_with_pipeline(self, pipeline_dir):
         """Test initialization with pipeline directory."""
-        generator = ReadmeGenerator(
+        generator = ReadmeWriter(
             pipeline_dir=pipeline_dir,
             verbose=False,
             overwrite=True
@@ -38,19 +38,19 @@ class TestReadmeGenerator:
     def test_init_requires_one_directory(self):
         """Test that initialization requires exactly one directory."""
         with pytest.raises(ValueError):
-            ReadmeGenerator()  # Neither provided
+            ReadmeWriter()  # Neither provided
     
     def test_init_rejects_both_directories(self, component_dir, pipeline_dir):
         """Test that initialization rejects both directories."""
         with pytest.raises(ValueError):
-            ReadmeGenerator(
+            ReadmeWriter(
                 component_dir=component_dir,
                 pipeline_dir=pipeline_dir
             )
     
     def test_extract_custom_content_not_exists(self, component_dir):
         """Test extracting custom content when README doesn't exist."""
-        generator = ReadmeGenerator(
+        generator = ReadmeWriter(
             component_dir=component_dir,
             overwrite=True
         )
@@ -64,7 +64,7 @@ class TestReadmeGenerator:
         readme_file = component_dir / "README.md"
         readme_file.write_text("# Test\n\nSome content without marker")
         
-        generator = ReadmeGenerator(
+        generator = ReadmeWriter(
             component_dir=component_dir,
             overwrite=True
         )
@@ -81,7 +81,7 @@ class TestReadmeGenerator:
         readme_file = component_dir / "README.md"
         readme_file.write_text(readme_content)
         
-        generator = ReadmeGenerator(
+        generator = ReadmeWriter(
             component_dir=component_dir,
             overwrite=True
         )
@@ -95,7 +95,7 @@ class TestReadmeGenerator:
     
     def test_generate_component_readme(self, component_dir):
         """Test generating README for a component."""
-        generator = ReadmeGenerator(
+        generator = ReadmeWriter(
             component_dir=component_dir,
             overwrite=True
         )
@@ -115,7 +115,7 @@ class TestReadmeGenerator:
     
     def test_generate_pipeline_readme(self, pipeline_dir):
         """Test generating README for a pipeline."""
-        generator = ReadmeGenerator(
+        generator = ReadmeWriter(
             pipeline_dir=pipeline_dir,
             overwrite=True
         )
@@ -140,7 +140,7 @@ class TestReadmeGenerator:
         readme_file.write_text(initial_content)
         
         # Generate new README
-        generator = ReadmeGenerator(
+        generator = ReadmeWriter(
             component_dir=component_dir,
             overwrite=True
         )
@@ -156,7 +156,7 @@ class TestReadmeGenerator:
         """Test generating README to a custom output file."""
         custom_output = temp_dir / "CUSTOM_README.md"
         
-        generator = ReadmeGenerator(
+        generator = ReadmeWriter(
             component_dir=component_dir,
             output_file=custom_output,
             overwrite=True
@@ -175,7 +175,7 @@ class TestReadmeGenerator:
         
         caplog.set_level(logging.DEBUG)
         
-        generator = ReadmeGenerator(
+        generator = ReadmeWriter(
             component_dir=component_dir,
             verbose=True,
             overwrite=True
@@ -191,7 +191,7 @@ class TestReadmeGenerator:
         readme_file = component_dir / "README.md"
         readme_file.write_text("Old content")
         
-        generator = ReadmeGenerator(
+        generator = ReadmeWriter(
             component_dir=component_dir,
             overwrite=True
         )
@@ -201,9 +201,29 @@ class TestReadmeGenerator:
         
         assert readme_file.read_text() == "New content"
     
+    def test_write_readme_file_errors_without_overwrite(self, component_dir):
+        """Test that writing README errors when file exists and overwrite is not set."""
+        import pytest
+        
+        readme_file = component_dir / "README.md"
+        readme_file.write_text("Existing content")
+        
+        generator = ReadmeWriter(
+            component_dir=component_dir,
+            overwrite=False
+        )
+        
+        # Should raise SystemExit when README exists and overwrite is False
+        with pytest.raises(SystemExit) as exc_info:
+            generator._write_readme_file("New content")
+        
+        assert exc_info.value.code == 1
+        # Original content should be preserved
+        assert readme_file.read_text() == "Existing content"
+    
     def test_readme_includes_all_parameters(self, component_dir):
         """Test that generated README includes all component parameters."""
-        generator = ReadmeGenerator(
+        generator = ReadmeWriter(
             component_dir=component_dir,
             overwrite=True
         )
@@ -221,7 +241,7 @@ class TestReadmeGenerator:
     
     def test_readme_format_is_markdown(self, component_dir):
         """Test that generated README is valid markdown."""
-        generator = ReadmeGenerator(
+        generator = ReadmeWriter(
             component_dir=component_dir,
             overwrite=True
         )
