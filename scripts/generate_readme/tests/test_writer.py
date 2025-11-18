@@ -110,7 +110,8 @@ class TestReadmeWriter:
         assert "## Overview" in content
         assert "## Inputs" in content
         assert "## Outputs" in content
-        assert "## Usage Example" in content
+        # Usage Example should NOT be present when example_pipeline.py doesn't exist
+        assert "## Usage Example" not in content
         assert "## Metadata" in content
     
     def test_generate_pipeline_readme(self, pipeline_dir):
@@ -252,7 +253,36 @@ class TestReadmeWriter:
         
         # Check markdown formatting
         assert content.startswith('#')  # Has headers
-        assert '```' in content  # Has code blocks
         assert '|' in content  # Has tables
         assert '##' in content  # Has subheaders
+    
+    def test_readme_with_example_pipeline(self, component_dir):
+        """Test that README includes usage example when example_pipeline.py exists."""
+        # Create example_pipeline.py file
+        example_file = component_dir / 'example_pipeline.py'
+        example_content = '''from kfp import dsl
+from kubeflow.pipelines.components.components import sample_category
+
+@dsl.pipeline(name='example-pipeline')
+def my_pipeline():
+    sample_component_task = sample_category.sample_component(
+        input_path="input.txt",
+        output_path="output.txt",
+    )
+'''
+        example_file.write_text(example_content)
+        
+        generator = ReadmeWriter(
+            component_dir=component_dir,
+            overwrite=True
+        )
+        generator.generate()
+        
+        readme_file = component_dir / "README.md"
+        content = readme_file.read_text()
+        
+        # Now code blocks should be present
+        assert '```' in content  # Has code blocks
+        assert '## Usage Example' in content
+        assert 'from kfp import dsl' in content
 

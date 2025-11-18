@@ -22,20 +22,11 @@
 | Output | `{{ returns.type }}` | {{ returns.description }} |
 {% endif %}
 
-{% if is_component and parameters %}
+{% if example_code %}
 ## Usage Example 🧪
 
 ```python
-from kfp import dsl
-from kfp_components.{{ component_name }} import {{ component_name }}
-
-@dsl.pipeline(name='example-pipeline')
-def my_pipeline():
-    {{ component_name }}_task = {{ component_name }}(
-{% for param_name, example_value in usage_params.items() %}
-        {{ param_name }}={{ example_value }},
-{% endfor %}
-    )
+{{ example_code }}
 ```
 {% endif %}
 
