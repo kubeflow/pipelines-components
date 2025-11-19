@@ -38,3 +38,11 @@
 {% endfor %}
 {% endif %}
 
+{% if links %}
+## Additional Resources 📚
+
+{% for link_name, link_url in links.items() %}
+- **{{ link_name | replace('_', ' ') | title }}**: [{{ link_url }}]({{ link_url }})
+{% endfor %}
+{% endif %}
+
