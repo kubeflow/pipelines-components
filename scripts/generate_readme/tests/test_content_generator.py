@@ -114,6 +114,77 @@ reviewers:
         assert 'Approvers' in readme or 'approvers' in readme.lower()
         assert 'Reviewers' in readme or 'reviewers' in readme.lower()
     
+    def test_links_in_additional_resources_section(self, component_dir, sample_extracted_metadata):
+        """Test that links appear in Additional Resources section, not Metadata."""
+        # Update metadata.yaml to include links
+        metadata_file = component_dir / "metadata.yaml"
+        metadata_file.write_text("""name: sample_component
+tier: core
+stability: stable
+tags:
+  - testing
+links:
+  documentation: https://example.com/docs
+  issue_tracker: https://github.com/example/issues
+  source_code: https://github.com/example/code
+""")
+        
+        generator = ReadmeContentGenerator(
+            sample_extracted_metadata,
+            component_dir
+        )
+        
+        readme = generator.generate_readme()
+        
+        # Check that Additional Resources section exists
+        assert '## Additional Resources' in readme
+        
+        # Check that links appear in Additional Resources
+        assert 'https://example.com/docs' in readme
+        assert 'https://github.com/example/issues' in readme
+        assert 'https://github.com/example/code' in readme
+        assert 'Documentation' in readme
+        assert 'Issue Tracker' in readme
+        assert 'Source Code' in readme
+        
+        # Verify links are NOT in the Metadata section
+        # Extract just the metadata section
+        lines = readme.split('\n')
+        metadata_section = []
+        in_metadata = False
+        for line in lines:
+            if '## Metadata' in line:
+                in_metadata = True
+            elif in_metadata and line.startswith('##'):
+                break
+            if in_metadata:
+                metadata_section.append(line)
+        
+        metadata_text = '\n'.join(metadata_section)
+        # Links should not appear as a bullet point in metadata
+        assert '- **Links**:' not in metadata_text
+    
+    def test_no_links_no_additional_resources_section(self, component_dir, sample_extracted_metadata):
+        """Test that Additional Resources section is omitted when no links exist."""
+        # Remove links from metadata.yaml to test no-links case
+        import yaml
+        metadata_file = component_dir / 'metadata.yaml'
+        with open(metadata_file) as f:
+            metadata = yaml.safe_load(f)
+        metadata.pop('links', None)
+        with open(metadata_file, 'w') as f:
+            yaml.dump(metadata, f)
+        
+        generator = ReadmeContentGenerator(
+            sample_extracted_metadata,
+            component_dir
+        )
+        
+        readme = generator.generate_readme()
+        
+        # Additional Resources section should NOT exist
+        assert '## Additional Resources' not in readme
+    
     def test_prepare_template_context(self, component_dir, sample_extracted_metadata):
         """Test template context preparation."""
         generator = ReadmeContentGenerator(
@@ -244,7 +315,8 @@ reviewers:
         readme = generator.generate_readme()
         
         # Check sections are present
-        assert '# Sample Component' in readme
+        # Title should use name from metadata.yaml, not function name
+        assert '# Sample Pipeline' in readme
         assert '## Overview' in readme
         assert '## Inputs' in readme
         assert '## Outputs' in readme
