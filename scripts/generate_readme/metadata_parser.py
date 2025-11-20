@@ -78,6 +78,53 @@ class MetadataParser(ABC):
         # and clean up the typing module prefix
         return str(annotation).replace('typing.', '')
     
+    def _extract_decorator_name(self, decorator: ast.AST) -> Optional[str]:
+        """Extract the 'name' parameter from a decorator if present.
+        
+        Args:
+            decorator: AST node representing the decorator.
+            
+        Returns:
+            The name parameter value if found, None otherwise.
+        """
+        # Check if decorator is a Call node (has arguments)
+        if isinstance(decorator, ast.Call):
+            # Look for name parameter in keyword arguments
+            for keyword in decorator.keywords:
+                if keyword.arg == 'name':
+                    # Extract the string value
+                    if isinstance(keyword.value, ast.Constant):
+                        return keyword.value.value
+        return None
+    
+    def _get_name_from_decorator_if_exists(self, function_name: str) -> Optional[str]:
+        """Get the decorator's name parameter for a specific function.
+        
+        Args:
+            function_name: Name of the function to find.
+            
+        Returns:
+            The name parameter from the decorator if found, None otherwise.
+        """
+        try:
+            with open(self.file_path, 'r', encoding='utf-8') as f:
+                source = f.read()
+            
+            tree = ast.parse(source)
+            
+            for node in ast.walk(tree):
+                if isinstance(node, ast.FunctionDef) and node.name == function_name:
+                    # Check decorators for name parameter
+                    for decorator in node.decorator_list:
+                        decorator_name = self._extract_decorator_name(decorator)
+                        if decorator_name:
+                            return decorator_name
+            
+            return None
+        except Exception as e:
+            logger.debug(f"Could not extract decorator name from AST: {e}")
+            return None
+    
     def _extract_function_metadata(self, function_name: str, module_name: str = "module") -> Dict[str, Any]:
         """Extract metadata from a KFP function (component or pipeline).
         
@@ -106,9 +153,13 @@ class MetadataParser(ABC):
                 # Fallback to the object itself if neither attribute is available
                 func = func_obj
             
+            # Try to get name from decorator, fall back to function name
+            decorator_name = self._get_name_from_decorator_if_exists(function_name)
+            component_name = decorator_name if decorator_name else function_name
+            
             # Extract basic function information
             metadata = {
-                'name': function_name,
+                'name': component_name,
                 'docstring': inspect.getdoc(func) or '',
                 'signature': inspect.signature(func),
                 'parameters': {},
