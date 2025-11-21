@@ -15,5 +15,5 @@ This document serves as a comprehensive context source for AI agents to understa
 
 For immediate guidance, see:
 - [Contributing Guide](CONTRIBUTING.md)
-- [Onboarding Guide](ONBOARDING.md)
+- [Governance Guide](GOVERNANCE.md)
 - [Best Practices Guide](BESTPRACTICES.md)

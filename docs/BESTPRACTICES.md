@@ -17,6 +17,5 @@ This document will cover:
 ---
 
 For immediate guidance, see:
-- [Contributing Guide](CONTRIBUTING.md)
-- [Onboarding Guide](ONBOARDING.md)
-- [Testing Guide](TESTING.md)
+- [Contributing Guide](CONTRIBUTING.md) - Complete guide with testing, setup, and workflow
+- [Governance Guide](GOVERNANCE.md) - Repository policies and tiers
