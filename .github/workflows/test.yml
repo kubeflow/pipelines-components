@@ -1,0 +1,77 @@
+name: Targeted Tests
+
+on:
+  pull_request:
+    paths:
+      - "components/**"
+      - "pipelines/**"
+      - "scripts/run_tests.py"
+      - "scripts/validate_examples.py"
+      - ".github/workflows/test.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "components/**"
+      - "pipelines/**"
+      - "scripts/run_tests.py"
+      - "scripts/validate_examples.py"
+      - ".github/workflows/test.yml"
+
+jobs:
+  targeted-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+
+      - name: Install tooling dependencies
+        run: |
+          uv pip install --system pytest pytest-timeout kfp
+
+      - name: Detect changed files
+        id: changes
+        uses: tj-actions/changed-files@v45
+        with:
+          files: |
+            components/**
+            pipelines/**
+
+      - name: Resolve component and pipeline targets
+        id: targets
+        env:
+          CHANGED_FILES: ${{ steps.changes.outputs.all_changed_files }}
+        run: |
+          python .github/scripts/determine_changed_assets.py
+
+      - name: Run targeted pytest suites
+        if: ${{ steps.targets.outputs.paths != '' }}
+        run: |
+          echo "Running pytest for the following paths:"
+          echo "${{ steps.targets.outputs.paths }}"
+          python .github/scripts/run_tests.py ${{ steps.targets.outputs.paths }}
+
+      - name: Validate example pipelines
+        if: ${{ steps.targets.outputs.paths != '' }}
+        run: |
+          echo "Validating example pipelines for:"
+          echo "${{ steps.targets.outputs.paths }}"
+          python .github/scripts/validate_examples.py ${{ steps.targets.outputs.paths }}
+
+      - name: No component changes detected
+        if: ${{ steps.targets.outputs.paths == '' }}
+        run: echo "No components or pipelines changed. Skipping targeted tests."
+
