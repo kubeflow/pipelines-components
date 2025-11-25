@@ -30,6 +30,7 @@ test = [
 ]
 ci = [
     "pytest",
+    "pytest-timeout",
     "docstring-parser",
     "jinja2",
     "semver",
