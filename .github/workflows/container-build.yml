@@ -1,0 +1,227 @@
+---
+name: Build and Push Container Images
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'examples/**'
+      - '**/Containerfile'
+      - '.github/workflows/container-build.yml'
+      - 'scripts/check_base_image_tags/**'
+      - 'scripts/override_base_images/**'
+      - 'scripts/validate_components/**'
+      - 'scripts/lib/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/kubeflow/pipelines-components
+  SHOULD_PUSH: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') }}
+  PYTHONPATH: ${{ github.workspace }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    if: github.repository_owner == 'kubeflow'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Add images here as needed. Each entry requires:
+          # - name: Image name suffix (final image: ghcr.io/kubeflow/pipelines-components-<name>)
+          # - containerfile: Path to the Containerfile
+          # - context: Build context directory
+          - name: example
+            containerfile: examples/Containerfile
+            context: examples
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: env.SHOULD_PUSH == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}
+          tags: |
+            type=sha,prefix=,format=long
+            type=ref,event=tag
+            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.containerfile }}
+          push: ${{ env.SHOULD_PUSH == 'true' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: ${{ (env.SHOULD_PUSH == 'true') && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+
+      - name: Save image for PR validation
+        if: github.event_name == 'pull_request'
+        run: |
+          IMAGE_TAG="${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:${GITHUB_SHA}"
+          docker save "$IMAGE_TAG" | gzip > /tmp/${{ matrix.name }}.tar.gz
+
+      - name: Upload image artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v5
+        with:
+          name: image-${{ matrix.name }}
+          path: /tmp/${{ matrix.name }}.tar.gz
+          retention-days: 1
+
+  validate-components:
+    if: (github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/v')) && github.repository_owner == 'kubeflow'
+    needs: build
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine image tag
+        id: image-tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="${GITHUB_SHA}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Download all image artifacts
+        if: github.event_name == 'pull_request'
+        uses: actions/download-artifact@v5
+        with:
+          path: /tmp/images
+          pattern: image-*
+          merge-multiple: true
+
+      - name: Load images
+        if: github.event_name == 'pull_request'
+        run: |
+          for image in /tmp/images/*.tar.gz; do
+            if [ -f "$image" ]; then
+              echo "Loading: $image"
+              gunzip -c "$image" | docker load
+            fi
+          done
+          echo "Available images:"
+          docker images
+
+      - name: Runtime smoke test images (PR)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Running smoke tests on PR-built images..."
+          shopt -s nullglob
+          found_any=false
+          for image in /tmp/images/*.tar.gz; do
+            found_any=true
+            NAME=$(basename "$image" .tar.gz)
+            IMAGE_TAG="${{ env.IMAGE_PREFIX }}-${NAME}:${GITHUB_SHA}"
+            echo "Testing: $IMAGE_TAG"
+
+            if ! docker image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
+              echo "✗ Expected image tag not found: $IMAGE_TAG"
+              echo "Available images:"
+              docker images
+              exit 1
+            fi
+
+            cid="$(docker create "$IMAGE_TAG")"
+            if [ -z "$cid" ]; then
+              echo "✗ Failed to create container: $IMAGE_TAG"
+              exit 1
+            fi
+            docker rm -f "$cid" >/dev/null
+            echo "✓ $NAME: runtime test passed"
+          done
+
+          if [ "$found_any" = false ]; then
+            echo "✗ No image artifacts found under /tmp/images"
+            exit 1
+          fi
+
+      - name: Runtime smoke test images (tag release)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${{ steps.image-tag.outputs.tag }}"
+          echo "Running smoke tests on registry images with tag: $TAG"
+
+          # List of images to test (must match matrix in build job)
+          IMAGES=("example")
+
+          for NAME in "${IMAGES[@]}"; do
+            IMAGE_TAG="${{ env.IMAGE_PREFIX }}-${NAME}:${TAG}"
+            echo "Testing: $IMAGE_TAG"
+
+            if ! docker pull "$IMAGE_TAG"; then
+              echo "✗ Failed to pull image: $IMAGE_TAG"
+              exit 1
+            fi
+
+            cid="$(docker create "$IMAGE_TAG")"
+            if [ -z "$cid" ]; then
+              echo "✗ Failed to create container: $IMAGE_TAG"
+              exit 1
+            fi
+            docker rm -f "$cid" >/dev/null
+            echo "✓ $NAME: runtime test passed"
+          done
+
+      - name: Setup Python CI
+        uses: ./.github/actions/setup-python-ci
+        with:
+          python-version: "3.13"
+
+      - name: Check base_image tags use :main
+        run: |
+          uv run python scripts/check_base_image_tags/check_base_image_tags.py \
+            "${{ env.IMAGE_PREFIX }}" --directories components pipelines
+
+      - name: Override base_image values for validation
+        run: |
+          uv run python scripts/override_base_images/override_base_images.py \
+            "${{ steps.image-tag.outputs.tag }}" "${{ env.IMAGE_PREFIX }}" --directories components pipelines
+
+      - name: Validate component compilation
+        run: uv run python scripts/validate_components/validate_components.py --directories components pipelines

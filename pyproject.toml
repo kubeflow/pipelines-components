@@ -59,7 +59,7 @@ packages = [
     "kfp_components.pipelines.training",
     "kfp_components.pipelines.evaluation",
     "kfp_components.pipelines.data_processing",
-    "kfp_components.pipelines.deployment"
+    "kfp_components.pipelines.deployment",
 ]
 
 [tool.setuptools.package-dir]
