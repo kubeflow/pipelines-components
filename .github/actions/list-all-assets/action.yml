@@ -21,7 +21,7 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
-        python3 .github/scripts/list_all_assets/list.py
+        python3 scripts/list_all_assets/list.py
 
 branding:
   icon: 'list'

@@ -160,6 +160,15 @@ All contributions must:
 - Include metadata with fresh `lastVerified` date
 - Pass automated CI/CD checks
 
+## 📦 Custom Base Images
+
+Components can use custom base images with pre-installed dependencies. These images are
+automatically built and pushed to `ghcr.io/kubeflow/pipelines-components-<name>`.
+
+See [Contributing Guidelines](docs/CONTRIBUTING.md#adding-a-custom-base-image) for instructions on
+adding new base images, and [`docs/examples/Containerfile`](docs/examples/Containerfile) for a complete
+example.
+
 ## 🔧 Maintenance
 
 ### Automated Maintenance

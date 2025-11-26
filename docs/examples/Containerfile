@@ -1,0 +1,30 @@
+# Example Containerfile for KFP Component Base Image
+#
+# This demonstrates best practices for creating custom base images
+# for Kubeflow Pipelines components.
+#
+# The resulting image will be pushed to:
+#   ghcr.io/kubeflow/pipelines-components-example:main
+#
+# Usage in a component:
+#   @dsl.component(base_image="ghcr.io/kubeflow/pipelines-components-example:main")
+#   def my_component():
+#       import pandas as pd
+#       ...
+
+FROM python:3.11-slim
+
+LABEL org.opencontainers.image.title="KFP Component Base Image: <Your-Image-name>"
+LABEL org.opencontainers.image.description="Example base image with common ML dependencies for Kubeflow Pipelines components"
+LABEL org.opencontainers.image.source="https://github.com/kubeflow/pipelines-components"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL maintainer="Kubeflow Pipelines"
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
