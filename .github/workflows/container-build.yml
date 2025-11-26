@@ -1,0 +1,147 @@
+name: Build and Push Container Images
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/kubeflow/pipelines-components
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Add images here as needed. Each entry requires:
+          # - name: Image name suffix (final image: ghcr.io/kubeflow/pipelines-components-<name>)
+          # - containerfile: Path to the Containerfile
+          # - context: Build context directory
+          - name: example
+            containerfile: examples/Containerfile
+            context: examples
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}
+          tags: |
+            type=sha,prefix=,format=long
+            type=ref,event=branch
+            type=ref,event=tag
+            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.containerfile }}
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: ${{ github.event_name != 'pull_request' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+
+      - name: Save image for PR validation
+        if: github.event_name == 'pull_request'
+        run: |
+          IMAGE_TAG="${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:${GITHUB_SHA}"
+          docker save "$IMAGE_TAG" | gzip > /tmp/${{ matrix.name }}.tar.gz
+
+      - name: Upload image artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v5
+        with:
+          name: image-${{ matrix.name }}
+          path: /tmp/${{ matrix.name }}.tar.gz
+          retention-days: 1
+
+  validate-components:
+    if: github.event_name == 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Download all image artifacts
+        uses: actions/download-artifact@v6
+        with:
+          path: /tmp/images
+          pattern: image-*
+          merge-multiple: true
+
+      - name: Load images
+        run: |
+          for image in /tmp/images/*.tar.gz; do
+            if [ -f "$image" ]; then
+              echo "Loading: $image"
+              gunzip -c "$image" | docker load
+            fi
+          done
+          echo "Available images:"
+          docker images
+
+      - name: Runtime smoke test images
+        run: |
+          echo "Running smoke tests on PR-built images..."
+          for image in /tmp/images/*.tar.gz; do
+            if [ -f "$image" ]; then
+              NAME=$(basename "$image" .tar.gz | sed 's/^image-//')
+              IMAGE_TAG="${{ env.IMAGE_PREFIX }}-${NAME}:${GITHUB_SHA}"
+              echo "Testing: $IMAGE_TAG"
+              
+              # Basic runtime test - verify container starts successfully
+              docker run --rm --entrypoint echo "$IMAGE_TAG" "Container runs successfully"
+              echo "✓ $NAME: runtime test passed"
+            fi
+          done
+
+      - name: Setup Python CI
+        uses: ./.github/actions/setup-python-ci
+        with:
+          python-version: "3.13"
+
+      - name: Check base_image tags use :main
+        run: uv run python .github/scripts/check_base_image_tags/check_base_image_tags.py "${{ env.IMAGE_PREFIX }}"
+
+      - name: Override base_image values for PR validation
+        run: uv run python .github/scripts/override_base_images/override_base_images.py "$GITHUB_SHA" "${{ env.IMAGE_PREFIX }}"
+
+      - name: Validate component compilation
+        run: uv run python .github/scripts/validate_components.py
