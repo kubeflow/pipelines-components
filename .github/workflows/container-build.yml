@@ -1,0 +1,203 @@
+---
+name: Build and Push Container Images
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'release-*'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - 'main'
+      - 'release-*'
+    paths:
+      - 'docs/examples/**'
+      - '**/Containerfile'
+      - '**/Dockerfile'
+      - '.github/workflows/container-build.yml'
+      - 'scripts/check_base_image_tags/**'
+      - 'scripts/override_base_images/**'
+      - 'scripts/validate_components/**'
+      - 'scripts/lib/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/kubeflow/pipelines-components
+  SHOULD_PUSH: >-
+    ${{ github.ref == 'refs/heads/main' ||
+        startsWith(github.ref, 'refs/heads/release-') ||
+        startsWith(github.ref, 'refs/tags/v') }}
+  PYTHONPATH: ${{ github.workspace }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    if: github.repository_owner == 'kubeflow'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: example
+            context: docs/examples
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        if: env.SHOULD_PUSH == 'true'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: env.SHOULD_PUSH == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}
+          tags: |
+            type=sha,prefix=,format=long,enable=${{ github.event_name == 'pull_request' }}
+            type=ref,event=tag
+            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Determine container build file (Containerfile or Dockerfile)
+        id: buildfile
+        run: |
+          if [[ -f "${{ matrix.context }}/Containerfile" ]]; then
+            echo "containerfile=${{ matrix.context }}/Containerfile" >> "$GITHUB_OUTPUT"
+          elif [[ -f "${{ matrix.context }}/Dockerfile" ]]; then
+            echo "containerfile=${{ matrix.context }}/Dockerfile" >> "$GITHUB_OUTPUT"
+          else
+            echo "No Containerfile or Dockerfile found in ${{ matrix.context }}" >&2
+            exit 1
+          fi
+
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ steps.buildfile.outputs.containerfile }}
+          push: ${{ env.SHOULD_PUSH == 'true' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: ${{ (env.SHOULD_PUSH == 'true') && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+
+      - name: Save image for PR validation
+        if: github.event_name == 'pull_request'
+        run: |
+          IMAGE_TAG="${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:${GITHUB_SHA}"
+          docker save "$IMAGE_TAG" | gzip > /tmp/${{ matrix.name }}.tar.gz
+
+      - name: Upload image artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v6
+        with:
+          name: image-${{ matrix.name }}
+          path: /tmp/${{ matrix.name }}.tar.gz
+          retention-days: 1
+
+  validate-components:
+    if: >
+      (github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/v')) &&
+      github.repository_owner == 'kubeflow'
+    needs: build
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine image tag
+        id: image-tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="${GITHUB_SHA}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Download built image artifacts
+        if: github.event_name == 'pull_request'
+        uses: actions/download-artifact@v7
+        with:
+          pattern: image-*
+          merge-multiple: true
+          path: /tmp/images
+
+      - name: Load built images for PR validation
+        if: github.event_name == 'pull_request'
+        run: |
+          # Avoid failing if no artifacts were downloaded; otherwise '*.tar.gz' expands to itself and breaks gunzip.
+          shopt -s nullglob
+          for tarball in /tmp/images/*.tar.gz; do
+            echo "Loading image artifact: $tarball"
+            gunzip -c "$tarball" | docker load
+          done
+
+      - name: Setup Python CI
+        uses: ./.github/actions/setup-python-ci
+        with:
+          python-version: "3.11"
+
+      - name: Determine expected base_image tag
+        id: expected-tag
+        run: |
+          # For PRs, use the base branch; for pushes, use the current branch
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BRANCH="${{ github.base_ref }}"
+          else
+            BRANCH="${{ github.ref_name }}"
+          fi
+
+          if [[ "$BRANCH" == "main" ]]; then
+            echo "tag=main" >> "$GITHUB_OUTPUT"
+          elif [[ "$BRANCH" =~ ^release-([0-9]+\.[0-9]+)$ ]]; then
+            # Release branch release-1.11 expects tag v1.11.0
+            echo "tag=v${BASH_REMATCH[1]}.0" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Unknown branch '$BRANCH' - cannot determine expected tag"
+            exit 1
+          fi
+          echo "Expected tag for branch '$BRANCH': $(cat "$GITHUB_OUTPUT" | grep tag | cut -d= -f2)"
+
+      - name: Check base_image tags
+        run: |
+          uv run python -m scripts.check_base_image_tags.check_base_image_tags \
+            "${{ env.IMAGE_PREFIX }}" --directories components pipelines \
+            --expected-tag "${{ steps.expected-tag.outputs.tag }}"
+
+      - name: Override base_image values for validation
+        run: |
+          uv run python -m scripts.override_base_images.override_base_images \
+            "${{ steps.image-tag.outputs.tag }}" "${{ env.IMAGE_PREFIX }}" --directories components pipelines
+
+      - name: Validate component compilation
+        run: uv run python -m scripts.validate_components.validate_components --directories components pipelines

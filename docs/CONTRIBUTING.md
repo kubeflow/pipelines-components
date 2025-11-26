@@ -12,6 +12,7 @@ Welcome! This guide covers everything you need to know to contribute components 
 - [Development Workflow](#development-workflow)
 - [Testing and Quality](#testing-and-quality)
   - [Component Testing Guide](#component-testing-guide)
+- [Adding a Custom Base Image](#adding-a-custom-base-image)
 - [Submitting Your Contribution](#submitting-your-contribution)
 - [Getting Help](#getting-help)
 
@@ -735,6 +736,144 @@ This repository uses Dependabot to keep:
 - GitHub Actions versions in workflow files up to date
 
 Configuration lives in `.github/dependabot.yml`.
+
+## Adding a Custom Base Image
+
+Components that require specific dependencies beyond what's available in standard KFP images can use
+custom base images. This section explains how to add and maintain custom base images for your
+components.
+
+### Overview
+
+Custom base images are:
+
+- Built automatically by CI on every push to `main` and on tags
+- Published to `ghcr.io/kubeflow/pipelines-components-<name>`
+- Tagged with `:main` for the latest main branch build, or `:v<version>` for releases
+
+### Step 1: Create the Containerfile
+
+Create a `Containerfile` in your component's directory:
+
+```text
+components/
+└── training/
+    └── my_component/
+        ├── Containerfile      # Your custom base image
+        ├── component.py
+        ├── metadata.yaml
+        └── README.md
+```
+
+See [`examples/Containerfile`](examples/Containerfile) for a complete example with recommended patterns
+(labels, environment settings, non-root user, etc.).
+
+**Guidelines:**
+
+- Keep images minimal - only include dependencies your component needs
+- Pin dependency versions for reproducibility
+- Use official base images when possible
+- Avoid including secrets or credentials
+
+### Step 2: Add Entry to the Workflow Matrix
+
+Edit `.github/workflows/container-build.yml` and add your image to the `strategy.matrix.include`
+array in the `build` job:
+
+```yaml
+strategy:
+  fail-fast: false
+  matrix:
+    include:
+      - name: example
+        context: docs/examples
+      # Add your new image:
+      - name: my-training-image
+        context: components/training/my_component
+```
+
+**Matrix fields:**
+
+- `name`: Unique identifier for your image. The final image will be
+  `ghcr.io/kubeflow/pipelines-components-<name>`.
+- `context`: Build context directory containing your `Containerfile`.
+
+**Naming convention:**
+
+- Use lowercase with hyphens: `my-training-component`
+- Be descriptive: `sklearn-preprocessing`, `pytorch-training`
+- The full image path will be: `ghcr.io/kubeflow/pipelines-components-my-training-component`
+
+### Step 3: Reference the Image in Your Component
+
+In your `component.py`, use the `base_image` parameter with the `:main` tag:
+
+```python
+from kfp import dsl
+
+@dsl.component(
+    base_image="ghcr.io/kubeflow/pipelines-components-my-training-image:main"
+)
+def my_component(input_path: str) -> str:
+    import pandas as pd
+    from sklearn import preprocessing
+    
+    # Your component logic here
+    ...
+```
+
+**Important:** Always use the `:main` tag during development. This ensures:
+
+- Your component uses the latest image from the main branch
+- PR validation can override the tag to test against PR-built images
+
+### How CI Handles Base Images
+
+| Event                        | Behavior                                                                           |
+|------------------------------|------------------------------------------------------------------------------------|
+| Pull Request                 | Images are built but **not pushed**. Validation uses locally-loaded `:<sha>` tags. |
+| Push to `main`               | Images are built and pushed with tag: `:main`                                      |
+| Push to tag (e.g., `v1.0.0`) | Images are built and pushed with tag: `:<tag>`                                     |
+
+### Image Tags
+
+Your image will be available with these tags:
+
+| Tag      | Description                                                | Example                            |
+|----------|------------------------------------------------------------|------------------------------------|
+| `:main`  | Latest build from main branch                              | `...-my-component:main`            |
+| `:<tag>` | Git tag                                                    | `...-my-component:v1.0.0`          |
+| `:<sha>` | PR validation tag (local only; not pushed to the registry) | `...-my-component:abc123def456...` |
+
+### Testing Your Image Locally
+
+Before submitting a PR, test your image locally:
+
+<details>
+<summary>Docker</summary>
+
+```bash
+# Build the image
+docker build -t my-component:test -f components/training/my_component/Containerfile components/training/my_component
+
+# Test it
+docker run --rm my-component:test python -c "import pandas; print(pandas.__version__)"
+```
+
+</details>
+
+<details>
+<summary>Podman</summary>
+
+```bash
+# Build the image
+podman build -t my-component:test -f components/training/my_component/Containerfile components/training/my_component
+
+# Test it
+podman run --rm my-component:test python -c "import pandas; print(pandas.__version__)"
+```
+
+</details>
 
 ## Submitting Your Contribution
 

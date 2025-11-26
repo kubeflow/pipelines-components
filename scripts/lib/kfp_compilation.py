@@ -1,11 +1,17 @@
 """KFP module loading and compilation utilities."""
 
+import ast
+import importlib
 import importlib.util
 import sys
+from pathlib import Path
 from types import ModuleType
 from typing import Any
 
 import yaml
+
+COMPONENT_DECORATORS = {"component", "container_component", "notebook_component"}
+PIPELINE_DECORATORS = {"pipeline"}
 
 
 def load_module_from_path(module_path: str, module_name: str) -> ModuleType:
@@ -44,14 +50,14 @@ def compile_and_get_yaml(func: Any, output_path: str) -> dict[str, Any]:
     Raises:
         Exception: If compilation fails.
     """
-    from kfp import compiler
-
-    compiler.Compiler().compile(func, output_path)
+    compiler_mod = importlib.import_module("kfp.compiler")
+    compiler_class = getattr(compiler_mod, "Compiler")
+    compiler_class().compile(func, output_path)
     with open(output_path) as f:
         return yaml.safe_load(f)
 
 
-def find_decorated_functions(module: Any, decorator_type: str) -> list[tuple[str, Any]]:
+def find_decorated_functions_runtime(module: Any, decorator_type: str) -> list[tuple[str, Any]]:
     """Find all functions decorated with @dsl.component or @dsl.pipeline at runtime.
 
     Args:
@@ -76,3 +82,60 @@ def find_decorated_functions(module: Any, decorator_type: str) -> list[tuple[str
         if is_match:
             functions.append((attr_name, attr))
     return functions
+
+
+def find_decorated_function_names_ast(file_path: Path) -> dict[str, list[str]]:
+    """Find functions decorated with KFP decorators in a Python file.
+
+    Args:
+        file_path: Path to the Python file to analyze.
+
+    Returns:
+        A dict mapping decorator type to list of function names:
+        {"components": [...], "pipelines": [...]}
+        Returns empty dict {} if the file cannot be parsed.
+    """
+    try:
+        content = file_path.read_text()
+        tree = ast.parse(content)
+    except (SyntaxError, UnicodeDecodeError) as e:
+        print(f"  Warning: Could not parse {file_path}: {e}")
+        return {}
+
+    result: dict[str, list[str]] = {"components": [], "pipelines": []}
+
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for decorator in node.decorator_list:
+                decorator_name = extract_decorator_name(decorator)
+                if decorator_name is not None and decorator_name in COMPONENT_DECORATORS:
+                    result["components"].append(node.name)
+                    break
+                if decorator_name is not None and decorator_name in PIPELINE_DECORATORS:
+                    result["pipelines"].append(node.name)
+                    break
+
+    return result
+
+
+def extract_decorator_name(decorator: ast.expr) -> str | None:
+    """Extract the name from a decorator AST node.
+
+    Handles @name, @module.name, and @name() call forms.
+
+    Args:
+        decorator: AST node representing the decorator.
+
+    Returns:
+        The decorator name, or None if it cannot be determined.
+    """
+    if isinstance(decorator, ast.Name):
+        return decorator.id
+    if isinstance(decorator, ast.Attribute):
+        return decorator.attr
+    if isinstance(decorator, ast.Call):
+        if isinstance(decorator.func, ast.Name):
+            return decorator.func.id
+        if isinstance(decorator.func, ast.Attribute):
+            return decorator.func.attr
+    return None
