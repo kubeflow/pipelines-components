@@ -1,0 +1,618 @@
+#!/usr/bin/env python3
+"""
+Validate base images used in Kubeflow Pipelines components and pipelines.
+
+This script discovers all components and pipelines in the components/ and pipelines/
+directories, compiles them using kfp.compiler to generate IR YAML, and extracts
+base_image values from the pipeline specifications.
+
+Usage:
+    uv run python .github/scripts/validate_base_images/validate_base_images.py
+
+    # With custom allowed prefix:
+    uv run python .github/scripts/validate_base_images/validate_base_images.py \\
+        --allowed-prefix ghcr.io/myorg/
+"""
+
+import argparse
+import importlib.util
+import os
+import sys
+import tempfile
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import re
+
+import yaml
+from kfp import compiler
+
+
+ALLOWED_BASE_IMAGE_PREFIX = "ghcr.io/kubeflow/"
+PYTHON_IMAGE_PATTERN = re.compile(r"^python:\d+\.\d+.*$")
+
+
+def is_python_image(image: str) -> bool:
+    """Check if an image is a standard Python image (python:<tag>)."""
+    return bool(PYTHON_IMAGE_PATTERN.match(image))
+
+
+@dataclass
+class ValidationConfig:
+    """Configuration for base image validation."""
+
+    allowed_prefix: str = ALLOWED_BASE_IMAGE_PREFIX
+
+
+_config: ValidationConfig | None = None
+
+
+def get_config() -> ValidationConfig:
+    """Get the current validation configuration."""
+    global _config
+    if _config is None:
+        _config = ValidationConfig()
+    return _config
+
+
+def set_config(config: ValidationConfig) -> None:
+    """Set the validation configuration."""
+    global _config
+    _config = config
+
+
+def get_repo_root() -> Path:
+    """Get the repository root directory."""
+    return Path(__file__).parent.parent.parent.parent.resolve()
+
+
+def discover_assets(base_dir: Path, asset_type: str) -> list[dict[str, Any]]:
+    """
+    Discover all components or pipelines in a directory.
+
+    Args:
+        base_dir: Base directory to search (components/ or pipelines/)
+        asset_type: Either 'component' or 'pipeline'
+
+    Returns:
+        List of dicts with 'path', 'category', 'name', and 'module_path' keys
+    """
+    assets = []
+    filename = f"{asset_type}.py"
+
+    if not base_dir.exists():
+        return assets
+
+    for category_dir in base_dir.iterdir():
+        if not category_dir.is_dir() or category_dir.name.startswith(("_", ".")):
+            continue
+
+        for asset_dir in category_dir.iterdir():
+            if not asset_dir.is_dir() or asset_dir.name.startswith(("_", ".")):
+                continue
+
+            asset_file = asset_dir / filename
+            if asset_file.exists():
+                assets.append({
+                    "path": asset_file,
+                    "category": category_dir.name,
+                    "name": asset_dir.name,
+                    "module_path": str(asset_file),
+                })
+
+    return assets
+
+
+def load_module_from_path(module_path: str, module_name: str) -> Any:
+    """Dynamically load a Python module from a file path."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not load module from {module_path}")
+
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def find_decorated_functions(module: Any, decorator_type: str) -> list[tuple[str, Any]]:
+    """
+    Find all functions decorated with @dsl.component or @dsl.pipeline.
+
+    Args:
+        module: The loaded Python module
+        decorator_type: Either 'component' or 'pipeline'
+
+    Returns:
+        List of tuples (function_name, function_object)
+    """
+    functions = []
+
+    for attr_name in dir(module):
+        if attr_name.startswith("_"):
+            continue
+
+        attr = getattr(module, attr_name, None)
+        if attr is None or not callable(attr):
+            continue
+
+        is_component = (
+            hasattr(attr, "component_spec")
+            or getattr(attr, "__wrapped__", None) is not None
+            and hasattr(getattr(attr, "__wrapped__"), "component_spec")
+        )
+        is_pipeline = hasattr(attr, "pipeline_spec") or getattr(attr, "_pipeline_func", None) is not None
+
+        is_match = (
+            (decorator_type == "component" and is_component)
+            or (decorator_type == "pipeline" and is_pipeline)
+        )
+        if is_match:
+            functions.append((attr_name, attr))
+
+    return functions
+
+
+def compile_and_get_yaml(func: Any, output_path: str) -> dict[str, Any] | None:
+    """
+    Compile a component or pipeline function and return the parsed YAML.
+
+    Returns None if compilation fails.
+    """
+    try:
+        compiler.Compiler().compile(func, output_path)
+        with open(output_path) as f:
+            return yaml.safe_load(f)
+    except Exception as e:
+        print(f"  Warning: Failed to compile {func}: {e}")
+        return None
+
+
+def extract_base_images(ir_yaml: dict[str, Any]) -> set[str]:
+    """
+    Extract base_image values from a compiled KFP IR YAML.
+
+    The KFP IR YAML structure typically has:
+    - deploymentSpec.executors.<executor_name>.container.image
+
+    Returns a set of unique base image values.
+    """
+    images = set()
+
+    if not ir_yaml:
+        return images
+
+    deployment_spec = ir_yaml.get("deploymentSpec", {})
+    executors = deployment_spec.get("executors", {})
+
+    for executor_name, executor_config in executors.items():
+        container = executor_config.get("container", {})
+        image = container.get("image")
+        if image:
+            images.add(image)
+
+    root = ir_yaml.get("root", {})
+    dag = root.get("dag", {})
+    tasks = dag.get("tasks", {})
+
+    for task_name, task_config in tasks.items():
+        component_ref = task_config.get("componentRef", {})
+        if "image" in component_ref:
+            images.add(component_ref["image"])
+
+    components = ir_yaml.get("components", {})
+    for comp_name, comp_config in components.items():
+        executor_label = comp_config.get("executorLabel")
+        if executor_label and executor_label in executors:
+            container = executors[executor_label].get("container", {})
+            if "image" in container:
+                images.add(container["image"])
+
+    return images
+
+
+def is_valid_base_image(image: str, config: ValidationConfig | None = None) -> bool:
+    """
+    Check if a base image is valid according to configuration.
+
+    Valid base images either:
+    - Start with the configured allowed_prefix (default: 'ghcr.io/kubeflow/')
+    - Are empty/unset (represented as empty string or None)
+    - Are standard Python images (python:<tag>)
+
+    Args:
+        image: The base image string to validate
+        config: Optional ValidationConfig; uses global config if not provided
+
+    Returns:
+        True if the image is valid, False otherwise
+    """
+    if config is None:
+        config = get_config()
+
+    if not image:
+        return True
+    if is_python_image(image):
+        return True
+    return image.startswith(config.allowed_prefix)
+
+
+def validate_base_images(images: set[str], config: ValidationConfig | None = None) -> list[str]:
+    """
+    Validate a set of base images and return invalid ones.
+
+    Args:
+        images: Set of base image strings to validate
+        config: Optional ValidationConfig; uses global config if not provided
+
+    Returns:
+        List of invalid base image strings
+    """
+    if config is None:
+        config = get_config()
+    return [img for img in images if not is_valid_base_image(img, config)]
+
+
+def is_custom_kubeflow_image(image: str, config: ValidationConfig | None = None) -> bool:
+    """
+    Check if an image is a custom Kubeflow image (not a standard Python image).
+
+    Args:
+        image: The base image string to check
+        config: Optional ValidationConfig; uses global config if not provided
+
+    Returns:
+        True if the image is a custom ghcr.io/kubeflow/ image
+    """
+    if config is None:
+        config = get_config()
+
+    if not image:
+        return False
+    if is_python_image(image):
+        return False
+    return image.startswith(config.allowed_prefix)
+
+
+def check_containerfile_exists(asset_path: Path) -> bool:
+    """
+    Check if a Containerfile exists in the asset directory.
+
+    Args:
+        asset_path: Path to the asset file (component.py or pipeline.py)
+
+    Returns:
+        True if a Containerfile exists in the asset directory
+    """
+    asset_dir = asset_path.parent
+    # Also check for Dockerfile for legacy compatibility
+    return (asset_dir / "Containerfile").exists() or (asset_dir / "Dockerfile").exists()
+
+
+def _find_any_decorated_functions(module: Any) -> list[tuple[str, Any]]:
+    """Fallback to find any KFP decorated functions in a module."""
+    functions = []
+    for attr_name in dir(module):
+        if attr_name.startswith("_"):
+            continue
+        attr = getattr(module, attr_name, None)
+        if attr is None or not callable(attr):
+            continue
+        if hasattr(attr, "component_spec") or hasattr(attr, "pipeline_spec"):
+            functions.append((attr_name, attr))
+    return functions
+
+
+def _create_result(asset: dict[str, Any], asset_type: str) -> dict[str, Any]:
+    """Create an initial result dict for an asset."""
+    return {
+        "category": asset["category"],
+        "name": asset["name"],
+        "type": asset_type,
+        "path": str(asset["path"]),
+        "base_images": set(),
+        "invalid_base_images": [],
+        "missing_containerfile": False,
+        "errors": [],
+        "compiled": False,
+    }
+
+
+def process_asset(
+    asset: dict[str, Any],
+    asset_type: str,
+    temp_dir: str,
+    config: ValidationConfig | None = None,
+) -> dict[str, Any]:
+    """
+    Process a single component or pipeline asset.
+
+    Returns a dict with asset info and extracted base images.
+    """
+    if config is None:
+        config = get_config()
+
+    result = _create_result(asset, asset_type)
+    module_name = f"{asset['category']}_{asset['name']}_{asset_type}"
+
+    try:
+        module = load_module_from_path(asset["module_path"], module_name)
+    except Exception as e:
+        result["errors"].append(f"Failed to load module: {e}")
+        return result
+
+    functions = find_decorated_functions(module, asset_type)
+    if not functions:
+        functions = _find_any_decorated_functions(module)
+
+    if not functions:
+        result["errors"].append(f"No @dsl.{asset_type} decorated functions found")
+        return result
+
+    for func_name, func in functions:
+        output_path = os.path.join(temp_dir, f"{module_name}_{func_name}.yaml")
+        ir_yaml = compile_and_get_yaml(func, output_path)
+        if ir_yaml:
+            result["compiled"] = True
+            result["base_images"].update(extract_base_images(ir_yaml))
+
+    result["invalid_base_images"] = validate_base_images(result["base_images"], config)
+
+    # Check for Containerfile only for components (not pipelines) with custom Kubeflow images
+    # Pipelines reference components that have their own Containerfiles
+    if asset_type == "component":
+        has_custom_kubeflow_image = any(
+            is_custom_kubeflow_image(img, config) for img in result["base_images"]
+        )
+        if has_custom_kubeflow_image and not check_containerfile_exists(asset["path"]):
+            result["missing_containerfile"] = True
+
+    return result
+
+
+def _print_result(result: dict[str, Any]) -> None:
+    """Print the processing result for a single asset."""
+    if result["errors"]:
+        for error in result["errors"]:
+            print(f"    Error: {error}")
+    elif result["base_images"]:
+        for image in result["base_images"]:
+            is_invalid = image in result["invalid_base_images"]
+            status = " [INVALID]" if is_invalid else ""
+            print(f"    Base image: {image}{status}")
+        if result["missing_containerfile"]:
+            print("    Warning: Missing Containerfile for custom Kubeflow image")
+    elif result["compiled"]:
+        print("    No custom base image (using default)")
+
+
+def _process_assets(
+    assets: list[dict[str, Any]],
+    asset_type: str,
+    label: str,
+    temp_dir: str,
+    config: ValidationConfig | None = None,
+) -> tuple[list[dict[str, Any]], set[str]]:
+    """Process a batch of assets and return results and base images."""
+    results: list[dict[str, Any]] = []
+    base_images: set[str] = set()
+
+    if not assets:
+        return results, base_images
+
+    print("-" * 70)
+    print(f"Processing {label}")
+    print("-" * 70)
+
+    for asset in assets:
+        print(f"  Processing: {asset['category']}/{asset['name']}")
+        result = process_asset(asset, asset_type, temp_dir, config)
+        results.append(result)
+        base_images.update(result["base_images"])
+        _print_result(result)
+
+    print()
+    return results, base_images
+
+
+def _collect_violations(all_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Collect all base image violations from results."""
+    violations = []
+    for result in all_results:
+        if result["invalid_base_images"]:
+            for image in result["invalid_base_images"]:
+                violations.append({
+                    "path": result["path"],
+                    "category": result["category"],
+                    "name": result["name"],
+                    "type": result["type"],
+                    "image": image,
+                    "violation_type": "invalid_image",
+                })
+        if result["missing_containerfile"]:
+            violations.append({
+                "path": result["path"],
+                "category": result["category"],
+                "name": result["name"],
+                "type": result["type"],
+                "image": None,
+                "violation_type": "missing_containerfile",
+            })
+    return violations
+
+
+def _print_violations(violations: list[dict[str, Any]], config: ValidationConfig) -> None:
+    """Print base image violations."""
+    invalid_image_violations = [v for v in violations if v["violation_type"] == "invalid_image"]
+    missing_containerfile_violations = [v for v in violations if v["violation_type"] == "missing_containerfile"]
+
+    print("=" * 70)
+    print("BASE IMAGE VIOLATIONS")
+    print("=" * 70)
+    print()
+    print(f"Found {len(violations)} violation(s).")
+    print()
+
+    if invalid_image_violations:
+        print(f"Invalid base images ({len(invalid_image_violations)}):")
+        print(f"  Base images must start with '{config.allowed_prefix}' or be unset.")
+        print()
+        print("  To fix this issue, either:")
+        print(f"    1. Use an approved base image (e.g., '{config.allowed_prefix}pipelines-components-<name>:<tag>')")
+        print("    2. Leave base_image unset to use the KFP SDK default image")
+        print()
+
+        for violation in invalid_image_violations:
+            print(f"  {violation['type'].title()}: {violation['category']}/{violation['name']}")
+            print(f"    Path: {violation['path']}")
+            print(f"    Invalid image: {violation['image']}")
+            print()
+
+    if missing_containerfile_violations:
+        print(f"Missing Containerfile ({len(missing_containerfile_violations)}):")
+        print("  Components using custom ghcr.io/kubeflow/ images must include a Containerfile.")
+        print()
+        print("  To fix this issue:")
+        print("    Add a Containerfile to the component directory.")
+        print()
+
+        for violation in missing_containerfile_violations:
+            print(f"  {violation['type'].title()}: {violation['category']}/{violation['name']}")
+            print(f"    Path: {violation['path']}")
+            print()
+
+
+def _print_summary(
+    all_results: list[dict[str, Any]],
+    all_base_images: set[str],
+    config: ValidationConfig,
+) -> int:
+    """Print summary and return exit code."""
+    violations = _collect_violations(all_results)
+
+    if violations:
+        _print_violations(violations, config)
+
+    print("=" * 70)
+    print("Summary")
+    print("=" * 70)
+
+    total_assets = len(all_results)
+    compiled_assets = sum(1 for r in all_results if r["compiled"])
+    failed_assets = sum(1 for r in all_results if r["errors"])
+    assets_with_images = sum(1 for r in all_results if r["base_images"])
+    assets_with_invalid_images = sum(1 for r in all_results if r["invalid_base_images"])
+    assets_missing_containerfile = sum(1 for r in all_results if r["missing_containerfile"])
+
+    print(f"Total assets discovered: {total_assets}")
+    print(f"Successfully compiled: {compiled_assets}")
+    print(f"Failed to process: {failed_assets}")
+    print(f"Assets with custom base images: {assets_with_images}")
+    print(f"Assets with invalid base images: {assets_with_invalid_images}")
+    print(f"Assets missing Containerfile: {assets_missing_containerfile}")
+    print()
+
+    if all_base_images:
+        all_invalid = {v["image"] for v in violations}
+        print("All unique base images found:")
+        for image in sorted(all_base_images):
+            status = " [INVALID]" if image in all_invalid else " [VALID]"
+            print(f"  - {image}{status}")
+    else:
+        print("No custom base images found (all using defaults or no assets discovered)")
+
+    print()
+
+    if total_assets == 0:
+        print("Note: No components or pipelines were discovered.")
+        print("Components should be at: components/<category>/<name>/component.py")
+        print("Pipelines should be at: pipelines/<category>/<name>/pipeline.py")
+        return 0
+
+    if violations:
+        invalid_count = sum(1 for v in violations if v["violation_type"] == "invalid_image")
+        missing_count = sum(1 for v in violations if v["violation_type"] == "missing_containerfile")
+        print(f"FAILED: {len(violations)} violation(s) found.")
+        if invalid_count:
+            print(f"  - {invalid_count} invalid base image(s): must use '{config.allowed_prefix}' registry")
+            print(f"    (e.g., '{config.allowed_prefix}pipelines-components-<name>:<tag>') or leave unset.")
+        if missing_count:
+            print(f"  - {missing_count} missing Containerfile(s): required for custom Kubeflow images.")
+        return 1
+
+    if failed_assets > 0:
+        return 1
+
+    print("SUCCESS: All base images are valid.")
+    return 0
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Validate base images in KFP components and pipelines.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Valid base images are:
+  - python:<tag> (standard Python images)
+  - ghcr.io/kubeflow/* (Kubeflow registry images)
+
+Examples:
+  # Run with default settings
+  %(prog)s
+
+  # Override the allowed prefix
+  %(prog)s --allowed-prefix ghcr.io/myorg/
+        """,
+    )
+
+    parser.add_argument(
+        "--allowed-prefix",
+        type=str,
+        default=ALLOWED_BASE_IMAGE_PREFIX,
+        help=f"Required prefix for custom base images (default: {ALLOWED_BASE_IMAGE_PREFIX})",
+    )
+
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    config = ValidationConfig(allowed_prefix=args.allowed_prefix)
+    set_config(config)
+
+    repo_root = get_repo_root()
+
+    print("=" * 70)
+    print("Kubeflow Pipelines Base Image Validator")
+    print("=" * 70)
+    print()
+    print(f"Allowed prefix: {config.allowed_prefix}")
+    print("Also allowed: python:<tag> images")
+    print()
+
+    components = discover_assets(repo_root / "components", "component")
+    print(f"Discovered {len(components)} component(s)")
+
+    pipelines = discover_assets(repo_root / "pipelines", "pipeline")
+    print(f"Discovered {len(pipelines)} pipeline(s)")
+    print()
+
+    all_results: list[dict[str, Any]] = []
+    all_base_images: set[str] = set()
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        results, images = _process_assets(components, "component", "Components", temp_dir, config)
+        all_results.extend(results)
+        all_base_images.update(images)
+
+        results, images = _process_assets(pipelines, "pipeline", "Pipelines", temp_dir, config)
+        all_results.extend(results)
+        all_base_images.update(images)
+
+    return _print_summary(all_results, all_base_images, config)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
