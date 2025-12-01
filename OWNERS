@@ -5,15 +5,5 @@
 # Approvers are responsible for approving code changes
 # These are the KFP maintainers who have write access
 approvers:
-  - chensun
-  - droctothorpe
   - HumairAK
-  - james-jwu
   - mprahl
-  - zazulam
-
-# Reviewers are responsible for reviewing code changes
-# These include both maintainers and additional reviewers
-reviewers:
-  - chensun
-  - HumairAK
