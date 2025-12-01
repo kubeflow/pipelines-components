@@ -1,0 +1,14 @@
+# {{ category_name }} {{ type_name }}
+
+This directory contains {{ type_name | lower }} in the **{{ category_name }}** category.
+
+## {{ type_name }}
+
+{% for item in items %}
+### {{ item.name }}
+
+{{ item.overview }}
+
+[View Details]({{ item.link }})
+
+{% endfor %}
