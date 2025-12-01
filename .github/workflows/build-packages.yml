@@ -25,23 +25,10 @@ jobs:
         with:
           fetch-depth: 0  # Needed for proper versioning
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - name: Setup Python CI
+        uses: ./.github/actions/setup-python-ci
         with:
           python-version: ${{ matrix.python-version }}
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: true
-          cache-dependency-glob: |
-            pyproject.toml
-            third_party/pyproject.toml
-
-      - name: Display uv version
-        run: |
-          uv --version
-          echo "Python version: $(python --version)"
 
       - name: Build Core Package
         run: |
@@ -63,14 +50,14 @@ jobs:
         run: |
           echo "Validating core package wheel contents..."
           for wheel in dist/*.whl; do
-            python .github/scripts/validate_wheel.py "$wheel" --type core
+            python .github/scripts/validate_wheel/validate_wheel.py "$wheel" --type core
           done
 
       - name: Validate Wheel Contents - Third-Party
         run: |
           echo "Validating third-party package wheel contents..."
           for wheel in dist-third-party/*.whl; do
-            python .github/scripts/validate_wheel.py "$wheel" --type third-party
+            python .github/scripts/validate_wheel/validate_wheel.py "$wheel" --type third-party
           done
 
       - name: Create test environment
@@ -84,7 +71,7 @@ jobs:
           uv pip install --python test-env dist/*.whl
           
           echo "Testing core package imports..."
-          test-env/bin/python .github/scripts/test_package_imports.py --type core
+          test-env/bin/python .github/scripts/package_imports/package_imports.py --type core
 
       - name: Test Third-Party Package Installation and Imports
         run: |
@@ -95,7 +82,7 @@ jobs:
           uv pip install --python test-env-third-party dist-third-party/*.whl
           
           echo "Testing third-party package imports..."
-          test-env-third-party/bin/python .github/scripts/test_package_imports.py --type third-party
+          test-env-third-party/bin/python .github/scripts/package_imports/package_imports.py --type third-party
 
       - name: Validate Package Metadata
         run: |
@@ -104,13 +91,13 @@ jobs:
           # Validate core package
           for wheel in dist/*.whl; do
             echo "Validating core package metadata: $wheel"
-            python .github/scripts/validate_wheel.py "$wheel" --type core
+            python .github/scripts/validate_wheel/validate_wheel.py "$wheel" --type core
           done
           
           # Validate third-party package
           for wheel in dist-third-party/*.whl; do
             echo "Validating third-party package metadata: $wheel"
-            python .github/scripts/validate_wheel.py "$wheel" --type third-party
+            python .github/scripts/validate_wheel/validate_wheel.py "$wheel" --type third-party
           done
 
       - name: Upload Core Package Artifacts

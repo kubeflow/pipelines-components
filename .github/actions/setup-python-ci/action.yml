@@ -1,0 +1,31 @@
+name: 'Setup Python CI'
+description: 'Sets up Python and uv package manager with dependencies'
+
+inputs:
+  python-version:
+    description: 'Python version to use'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        enable-cache: true
+
+    - name: Display versions
+      shell: bash
+      run: |
+        uv --version
+        echo "Python version: $(python --version)"
+
+    - name: Install dependencies from lock file
+      shell: bash
+      run: uv sync --extra ci
+
