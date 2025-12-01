@@ -1,0 +1,45 @@
+name: Scripts Unit Tests
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/scripts/**'
+      - '.github/workflows/scripts-tests.yml'
+      - '.github/actions/setup-python-ci/**'
+      - 'pyproject.toml'
+
+jobs:
+  test-scripts:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.13"]
+
+    name: Test Scripts (Python ${{ matrix.python-version }})
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python CI
+        uses: ./.github/actions/setup-python-ci
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # TODO: Remove this check step when the first test is added
+      - name: Check for tests
+        id: check-tests
+        working-directory: .github/scripts
+        run: echo "has_tests=$(ls -d */tests/ 2>/dev/null | grep -q . && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      - name: Run tests
+        if: steps.check-tests.outputs.has_tests == 'true'
+        working-directory: .github/scripts
+        run: uv run pytest */tests/ --ignore-glob='**/fixtures/**' -v --tb=short
