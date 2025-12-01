@@ -57,5 +57,109 @@ jobs:
       - name: Validate READMEs
         if: steps.find-targets.outputs.targets != ''
         run: |
-          ./.github/scripts/validate_readmes/test-readme-check.sh --ci \
-            ${{ steps.find-targets.outputs.targets }}
+          ./.github/scripts/validate_readmes/test-readme-check.sh --ci ${{ steps.find-targets.outputs.targets }}
+      
+      - name: Validate Category Indexes
+        if: steps.check-skip.outputs.skip != 'true' && steps.find-targets.outputs.targets != ''
+        run: |
+          set -e
+          
+          echo "=================================================="
+          echo "Validating category index READMEs..."
+          echo "=================================================="
+          
+          # Extract unique categories from the target directories
+          categories=""
+          for target_dir in ${{ steps.find-targets.outputs.targets }}; do
+            # Extract category directory (parent of component/pipeline dir)
+            category_dir=$(dirname "$target_dir")
+            
+            # Skip if at root level (components/, pipelines/, third_party/)
+            if [[ "$category_dir" == "components" ]] || \
+               [[ "$category_dir" == "pipelines" ]] || \
+               [[ "$category_dir" == "third_party" ]] || \
+               [[ "$category_dir" == "third_party/components" ]] || \
+               [[ "$category_dir" == "third_party/pipelines" ]]; then
+              continue
+            fi
+            
+            # Add to categories list if not already present
+            if [[ ! " $categories " =~ " $category_dir " ]]; then
+              categories="$categories $category_dir"
+            fi
+          done
+          
+          if [ -z "$categories" ]; then
+            echo "No categories to validate"
+            exit 0
+          fi
+          
+          echo "Categories to validate:"
+          for cat in $categories; do
+            echo "  - $cat"
+          done
+          echo ""
+          
+          # Regenerate each category index
+          for category_dir in $categories; do
+            echo "Regenerating index for $category_dir..."
+            
+            # Determine if this is a component or pipeline category
+            if [[ "$category_dir" == components/* ]] || [[ "$category_dir" == third_party/components/* ]]; then
+              category_type="components"
+            else
+              category_type="pipelines"
+            fi
+            
+            # Generate category index using Python script
+            uv run python -c "
+from pathlib import Path
+from scripts.generate_readme.category_index_generator import CategoryIndexGenerator
+
+category_dir = Path('$category_dir')
+is_component = '$category_type' == 'components'
+generator = CategoryIndexGenerator(category_dir, is_component)
+generator.write()
+"
+          done
+          
+          # Check for uncommitted changes to category READMEs
+          echo ""
+          echo "Checking for uncommitted category README changes..."
+          
+          changed_category_readmes=""
+          for category_dir in $categories; do
+            category_readme="$category_dir/README.md"
+            if [ -f "$category_readme" ]; then
+              if ! git diff --quiet "$category_readme"; then
+                changed_category_readmes="$changed_category_readmes $category_readme"
+              fi
+            fi
+          done
+          
+          if [ -n "$changed_category_readmes" ]; then
+            echo "=================================================="
+            echo "❌ Category index READMEs are out of sync!"
+            echo "=================================================="
+            echo "The following category READMEs need to be updated:"
+            for readme in $changed_category_readmes; do
+              echo "  - $readme"
+            done
+            echo ""
+            echo "Run the following command to update them:"
+            echo "  python -m scripts.generate_readme --component <component-dir> --overwrite"
+            echo "  (or --pipeline <pipeline-dir> for pipelines)"
+            echo ""
+            echo "The category indexes are automatically updated when generating individual READMEs."
+            echo "=================================================="
+            exit 1
+          fi
+          
+          echo "✅ All category index READMEs are up-to-date!"
+      
+      - name: Summary
+        if: steps.check-skip.outputs.skip != 'true' && steps.find-targets.outputs.targets != ''
+        run: |
+          echo "=================================================="
+          echo "✅ All README files are up-to-date!"
+          echo "=================================================="

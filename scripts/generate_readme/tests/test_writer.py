@@ -229,6 +229,81 @@ def my_pipeline():
 
         readme_file = component_dir / "README.md"
         content = readme_file.read_text()
+        
+        # Now code blocks should be present
+        assert '```' in content  # Has code blocks
+        assert '## Usage Examples' in content
+        assert 'from kfp import dsl' in content
+    
+    def test_generate_creates_category_index(self, tmp_path, sample_component_file, sample_component_metadata):
+        """Test that generate() also creates the category index."""
+        # Create a component in a category structure
+        category_dir = tmp_path / "components" / "dev"
+        component_dir = category_dir / "test_component"
+        component_dir.mkdir(parents=True)
+        
+        # Write component files
+        (component_dir / "component.py").write_text(sample_component_file)
+        (component_dir / "metadata.yaml").write_text(sample_component_metadata)
+        
+        # Generate README
+        writer = ReadmeWriter(component_dir=component_dir, overwrite=True)
+        writer.generate()
+        
+        # Check that category index was created
+        category_readme = category_dir / "README.md"
+        assert category_readme.exists()
+        
+        content = category_readme.read_text()
+        assert '# Dev Components' in content
+        assert 'sample_component' in content
+    
+    def test_generate_updates_existing_category_index(self, tmp_path, sample_component_file, sample_component_metadata):
+        """Test that generate() overwrites existing category index."""
+        # Create a component in a category structure
+        category_dir = tmp_path / "components" / "dev"
+        component_dir = category_dir / "test_component"
+        component_dir.mkdir(parents=True)
+        
+        # Write component files
+        (component_dir / "component.py").write_text(sample_component_file)
+        (component_dir / "metadata.yaml").write_text(sample_component_metadata)
+        
+        # Create existing category index
+        category_readme = category_dir / "README.md"
+        category_readme.write_text("Old category index")
+        
+        # Generate README
+        writer = ReadmeWriter(component_dir=component_dir, overwrite=True)
+        writer.generate()
+        
+        # Check that category index was overwritten
+        content = category_readme.read_text()
+        assert 'Old category index' not in content
+        assert '# Dev Components' in content
+    
+    def test_generate_creates_category_index_for_pipelines(self, tmp_path, sample_pipeline_file, sample_pipeline_metadata):
+        """Test that generate() creates category index for pipelines too."""
+        # Create a pipeline in a category structure
+        category_dir = tmp_path / "pipelines" / "training"
+        pipeline_dir = category_dir / "test_pipeline"
+        pipeline_dir.mkdir(parents=True)
+        
+        # Write pipeline files
+        (pipeline_dir / "pipeline.py").write_text(sample_pipeline_file)
+        (pipeline_dir / "metadata.yaml").write_text(sample_pipeline_metadata)
+        
+        # Generate README
+        writer = ReadmeWriter(pipeline_dir=pipeline_dir, overwrite=True)
+        writer.generate()
+        
+        # Check that category index was created
+        category_readme = category_dir / "README.md"
+        assert category_readme.exists()
+        
+        content = category_readme.read_text()
+        assert '# Training Pipelines' in content
+        assert 'sample-pipeline' in content
 
         # Now code blocks should be present
         assert "```" in content  # Has code blocks

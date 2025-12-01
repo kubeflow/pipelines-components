@@ -74,3 +74,48 @@ def sample_extracted_metadata():
         },
         "returns": {"type": "str", "description": "Status message indicating completion."},
     }
+
+
+@pytest.fixture
+def sample_component_file():
+    """Sample component file for category index testing."""
+    return '''from kfp import dsl
+
+@dsl.component
+def hello_world(name: str) -> str:
+    """Simple greeting component that says hello.
+    
+    This is a longer description that should not appear in the index.
+    
+    Args:
+        name: Name to greet.
+        
+    Returns:
+        Greeting message.
+    """
+    return f"Hello {name}!"
+'''
+
+
+@pytest.fixture
+def sample_pipeline_file():
+    """Sample pipeline file for category index testing."""
+    return '''from kfp import dsl
+
+@dsl.component
+def dummy_component(text: str) -> str:
+    """Dummy component for testing."""
+    return text
+
+@dsl.pipeline
+def hello_pipeline(greeting: str):
+    """Simple hello world pipeline that demonstrates basic structure.
+    
+    This is additional information about the pipeline.
+    
+    Args:
+        greeting: Greeting message to use.
+    """
+    dummy_component(text=greeting)
+'''
+
