@@ -8,6 +8,7 @@ from typing import Optional
 from .constants import CUSTOM_CONTENT_MARKER
 from .content_generator import ReadmeContentGenerator
 from .metadata_parser import MetadataParser
+from .category_index_generator import CategoryIndexGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,9 @@ class ReadmeWriter:
             self.source_dir = pipeline_dir
             self.source_file = pipeline_dir / 'pipeline.py'
             self.function_type = 'pipeline'
+        
+        self.category_dir = self.source_dir.parent
+        self.category_index_file = self.category_dir / 'README.md'
 
         self.parser = MetadataParser(self.source_file, self.function_type)
         self.metadata_file = self.source_dir / 'metadata.yaml'
@@ -68,6 +72,23 @@ class ReadmeWriter:
         except Exception as e:
             logger.warning(f"Error reading existing README for custom content: {e}")
             return None
+    
+    def _write_category_index(self, category_content: str) -> None:
+        """Write the category-level README index.
+        
+        Args:
+            category_content: The generated category index content to write.
+        """
+        try:
+            with open(self.category_index_file, 'w', encoding='utf-8') as f:
+                f.write(category_content)
+            
+            logger.info(f"Category index generated at {self.category_index_file}")
+            
+        except Exception as e:
+            logger.warning(f"Could not write category index: {e}")
+    
+  
 
     def _write_readme_file(self, readme_content: str) -> None:
         """Write the README content to the README.md file.
@@ -140,3 +161,9 @@ class ReadmeWriter:
         logger.debug(f"Target decorated function name: {metadata.get('name', 'Unknown')}")
         logger.debug(f"Parameters: {len(metadata.get('parameters', {}))}")
         logger.debug(f"Has return type: {'Yes' if metadata.get('returns') else 'No'}")
+       
+        # Write category index
+        index_generator = CategoryIndexGenerator(self.category_dir, self.is_component)
+        index_content = index_generator.generate()
+        self._write_category_index(index_content)
+        
