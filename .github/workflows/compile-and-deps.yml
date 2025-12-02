@@ -1,0 +1,41 @@
+name: Compile and Validate Components
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  compile-check:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            third_party/pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          uv pip install --system . pytest packaging pyyaml
+
+      - name: Run compile check
+        run: |
+          python scripts/compile_check.py --tier all
+
+      - name: Run unit tests
+        run: |
+          python -m pytest scripts/test_compile_check.py
+
