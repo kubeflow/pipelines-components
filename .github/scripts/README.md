@@ -39,10 +39,10 @@ This directory contains scripts used in CI workflows.
    .github/scripts/my_script/tests/test_my_script.py
    ```
 
-4. If your tests need fixtures (test data/mocks), add them in a `fixtures/` subdirectory:
+4. If your tests need resources (test data/mocks), add them in a `resources/` subdirectory:
 
    ```text
-   .github/scripts/my_script/tests/fixtures/
+   .github/scripts/my_script/tests/resources/
    ```
 
 5. If your script needs its own workflow, create one in `.github/workflows/` that runs the script directly.
@@ -60,5 +60,5 @@ uv run pytest */tests/ -v --tb=short
 
 - **Scripts** live at `<script_name>/<script_name>.py`
 - **Unit tests** live at `<script_name>/tests/test_*.py`
-- `fixtures/` directories contain test data/mocks
+- `resources/` directories contain test data/mocks
 - Only files in `*/tests/` directories are run by `scripts-tests.yml`
