@@ -53,12 +53,12 @@ Unit tests are discovered from `*/tests/` directories only:
 
 ```bash
 cd .github/scripts
-uv run pytest */tests/ --ignore-glob='**/fixtures/**' -v --tb=short
+uv run pytest */tests/ -v --tb=short
 ```
 
 ## Conventions
 
 - **Scripts** live at `<script_name>/<script_name>.py`
 - **Unit tests** live at `<script_name>/tests/test_*.py`
-- `fixtures/` directories are excluded from test collection (use them for test data/mocks)
+- `fixtures/` directories contain test data/mocks
 - Only files in `*/tests/` directories are run by `scripts-tests.yml`

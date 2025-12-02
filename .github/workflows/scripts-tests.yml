@@ -42,4 +42,4 @@ jobs:
       - name: Run tests
         if: steps.check-tests.outputs.has_tests == 'true'
         working-directory: .github/scripts
-        run: uv run pytest */tests/ --ignore-glob='**/fixtures/**' -v --tb=short
+        run: uv run pytest */tests/ -v --tb=short
