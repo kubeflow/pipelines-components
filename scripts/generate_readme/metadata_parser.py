@@ -1,10 +1,13 @@
-"""Metadata parsers for KFP components and pipelines."""
+"""Metadata parsers for KFP components and pipelines.
+
+This module uses AST (Abstract Syntax Tree) parsing to extract metadata from
+Python source files WITHOUT executing them. This is important for security
+since we don't want to run arbitrary user-provided code.
+"""
 
 import ast
-import importlib.util
-import inspect
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 from abc import ABC, abstractmethod
 
 from docstring_parser import parse as parse_docstring
@@ -13,7 +16,10 @@ from .constants import logger
 
 
 class MetadataParser(ABC):
-    """Base class for parsing KFP function metadata with shared utilities."""
+    """Base class for parsing KFP function metadata with shared utilities.
+    
+    Uses AST parsing to safely extract metadata without executing code.
+    """
 
     def __init__(self, file_path: Path):
         """Initialize the parser with a file path.
@@ -22,6 +28,20 @@ class MetadataParser(ABC):
             file_path: Path to the Python file containing the function.
         """
         self.file_path = file_path
+        self._source: Optional[str] = None
+        self._tree: Optional[ast.AST] = None
+    
+    def _get_ast_tree(self) -> ast.AST:
+        """Get the parsed AST tree, caching for reuse.
+        
+        Returns:
+            The parsed AST tree.
+        """
+        if self._tree is None:
+            with open(self.file_path, 'r', encoding='utf-8') as f:
+                self._source = f.read()
+            self._tree = ast.parse(self._source)
+        return self._tree
     
     def _parse_google_docstring(self, docstring: str) -> Dict[str, Any]:
         """Parse Google-style docstring to extract Args and Returns sections.
@@ -58,25 +78,38 @@ class MetadataParser(ABC):
             'returns_description': returns_description
         }
     
-    def _get_type_string(self, annotation: Any) -> str:
-        """Convert type annotation to string representation.
+    def _annotation_to_string(self, node: Optional[ast.AST]) -> str:
+        """Convert an AST type annotation to string.
         
         Args:
-            annotation: The type annotation object.
+            node: AST node representing a type annotation.
             
         Returns:
-            String representation of the type.
+            String representation of the type, or 'Any' if None.
         """
-        if annotation == inspect.Parameter.empty or annotation == inspect.Signature.empty:
+        if node is None:
             return 'Any'
+        return ast.unparse(node)
+    
+    def _default_to_value(self, node: Optional[ast.AST]) -> Any:
+        """Convert an AST default value to a Python value.
         
-        # For simple types (classes without generic parameters), use __name__ directly
-        if hasattr(annotation, '__name__') and not hasattr(annotation, '__origin__'):
-            return annotation.__name__
+        Args:
+            node: AST node representing a default value.
+            
+        Returns:
+            The Python value for simple literals, string for complex expressions,
+            or None if no default.
+        """
+        if node is None:
+            return None
         
-        # For generic types (List[str], Dict[str, int], etc.), use string representation
-        # and clean up the typing module prefix
-        return str(annotation).replace('typing.', '')
+        # For constants (int, float, str, bool, None), return the actual value
+        if isinstance(node, ast.Constant):
+            return node.value
+        
+        # For everything else, return the source code string
+        return ast.unparse(node)
     
     def _extract_decorator_name(self, decorator: ast.AST) -> Optional[str]:
         """Extract the 'name' parameter from a decorator if present.
@@ -96,6 +129,21 @@ class MetadataParser(ABC):
                     if isinstance(keyword.value, ast.Constant):
                         return keyword.value.value
         return None
+
+    def _find_function_node(self, function_name: str) -> Optional[Union[ast.FunctionDef, ast.AsyncFunctionDef]]:
+        """Find the AST node for a function by name.
+        
+        Args:
+            function_name: Name of the function to find.
+            
+        Returns:
+            The AST FunctionDef or AsyncFunctionDef node, or None if not found.
+        """
+        tree = self._get_ast_tree()
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == function_name:
+                return node
+        return None
     
     def _get_name_from_decorator_if_exists(self, function_name: str) -> Optional[str]:
         """Get the decorator's name parameter for a specific function.
@@ -107,84 +155,93 @@ class MetadataParser(ABC):
             The name parameter from the decorator if found, None otherwise.
         """
         try:
-            with open(self.file_path, 'r', encoding='utf-8') as f:
-                source = f.read()
+            func_node = self._find_function_node(function_name)
+            if func_node is None:
+                return None
             
-            tree = ast.parse(source)
-            
-            for node in ast.walk(tree):
-                if isinstance(node, ast.FunctionDef) and node.name == function_name:
-                    # Check decorators for name parameter
-                    for decorator in node.decorator_list:
-                        decorator_name = self._extract_decorator_name(decorator)
-                        if decorator_name:
-                            return decorator_name
+            # Check decorators for name parameter
+            for decorator in func_node.decorator_list:
+                decorator_name = self._extract_decorator_name(decorator)
+                if decorator_name:
+                    return decorator_name
             
             return None
         except Exception as e:
             logger.debug(f"Could not extract decorator name from AST: {e}")
             return None
     
-    def _extract_function_metadata(self, function_name: str, module_name: str = "module") -> Dict[str, Any]:
-        """Extract metadata from a KFP function (component or pipeline).
+    def _extract_function_metadata(self, function_name: str) -> Dict[str, Any]:
+        """Extract metadata from a KFP function using AST parsing.
+        
+        This method uses AST parsing to safely extract metadata WITHOUT
+        executing any code from the source file. This is important for
+        security when processing user-provided files.
         
         Args:
             function_name: Name of the function to introspect.
-            module_name: Name to use for the module during import.
             
         Returns:
             Dictionary containing extracted metadata.
         """
         try:
-            # Import the module to get the actual function object
-            spec = importlib.util.spec_from_file_location(module_name, self.file_path)
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            
-            func_obj = getattr(module, function_name)
-            
-            # KFP decorators wrap functions; access the underlying function
-            # Components use 'python_func', pipelines use 'pipeline_func'
-            if hasattr(func_obj, 'python_func'):
-                func = func_obj.python_func
-            elif hasattr(func_obj, 'pipeline_func'):
-                func = func_obj.pipeline_func
-            else:
-                # Fallback to the object itself if neither attribute is available
-                func = func_obj
+            func_node = self._find_function_node(function_name)
+            if func_node is None:
+                logger.error(f"Function {function_name} not found in {self.file_path}")
+                return {}
             
             # Try to get name from decorator, fall back to function name
             decorator_name = self._get_name_from_decorator_if_exists(function_name)
             component_name = decorator_name if decorator_name else function_name
             
+            # Extract docstring using ast.get_docstring
+            docstring = ast.get_docstring(func_node) or ''
+            
+            # Parse docstring for Args and Returns sections
+            docstring_info = self._parse_google_docstring(docstring)
+            
             # Extract basic function information
             metadata = {
                 'name': component_name,
-                'docstring': inspect.getdoc(func) or '',
-                'signature': inspect.signature(func),
+                'docstring': docstring,
                 'parameters': {},
                 'returns': {}
             }
-            
-            # Parse docstring for Args and Returns sections
-            docstring_info = self._parse_google_docstring(metadata['docstring'])
             metadata.update(docstring_info)
             
-            # Extract parameter information
-            for param_name, param in metadata['signature'].parameters.items():
-                param_info = {
-                    'name': param_name,
-                    'type': self._get_type_string(param.annotation),
-                    'default': param.default if param.default != inspect.Parameter.empty else None,
-                    'description': metadata.get('args', {}).get(param_name, '')
+            # Extract parameter information from AST
+            args_node = func_node.args
+            
+            # Process regular positional/keyword arguments
+            # Defaults are aligned to the END of the args list
+            num_defaults = len(args_node.defaults)
+            num_args = len(args_node.args)
+            for i, arg in enumerate(args_node.args):
+                default_node = None
+                if i >= num_args - num_defaults:
+                    # This arg has a default
+                    default_idx = i - (num_args - num_defaults)
+                    default_node = args_node.defaults[default_idx]
+                
+                metadata['parameters'][arg.arg] = {
+                    'name': arg.arg,
+                    'type': self._annotation_to_string(arg.annotation),
+                    'default': self._default_to_value(default_node),
+                    'description': metadata.get('args', {}).get(arg.arg, '')
                 }
-                metadata['parameters'][param_name] = param_info
+            
+            # Process keyword-only arguments
+            for arg, default_node in zip(args_node.kwonlyargs, args_node.kw_defaults):
+                metadata['parameters'][arg.arg] = {
+                    'name': arg.arg,
+                    'type': self._annotation_to_string(arg.annotation),
+                    'default': self._default_to_value(default_node),
+                    'description': metadata.get('args', {}).get(arg.arg, '')
+                }
             
             # Extract return type information
-            return_annotation = metadata['signature'].return_annotation
-            if return_annotation != inspect.Signature.empty:
+            if func_node.returns is not None:
                 metadata['returns'] = {
-                    'type': self._get_type_string(return_annotation),
+                    'type': self._annotation_to_string(func_node.returns),
                     'description': metadata.get('returns_description', '')
                 }
             
@@ -231,17 +288,16 @@ class MetadataParser(ABC):
             return decorator.id == decoration_type
         return False
 
-    @abstractmethod
     def extract_metadata(self, function_name: str) -> Dict[str, Any]:
-        """Extract metadata from the function.
+        """Extract metadata from the component function.
         
         Args:
-            function_name: Name of the function to introspect.
+            function_name: Name of the component function to introspect.
             
         Returns:
             Dictionary containing extracted metadata.
         """
-        raise NotImplementedError("Subclasses must implement this method")
+        return self._extract_function_metadata(function_name)
 
     @abstractmethod
     def find_function(self) -> Optional[str]:
@@ -263,13 +319,10 @@ class ComponentMetadataParser(MetadataParser):
             The name of the component function, or None if not found.
         """
         try:
-            with open(self.file_path, 'r', encoding='utf-8') as f:
-                source = f.read()
-            
-            tree = ast.parse(source)
+            tree = self._get_ast_tree()
             
             for node in ast.walk(tree):
-                if isinstance(node, ast.FunctionDef):
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     # Check if function has @dsl.component decorator
                     for decorator in node.decorator_list:
                         if self._is_component_decorator(decorator):
@@ -298,18 +351,6 @@ class ComponentMetadataParser(MetadataParser):
         return self._is_decorated_with(decorator, 'component')
 
         
-    def extract_metadata(self, function_name: str) -> Dict[str, Any]:
-        """Extract metadata from the component function.
-        
-        Args:
-            function_name: Name of the component function to introspect.
-            
-        Returns:
-            Dictionary containing extracted metadata.
-        """
-        return self._extract_function_metadata(function_name, "component_module")
-
-
 class PipelineMetadataParser(MetadataParser):
     """Introspects KFP pipeline functions to extract documentation metadata."""
     
@@ -320,10 +361,7 @@ class PipelineMetadataParser(MetadataParser):
             The name of the pipeline function, or None if not found.
         """
         try:
-            with open(self.file_path, 'r', encoding='utf-8') as f:
-                source = f.read()
-            
-            tree = ast.parse(source)
+            tree = self._get_ast_tree()
             
             for node in ast.walk(tree):
                 if isinstance(node, ast.FunctionDef):
@@ -354,14 +392,5 @@ class PipelineMetadataParser(MetadataParser):
         """
         return self._is_decorated_with(decorator, 'pipeline')
     
-    def extract_metadata(self, function_name: str) -> Dict[str, Any]:
-        """Extract metadata from the pipeline function.
-        
-        Args:
-            function_name: Name of the pipeline function to introspect.
-            
-        Returns:
-            Dictionary containing extracted metadata.
-        """
-        return self._extract_function_metadata(function_name, "pipeline_module")
+
 

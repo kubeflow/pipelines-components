@@ -13,11 +13,12 @@ import pytest
 
 
 class TestMetadataParser:
-    """Tests for the MetadataParser base class."""
+    """Tests for the MetadataParser base class methods via concrete subclass."""
     
     def test_parse_google_docstring_with_args_and_returns(self):
         """Test parsing a complete Google-style docstring."""
-        parser = MetadataParser(Path("dummy.py"))
+        # Use ComponentMetadataParser as MetadataParser is abstract
+        parser = ComponentMetadataParser(Path("dummy.py"))
         docstring = """A sample function.
         
         This does something useful.
@@ -41,7 +42,7 @@ class TestMetadataParser:
     
     def test_parse_google_docstring_empty(self):
         """Test parsing an empty docstring."""
-        parser = MetadataParser(Path("dummy.py"))
+        parser = ComponentMetadataParser(Path("dummy.py"))
         result = parser._parse_google_docstring("")
         
         assert result['overview'] == ''
@@ -50,7 +51,7 @@ class TestMetadataParser:
     
     def test_parse_google_docstring_multiline_arg_description(self):
         """Test parsing arguments with multi-line descriptions."""
-        parser = MetadataParser(Path("dummy.py"))
+        parser = ComponentMetadataParser(Path("dummy.py"))
         docstring = """Sample function.
         
         Args:
@@ -64,34 +65,45 @@ class TestMetadataParser:
         assert 'multiple lines' in result['args']['long_param']
         assert 'concatenated together' in result['args']['long_param']
     
-    def test_get_type_string_basic_types(self):
-        """Test type string conversion for basic types."""
-        parser = MetadataParser(Path("dummy.py"))
+    def test_annotation_to_string_basic(self):
+        """Test _annotation_to_string for basic type annotations."""
+        parser = ComponentMetadataParser(Path("dummy.py"))
         
-        assert parser._get_type_string(str) == 'str'
-        assert parser._get_type_string(int) == 'int'
-        assert parser._get_type_string(bool) == 'bool'
-        assert parser._get_type_string(float) == 'float'
+        # Test simple Name nodes
+        assert parser._annotation_to_string(ast.Name(id='str')) == 'str'
+        assert parser._annotation_to_string(ast.Name(id='int')) == 'int'
+        
+        # Test None returns 'Any'
+        assert parser._annotation_to_string(None) == 'Any'
     
-    def test_get_type_string_optional(self):
-        """Test type string conversion for Optional types."""
-        from typing import Optional
+    def test_annotation_to_string_complex(self):
+        """Test _annotation_to_string for complex type annotations."""
+        parser = ComponentMetadataParser(Path("dummy.py"))
         
-        parser = MetadataParser(Path("dummy.py"))
-        result = parser._get_type_string(Optional[str])
+        # Parse actual Python code to get real AST nodes
+        code = "def f(x: Optional[str], y: List[int], z: Dict[str, int]): pass"
+        tree = ast.parse(code)
+        func = tree.body[0]
         
-        # Should contain Optional (or Union with None in some Python versions)
-        assert 'Optional' in result or ('Union' in result and 'None' in result)
+        # Extract annotations from parsed function
+        annotations = [arg.annotation for arg in func.args.args]
+        
+        assert parser._annotation_to_string(annotations[0]) == 'Optional[str]'
+        assert parser._annotation_to_string(annotations[1]) == 'List[int]'
+        assert parser._annotation_to_string(annotations[2]) == 'Dict[str, int]'
     
-    def test_get_type_string_list(self):
-        """Test type string conversion for List types."""
-        from typing import List
+    def test_default_to_value_constants(self):
+        """Test _default_to_value returns actual values for constants."""
+        parser = ComponentMetadataParser(Path("dummy.py"))
         
-        parser = MetadataParser(Path("dummy.py"))
-        result = parser._get_type_string(List[str])
+        # Test constants return actual Python values
+        assert parser._default_to_value(ast.Constant(value=10)) == 10
+        assert parser._default_to_value(ast.Constant(value="hello")) == "hello"
+        assert parser._default_to_value(ast.Constant(value=None)) is None
+        assert parser._default_to_value(ast.Constant(value=True)) is True
         
-        # Should contain list (or List) - case insensitive check
-        assert 'list' in result.lower()
+        # Test None (no default) returns None
+        assert parser._default_to_value(None) is None
 
 
 class TestComponentMetadataParser:
