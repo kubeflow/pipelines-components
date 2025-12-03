@@ -433,14 +433,12 @@ links:
             sample_extracted_metadata,
             component_dir
         )
-        
-        formatted = generator._format_metadata()
-        
+
         # Check that keys are formatted
-        assert 'Name' in formatted
-        assert 'Tier' in formatted
+        assert 'Name' in generator.formatted_feature_metadata
+        assert 'Tier' in generator.formatted_feature_metadata
         
         # Check that values are present
-        assert formatted['Name'] == 'sample_component'
-        assert formatted['Tier'] == 'core'
+        assert generator.formatted_feature_metadata['Name'] == 'sample_component'
+        assert generator.formatted_feature_metadata['Tier'] == 'core'
 
