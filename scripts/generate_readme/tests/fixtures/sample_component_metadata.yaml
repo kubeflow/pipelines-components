@@ -1,0 +1,23 @@
+tier: core
+name: sample_component
+stability: stable
+dependencies:
+  kubeflow:
+    - name: Pipelines
+      version: '>=2.5'
+    - name: Trainer
+      version: '>=2.0'
+  external_services:
+    - name: Some External Service
+      version: "1.0"
+tags:
+  - testing
+  - sample
+lastVerified: 2025-11-13T00:00:00Z
+ci:
+  skip_dependency_probe: false
+  pytest: optional
+links:
+  documentation: https://example.com/components/sample-component/
+  issue_tracker: https://github.com/example/repo/issues
+
