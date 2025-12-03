@@ -182,7 +182,8 @@ class ReadmeContentGenerator:
         else:
             return str(value)
     
-    def _format_metadata(self) -> Dict[str, str]:
+    @property
+    def formatted_feature_metadata(self) -> Dict[str, str]:
         """Format the YAML metadata for human-readable display.
         
         Returns:
@@ -245,13 +246,7 @@ class ReadmeContentGenerator:
         
         # Extract links for separate Additional Resources section (removes from feature_metadata)
         links = self.feature_metadata.pop('links', {})
-        
-        # Prepare formatted metadata for human-readable display
-        formatted_metadata = {
-            self._format_key(key): self._format_value(value)
-            for key, value in self.feature_metadata.items()
-        }
-        
+
         return {
             'title': title,
             'overview': overview,
@@ -259,7 +254,7 @@ class ReadmeContentGenerator:
             'returns': returns,
             'component_name': component_name,
             'example_code': example_code,
-            'formatted_metadata': formatted_metadata,
+            'formatted_metadata': self.formatted_feature_metadata,
             'links': links,
         }
 

@@ -250,9 +250,47 @@ links:
         # Check defaults are formatted correctly
         assert context['parameters']['input_path']['default_str'] == 'Required'
         assert context['parameters']['num_iterations']['default_str'] == '`10`'
-    
-    def test_load_example_pipeline(self, component_dir, sample_extracted_metadata):
-        """Test loading example_pipeline.py file."""
+
+    def test_prepare_template_context_none_default(self, component_dir):
+        """Test that parameters with None as default value are correctly distinguished from required params."""
+        metadata_with_none_default = {
+            'name': 'test_component',
+            'overview': 'Test component',
+            'parameters': {
+                'required_param': {
+                    'name': 'required_param',
+                    'type': 'str',
+                    'description': 'A required parameter (no default key)'
+                },
+                'optional_with_none': {
+                    'name': 'optional_with_none',
+                    'type': 'Optional[str]',
+                    'default': None,
+                    'description': 'An optional parameter with None as default'
+                },
+                'optional_with_value': {
+                    'name': 'optional_with_value',
+                    'type': 'str',
+                    'default': 'hello',
+                    'description': 'An optional parameter with a default value'
+                }
+            }
+        }
+
+        generator = ReadmeContentGenerator(metadata_with_none_default, component_dir)
+        context = generator._prepare_template_context()
+
+        # Required param should show "Required"
+        assert context['parameters']['required_param']['default_str'] == 'Required'
+
+        # Optional param with None default should show "`None`"
+        assert context['parameters']['optional_with_none']['default_str'] == '`None`'
+
+        # Optional param with actual value should show that value
+        assert context['parameters']['optional_with_value']['default_str'] == '`hello`'
+
+    def test_load_example_pipelines(self, component_dir, sample_extracted_metadata):
+        """Test loading example_pipelines.py file."""
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
             component_dir
@@ -433,14 +471,12 @@ links:
             sample_extracted_metadata,
             component_dir
         )
-        
-        formatted = generator._format_metadata()
-        
+
         # Check that keys are formatted
-        assert 'Name' in formatted
-        assert 'Tier' in formatted
+        assert 'Name' in generator.formatted_feature_metadata
+        assert 'Tier' in generator.formatted_feature_metadata
         
         # Check that values are present
-        assert formatted['Name'] == 'sample_component'
-        assert formatted['Tier'] == 'core'
+        assert generator.formatted_feature_metadata['Name'] == 'sample_component'
+        assert generator.formatted_feature_metadata['Tier'] == 'core'
 
