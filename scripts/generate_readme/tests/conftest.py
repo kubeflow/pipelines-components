@@ -6,6 +6,66 @@ from pathlib import Path
 import pytest
 
 
+def create_component_dir(
+    parent_dir: Path,
+    name: str,
+    component_code: str,
+    metadata_content: str = None,
+) -> Path:
+    """Helper to create a component directory with files.
+    
+    Args:
+        parent_dir: Parent directory to create the component in.
+        name: Name of the component directory.
+        component_code: Content for component.py.
+        metadata_content: Optional content for metadata.yaml.
+        
+    Returns:
+        Path to the created component directory.
+    """
+    comp_dir = parent_dir / name
+    comp_dir.mkdir(parents=True, exist_ok=True)
+    
+    (comp_dir / "component.py").write_text(component_code)
+    
+    if metadata_content:
+        (comp_dir / "metadata.yaml").write_text(metadata_content)
+    
+    (comp_dir / "__init__.py").write_text("")
+    
+    return comp_dir
+
+
+def create_pipeline_dir(
+    parent_dir: Path,
+    name: str,
+    pipeline_code: str,
+    metadata_content: str = None,
+) -> Path:
+    """Helper to create a pipeline directory with files.
+    
+    Args:
+        parent_dir: Parent directory to create the pipeline in.
+        name: Name of the pipeline directory.
+        pipeline_code: Content for pipeline.py.
+        metadata_content: Optional content for metadata.yaml.
+        
+    Returns:
+        Path to the created pipeline directory.
+    """
+    pipe_dir = parent_dir / name
+    pipe_dir.mkdir(parents=True, exist_ok=True)
+    
+    (pipe_dir / "pipeline.py").write_text(pipeline_code)
+    
+    if metadata_content:
+        (pipe_dir / "metadata.yaml").write_text(metadata_content)
+    
+    (pipe_dir / "__init__.py").write_text("")
+    
+    return pipe_dir
+
+
 @pytest.fixture
 def temp_dir():
     """Create a temporary directory for testing."""
@@ -14,45 +74,97 @@ def temp_dir():
 
 
 @pytest.fixture
-def component_dir(temp_dir):
-    """Create a complete component directory structure."""
-    resources_dir = Path(__file__).parent / "resources"
-    comp_dir = temp_dir / "test_component"
-    comp_dir.mkdir()
-
-    # Write component.py
-    component_code = (resources_dir / "sample_component.py").read_text()
-    (comp_dir / "component.py").write_text(component_code)
-
-    # Write metadata.yaml
-    component_metadata = (resources_dir / "sample_component_metadata.yaml").read_text()
-    (comp_dir / "metadata.yaml").write_text(component_metadata)
-
-    # Write __init__.py
-    (comp_dir / "__init__.py").write_text("")
-
-    return comp_dir
+def sample_component_file():
+    """Sample component file for testing."""
+    fixture_path = Path(__file__).parent / "resources" / "sample_component.py"
+    return fixture_path.read_text()
 
 
 @pytest.fixture
-def pipeline_dir(temp_dir):
+def sample_pipeline_file():
+    """Sample pipeline file for testing."""
+    fixture_path = Path(__file__).parent / "resources" / "sample_pipeline.py"
+    return fixture_path.read_text()
+
+
+@pytest.fixture
+def component_multiline_overview():
+    """Component with multiline overview docstring."""
+    fixture_path = Path(__file__).parent / "resources" / "component_multiline_overview.py"
+    return fixture_path.read_text()
+
+
+@pytest.fixture
+def component_no_docstring():
+    """Component without docstring."""
+    fixture_path = Path(__file__).parent / "resources" / "component_no_docstring.py"
+    return fixture_path.read_text()
+
+
+@pytest.fixture
+def sample_component_metadata():
+    """Sample component metadata.yaml content."""
+    fixture_path = Path(__file__).parent / "resources" / "sample_component_metadata.yaml"
+    return fixture_path.read_text()
+
+
+@pytest.fixture
+def sample_pipeline_metadata():
+    """Sample pipeline metadata.yaml content."""
+    fixture_path = Path(__file__).parent / "resources" / "sample_pipeline_metadata.yaml"
+    return fixture_path.read_text()
+
+
+@pytest.fixture
+def component_dir(temp_dir, sample_component_file, sample_component_metadata):
+    """Create a complete component directory structure."""
+    return create_component_dir(
+        temp_dir,
+        "test_component",
+        sample_component_file,
+        sample_component_metadata
+    )
+
+
+@pytest.fixture
+def pipeline_dir(temp_dir, sample_pipeline_file, sample_pipeline_metadata):
     """Create a complete pipeline directory structure."""
-    resources_dir = Path(__file__).parent / "resources"
-    pipe_dir = temp_dir / "test_pipeline"
-    pipe_dir.mkdir()
+    return create_pipeline_dir(
+        temp_dir,
+        "test_pipeline",
+        sample_pipeline_file,
+        sample_pipeline_metadata
+    )
 
-    # Write pipeline.py
-    pipeline_code = (resources_dir / "sample_pipeline.py").read_text()
-    (pipe_dir / "pipeline.py").write_text(pipeline_code)
 
-    # Write metadata.yaml
-    pipeline_metadata = (resources_dir / "sample_pipeline_metadata.yaml").read_text()
-    (pipe_dir / "metadata.yaml").write_text(pipeline_metadata)
+@pytest.fixture
+def category_with_components(temp_dir, sample_component_file):
+    """Create a category directory with sample components.
+    
+    Returns a tuple of (category_dir, list of component directories).
+    """
+    category_dir = temp_dir / "components" / "dev"
+    category_dir.mkdir(parents=True)
+    
+    comp1_dir = create_component_dir(category_dir, "component1", sample_component_file)
+    comp2_dir = create_component_dir(category_dir, "component2", sample_component_file)
+    
+    return category_dir, [comp1_dir, comp2_dir]
 
-    # Write __init__.py
-    (pipe_dir / "__init__.py").write_text("")
 
-    return pipe_dir
+@pytest.fixture
+def category_with_pipelines(temp_dir, sample_pipeline_file):
+    """Create a category directory with sample pipelines.
+    
+    Returns a tuple of (category_dir, list of pipeline directories).
+    """
+    category_dir = temp_dir / "pipelines" / "training"
+    category_dir.mkdir(parents=True)
+    
+    pipe1_dir = create_pipeline_dir(category_dir, "pipeline1", sample_pipeline_file)
+    pipe2_dir = create_pipeline_dir(category_dir, "pipeline2", sample_pipeline_file)
+    
+    return category_dir, [pipe1_dir, pipe2_dir]
 
 
 @pytest.fixture
@@ -74,48 +186,3 @@ def sample_extracted_metadata():
         },
         "returns": {"type": "str", "description": "Status message indicating completion."},
     }
-
-
-@pytest.fixture
-def sample_component_file():
-    """Sample component file for category index testing."""
-    return '''from kfp import dsl
-
-@dsl.component
-def hello_world(name: str) -> str:
-    """Simple greeting component that says hello.
-    
-    This is a longer description that should not appear in the index.
-    
-    Args:
-        name: Name to greet.
-        
-    Returns:
-        Greeting message.
-    """
-    return f"Hello {name}!"
-'''
-
-
-@pytest.fixture
-def sample_pipeline_file():
-    """Sample pipeline file for category index testing."""
-    return '''from kfp import dsl
-
-@dsl.component
-def dummy_component(text: str) -> str:
-    """Dummy component for testing."""
-    return text
-
-@dsl.pipeline
-def hello_pipeline(greeting: str):
-    """Simple hello world pipeline that demonstrates basic structure.
-    
-    This is additional information about the pipeline.
-    
-    Args:
-        greeting: Greeting message to use.
-    """
-    dummy_component(text=greeting)
-'''
-
