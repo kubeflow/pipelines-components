@@ -58,3 +58,6 @@ packages = [
 
 [tool.setuptools.package-data]
 "*" = ["*.yaml", "*.yml", "*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["scripts/generate_readme/tests"]

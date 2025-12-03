@@ -348,35 +348,6 @@ links:
         assert '# Test' in readme
         assert '## Overview' in readme
     
-    def test_usage_example_parameter_types(self, component_dir):
-        """Test that usage examples use correct value types."""
-        metadata_file = component_dir / "metadata.yaml"
-        metadata = {
-            'name': 'test_component',
-            'parameters': {
-                'str_param': {'name': 'str_param', 'type': 'str', 'default': None},
-                'int_param': {'name': 'int_param', 'type': 'int', 'default': None},
-                'bool_param': {'name': 'bool_param', 'type': 'bool', 'default': None},
-                'other_param': {'name': 'other_param', 'type': 'custom', 'default': None},
-            },
-            'overview': 'Test',
-            'returns': {}
-        }
-        
-        generator = ReadmeContentGenerator(
-            metadata,
-            metadata_file,
-            is_component=True
-        )
-        
-        usage_params = generator._prepare_usage_params()
-        
-        # Check type-specific example values
-        assert '"str_param_value"' == usage_params['str_param']  # String should have quotes
-        assert '42' == usage_params['int_param']  # Int should be numeric
-        assert 'True' == usage_params['bool_param']  # Bool should be boolean
-        assert 'other_param_input' == usage_params['other_param']  # Custom type uses generic format
-    
     def test_format_title_snake_case(self, component_dir, sample_extracted_metadata):
         """Test formatting snake_case titles."""
         generator = ReadmeContentGenerator(

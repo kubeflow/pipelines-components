@@ -183,17 +183,17 @@ class TestParseArguments:
             parse_arguments()
     
     def test_parse_no_arguments(self, monkeypatch):
-        """Test parsing with no arguments (should succeed but validation fails later)."""
+        """Test parsing with no arguments raises error (--component or --pipeline required)."""
         monkeypatch.setattr(
             'sys.argv',
             ['prog']
         )
         
-        # Should parse successfully, but component and pipeline will be None
-        args = parse_arguments()
+        # Should fail because --component or --pipeline is required
+        with pytest.raises(SystemExit) as exc_info:
+            parse_arguments()
         
-        assert args.component is None
-        assert args.pipeline is None
+        assert exc_info.value.code == 2
     
     def test_help_message(self, monkeypatch, capsys):
         """Test that help message can be displayed."""
