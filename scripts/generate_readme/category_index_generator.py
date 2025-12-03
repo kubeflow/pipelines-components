@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
-from .metadata_parser import ComponentMetadataParser, PipelineMetadataParser
+from .metadata_parser import MetadataParser
 
 logger = logging.getLogger(__name__)
 
@@ -97,10 +97,10 @@ class CategoryIndexGenerator:
             # Determine source file and parser
             if self.is_component:
                 source_file = item_dir / 'component.py'
-                parser = ComponentMetadataParser(source_file)
+                parser = MetadataParser(source_file, 'component')
             else:
                 source_file = item_dir / 'pipeline.py'
-                parser = PipelineMetadataParser(source_file)
+                parser = MetadataParser(source_file, 'pipeline')
             
             # Find the function
             function_name = parser.find_function()
