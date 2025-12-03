@@ -5,11 +5,10 @@ to extract function metadata and generate comprehensive README documentation
 """
 
 from .writer import ReadmeWriter
-from .metadata_parser import ComponentMetadataParser, PipelineMetadataParser
+from .metadata_parser import MetadataParser
 
 __all__ = [
     'ReadmeWriter',
-    'ComponentMetadataParser',
-    'PipelineMetadataParser',
+    'MetadataParser',
 ]
 
