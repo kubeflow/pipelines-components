@@ -8,20 +8,19 @@ since we don't want to run arbitrary user-provided code.
 import ast
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
-from abc import ABC, abstractmethod
 
 from docstring_parser import parse as parse_docstring
 
 from .constants import logger
 
 
-class MetadataParser(ABC):
+class MetadataParser:
     """Base class for parsing KFP function metadata with shared utilities.
     
     Uses AST parsing to safely extract metadata without executing code.
     """
 
-    def __init__(self, file_path: Path):
+    def __init__(self, file_path: Path, function_type: str):
         """Initialize the parser with a file path.
         
         Args:
@@ -30,6 +29,7 @@ class MetadataParser(ABC):
         self.file_path = file_path
         self._source: Optional[str] = None
         self._tree: Optional[ast.AST] = None
+        self.function_type = function_type
     
     def _get_ast_tree(self) -> ast.AST:
         """Get the parsed AST tree, caching for reuse.
@@ -251,7 +251,7 @@ class MetadataParser(ABC):
             logger.error(f"Error extracting metadata for function {function_name}: {e}")
             return {}
 
-    def _is_decorated_with(self, decorator: ast.AST, decoration_type: str,) -> bool:
+    def _is_target_decorator(self, decorator: ast.AST) -> bool:
         """Check if a decorator is a KFP component or pipeline decorator.
         
         Supports the following decorator formats (using component as an example):
@@ -262,18 +262,17 @@ class MetadataParser(ABC):
         
         Args:
             decorator: AST node representing the decorator.
-            decoration_type: The type of decoration to check for (e.g. 'component', 'pipeline').
 
         Returns:
             True if the decorator is the given decoration_type, False otherwise.
         """
         if isinstance(decorator, ast.Attribute):
             # Handle attribute-based decorators
-            if decorator.attr == decoration_type:
-                # Check for @dsl.<decoration_type>
+            if decorator.attr == self.function_type:
+                # Check for @dsl.<function_type>
                 if isinstance(decorator.value, ast.Name) and decorator.value.id == 'dsl':
                     return True
-                # Check for @kfp.dsl.<decoration_type>
+                # Check for @kfp.dsl.<function_type>
                 if (isinstance(decorator.value, ast.Attribute) and 
                     decorator.value.attr == 'dsl' and
                     isinstance(decorator.value.value, ast.Name) and
@@ -281,11 +280,11 @@ class MetadataParser(ABC):
                     return True
             return False
         elif isinstance(decorator, ast.Call):
-            # Handle decorators with arguments (e.g., @<decoration_type>(), @dsl.<decoration_type>())
-            return self._is_decorated_with(decorator.func, decoration_type)
+            # Handle decorators with arguments (e.g., @<function_type>(), @dsl.<function_type>())
+            return self._is_target_decorator(decorator.func)
         elif isinstance(decorator, ast.Name):
-            # Handle @<decoration_type> (if imported directly)
-            return decorator.id == decoration_type
+            # Handle @<function_type> (if imported directly)
+            return decorator.id == self.function_type
         return False
 
     def extract_metadata(self, function_name: str) -> Dict[str, Any]:
@@ -299,19 +298,6 @@ class MetadataParser(ABC):
         """
         return self._extract_function_metadata(function_name)
 
-    @abstractmethod
-    def find_function(self) -> Optional[str]:
-        """Find the function decorated with the decorator of the subclass.
-        
-        Returns:
-            The name of the function, or None if not found.
-        """
-        raise NotImplementedError("Subclasses must implement this method")
-
-
-class ComponentMetadataParser(MetadataParser):
-    """Introspects KFP component functions to extract documentation metadata."""
-    
     def find_function(self) -> Optional[str]:
         """Find the function decorated with @dsl.component.
         
@@ -325,72 +311,12 @@ class ComponentMetadataParser(MetadataParser):
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     # Check if function has @dsl.component decorator
                     for decorator in node.decorator_list:
-                        if self._is_component_decorator(decorator):
+                        if self._is_target_decorator(decorator):
                             return node.name
             
             return None
         except Exception as e:
             logger.error(f"Error parsing file {self.file_path}: {e}")
             return None
-    
-    def _is_component_decorator(self, decorator: ast.AST) -> bool:
-        """Check if a decorator is a KFP component decorator.
-        
-        Supports the following decorator formats:
-        - @component (direct import: from kfp.dsl import component)
-        - @dsl.component (from kfp import dsl)
-        - @kfp.dsl.component (import kfp)
-        - All of the above with parentheses: @component(), @dsl.component(), etc.
-        
-        Args:
-            decorator: AST node representing the decorator.
-            
-        Returns:
-            True if the decorator is a KFP component decorator, False otherwise.
-        """
-        return self._is_decorated_with(decorator, 'component')
-
-        
-class PipelineMetadataParser(MetadataParser):
-    """Introspects KFP pipeline functions to extract documentation metadata."""
-    
-    def find_function(self) -> Optional[str]:
-        """Find the function decorated with @dsl.pipeline.
-        
-        Returns:
-            The name of the pipeline function, or None if not found.
-        """
-        try:
-            tree = self._get_ast_tree()
-            
-            for node in ast.walk(tree):
-                if isinstance(node, ast.FunctionDef):
-                    # Check if function has @dsl.pipeline decorator
-                    for decorator in node.decorator_list:
-                        if self._is_pipeline_decorator(decorator):
-                            return node.name
-            
-            return None
-        except Exception as e:
-            logger.error(f"Error parsing file {self.file_path}: {e}")
-            return None
-    
-    def _is_pipeline_decorator(self, decorator: ast.AST) -> bool:
-        """Check if a decorator is a KFP pipeline decorator.
-        
-        Supports the following decorator formats:
-        - @pipeline (direct import: from kfp.dsl import pipeline)
-        - @dsl.pipeline (from kfp import dsl)
-        - @kfp.dsl.pipeline (import kfp)
-        - All of the above with parentheses: @pipeline(), @dsl.pipeline(), etc.
-        
-        Args:
-            decorator: AST node representing the decorator.
-            
-        Returns:
-            True if the decorator is a KFP pipeline decorator, False otherwise.
-        """
-        return self._is_decorated_with(decorator, 'pipeline')
-    
 
 

@@ -7,7 +7,7 @@ from typing import Optional
 
 from .constants import CUSTOM_CONTENT_MARKER, logger
 from .content_generator import ReadmeContentGenerator
-from .metadata_parser import ComponentMetadataParser, PipelineMetadataParser
+from .metadata_parser import MetadataParser
 
 
 class ReadmeWriter:
@@ -37,12 +37,13 @@ class ReadmeWriter:
         if self.is_component:
             self.source_dir = component_dir
             self.source_file = component_dir / 'component.py'
-            self.parser = ComponentMetadataParser(self.source_file)
+            self.function_type = 'component'
         else:
             self.source_dir = pipeline_dir
             self.source_file = pipeline_dir / 'pipeline.py'
-            self.parser = PipelineMetadataParser(self.source_file)
+            self.function_type = 'pipeline'
         
+        self.parser = MetadataParser(self.source_file, self.function_type)
         self.metadata_file = self.source_dir / 'metadata.yaml'
         self.readme_file = output_file if output_file else self.source_dir / "README.md"
         self.verbose = verbose
