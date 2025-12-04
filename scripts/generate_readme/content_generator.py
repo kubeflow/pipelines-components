@@ -1,11 +1,13 @@
 """README content generator for KFP components and pipelines."""
 
+import logging
 import re
 from pathlib import Path
 from typing import Any, Dict
 import yaml
 from jinja2 import Environment, FileSystemLoader
-from .constants import logger
+
+logger = logging.getLogger(__name__)
 
 
 class ReadmeContentGenerator:
