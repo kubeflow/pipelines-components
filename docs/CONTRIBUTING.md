@@ -8,6 +8,7 @@ Welcome! This guide covers everything you need to know to contribute components 
 - [Quick Setup](#quick-setup)
 - [What We Accept](#what-we-accept)
 - [Component Structure](#component-structure)
+- [Naming Conventions](#naming-conventions)
 - [Development Workflow](#development-workflow)
 - [Testing and Quality](#testing-and-quality)
 - [Submitting Your Contribution](#submitting-your-contribution)
@@ -65,11 +66,7 @@ pytest
 ### Building Packages
 
 ```bash
-# Build core package
 uv build
-
-# Build third-party package
-cd third_party && uv build && cd ..
 ```
 
 ### Installing and Testing the Built Package
@@ -82,25 +79,21 @@ uv pip install dist/kfp_components-*.whl
 
 # Test imports work correctly
 python -c "from kubeflow.pipelines.components import components, pipelines; print('Core package imports OK')"
-
-# For third-party package
-uv pip install dist-third-party/kfp_components_third_party-*.whl
-python -c "from kubeflow.pipelines.components.third_party import components, pipelines; print('Third-party package imports OK')"
 ```
 
 ## What We Accept
 
 We welcome contributions of production-ready ML components and re-usable pipelines:
 
-- **Components** are individual ML tasks (data processing, training, evaluation, deployment) with usage examples
+- **Components** are individual ML tasks (data processing, training, evaluation, deployment)
 - **Pipelines** are complete multi-step workflows that can be nested within other pipelines
 - **Bug fixes** improve existing components or fix documentation issues
 
 ## Component Structure
 
-Components must be organized by category under `components/<category>/` (Core tier) or `third_party/components/<category>/` (Third-Party tier).
+Components must be organized by category under `components/<category>/`.
 
-Pipelines must be organized by category under `pipelines/<category>/` (Core tier) or `third_party/pipelines/<category>/` (Third-Party tier).
+Pipelines must be organized by category under `pipelines/<category>/`.
 
 ## Naming Conventions
 
@@ -111,31 +104,32 @@ Pipelines must be organized by category under `pipelines/<category>/` (Core tier
 
 Every component must include these files in its directory:
 
-```
+```text
 components/<category>/<component_name>/
 ├── __init__.py            # Exposes the component function for imports
 ├── component.py           # Main implementation
 ├── metadata.yaml          # Complete specification (see schema below)
 ├── README.md              # Overview, inputs/outputs, usage examples, development instructions
-├── OWNERS                 # Maintainers (at least one Kubeflow SIG owner for Core tier)
-├── Containerfile          # Container definition (required only for Core tier custom images)
-├── example_pipelines.py   # Working usage examples
+├── OWNERS                 # Maintainers (approvers must be Kubeflow community members)
+├── Containerfile          # Container definition (optional; required only when using a custom image)
+├── example_pipelines.py   # Working usage examples (optional)
 └── tests/
-│   └── test_component.py  # Unit tests
+│   └── test_component.py  # Unit tests (optional)
 └── <supporting_files>
 ```
 
 Similarly, every pipeline must include these files:
-```
+
+```text
 pipelines/<category>/<pipeline_name>/
 ├── __init__.py            # Exposes the pipeline function for imports
 ├── pipeline.py            # Main implementation
 ├── metadata.yaml          # Complete specification (see schema below)
 ├── README.md              # Overview, inputs/outputs, usage examples, development instructions
-├── OWNERS                 # Maintainers (at least one Kubeflow SIG owner for Core tier)
-├── example_pipelines.py   # Working usage examples
+├── OWNERS                 # Maintainers (approvers must be Kubeflow community members)
+├── example_pipelines.py   # Working usage examples (optional)
 └── tests/
-│   └── test_pipeline.py  # Unit tests
+│   └── test_pipeline.py  # Unit tests (optional)
 └── <supporting_files>
 ```
 
@@ -145,7 +139,6 @@ Your `metadata.yaml` must include these fields:
 
 ```yaml
 name: my_component
-tier: core  # or 'third_party'
 stability: stable  # 'alpha', 'beta', or 'stable'
 dependencies:
   kubeflow:
@@ -161,7 +154,7 @@ lastVerified: 2025-11-18T00:00:00Z  # Updated annually; components are removed a
 ci:
   compile_check: true  # Validates component compiles with kfp.compiler
   skip_dependency_probe: false   # Optional. Set true only with justification
-  pytest: optional  # Set to 'required' for Core tier
+  pytest: optional
 links:  # Optional, can use custom key-value (not limited to documentation, issue_tracker)
   documentation: https://kubeflow.org/components/my_component
   issue_tracker: https://github.com/kubeflow/pipelines-components/issues
@@ -173,13 +166,14 @@ The OWNERS file enables component owners to self-service maintenance tasks inclu
 
 ```yaml
 approvers:
-  - maintainer1  # At least one must be a Kubeflow SIG owner/team member for Core tier
+  - maintainer1  # Approvers must be Kubeflow community members
   - maintainer2
 reviewers:
   - reviewer1
 ```
 
 The `OWNERS` file enables code review automation by leveraging PROW commands:
+
 - **Reviewers** (as well as **Approvers**), upon reviewing a PR and finding it good to merge, can comment `/lgtm`, which applies the `lgtm` label to the PR
 - **Approvers** (but not **Reviewers**) can comment `/approve`, which signifies the PR is approved for automation to merge into the repo.
 - If a PR has been labeled with both `lgtm` and `approve`, and all required CI checks are passing, PROW will merge the PR into the destination branch.
@@ -193,10 +187,9 @@ See [full Prow documentation](https://docs.prow.k8s.io/docs/components/plugins/a
 Start by syncing with upstream and creating a feature branch:
 
 ```bash
+git remote add upstream https://github.com/kubeflow/pipelines-components.git  # if not already set
 git fetch upstream
-git checkout main
-git merge upstream/main
-git checkout -b component/my-component
+git checkout -b component/my-component upstream/main
 ```
 
 ### 2. Implement Your Component
@@ -243,9 +236,9 @@ def test_hello_world_custom_name():
 
 ### 3. Document Your Component
 
-This repository requires a standardized README.md.   As such, we have provided a README Generation utility, which can be found in the `scripts` directory.
+This repository requires a standardized README.md. As such, we have provided a README generation utility, which can be found in the `scripts` directory.
 
-Read more in the [README Generator Script Documentation](./scripts/generate_readme/README.md)
+Read more in the [README Generator Script Documentation](./scripts/generate_readme/README.md).
 
 ## Testing and Quality
 
@@ -288,7 +281,7 @@ If your component uses a custom image, test the container build:
 docker build -t my-component:test components/<category>/my-component/
 
 # Test the container runs correctly
-docker run --rm my-component:test --help
+docker run --rm my-component:test echo "Hello, world!"
 ```
 
 ### CI Pipeline
@@ -315,7 +308,7 @@ git diff --cached  # Check the actual changes
 
 git commit -m "feat(training): add <my_component> training component
 
-- Implements <my_component> Core-Tier component
+- Implements <my_component> component
 - Includes comprehensive unit tests with 95% coverage
 - Provides working pipeline examples
 - Resolves #123"
@@ -332,6 +325,7 @@ git push origin component/my-component
 On GitHub, click "Compare & pull request" and fill out the PR template provided with appropriate details
 
 All PRs must pass:
+
 - Automated checks (linting, tests, builds)
 - Code review by maintainers and community members
 - Documentation review
@@ -339,6 +333,7 @@ All PRs must pass:
 ### Review Process
 
 All pull requests must complete the following:
+
 - All Automated CI checks successfully passing
 - Code Review - reviewers will verify the following:
   - Component works as described
@@ -348,7 +343,7 @@ All pull requests must complete the following:
 
 ## Getting Help
 
-- **Governance questions**: See [GOVERNANCE.md](GOVERNANCE.md) for tier requirements and processes
+- **Governance questions**: See [GOVERNANCE.md](GOVERNANCE.md) for ownership, verification, and process details
 - **Community discussion**: Join `#kubeflow-pipelines` channel on the [CNCF Slack](https://www.kubeflow.org/docs/about/community/#kubeflow-slack-channels)
 - **Bug reports and feature requests**: Open an issue at [GitHub Issues](https://github.com/kubeflow/pipelines-components/issues)
 
@@ -356,4 +351,4 @@ All pull requests must complete the following:
 
 This repository was established through [KEP-913: Components Repository](https://github.com/kubeflow/community/tree/master/proposals/913-components-repo).
 
-Thanks for contributing to Kubeflow Pipelines! 🚀
+Thanks for contributing to Kubeflow! 🚀

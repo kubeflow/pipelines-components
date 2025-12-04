@@ -18,4 +18,4 @@ This document will cover:
 
 For immediate guidance, see:
 - [Contributing Guide](CONTRIBUTING.md) - Complete guide with testing, setup, and workflow
-- [Governance Guide](GOVERNANCE.md) - Repository policies and tiers
+- [Governance Guide](GOVERNANCE.md) - Repository policies and ownership
