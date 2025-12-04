@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
+from .constants import CATEGORY_README_TEMPLATE
 from .metadata_parser import MetadataParser
 
 logger = logging.getLogger(__name__)
@@ -26,13 +27,13 @@ class CategoryIndexGenerator:
         self.category_name = category_dir.name
         
         # Set up Jinja2 environment
-        template_dir = Path(__file__).parent
+        template_dir = Path(__file__).parent / 'templates'
         self.env = Environment(
             loader=FileSystemLoader(template_dir),
             trim_blocks=True,
             lstrip_blocks=True,
         )
-        self.template = self.env.get_template('CATEGORY_README.md.j2')
+        self.template = self.env.get_template(CATEGORY_README_TEMPLATE)
     
     def _find_items_in_category(self) -> List[Path]:
         """Find all component/pipeline directories within the category.
