@@ -41,6 +41,8 @@ jobs:
 | Output | Description | Example |
 |--------|-------------|---------|
 | `has-changes` | Boolean - any changes? | `"true"` |
+| `has-changed-components` | Boolean - components changed? | `"true"` |
+| `has-changed-pipelines` | Boolean - pipelines changed? | `"false"` |
 | `changed-components` | Space-separated list | `"components/training/trainer"` |
 | `changed-components-json` | JSON array for matrix | `["components/training/trainer"]` |
 | `changed-components-count` | Count | `"1"` |
@@ -71,6 +73,25 @@ jobs:
         component: ${{ fromJson(needs.detect.outputs.components) }}
     steps:
       - run: pytest ${{ matrix.component }}/tests/
+```
+
+### Conditional Execution
+
+```yaml
+- id: changes
+  uses: ./.github/actions/detect-changed-assets
+
+- name: Run if any changes
+  if: steps.changes.outputs.has-changes == 'true'
+  run: ./run-all-tests.sh
+
+- name: Component-specific task
+  if: steps.changes.outputs.has-changed-components == 'true'
+  run: ./validate-components.sh
+
+- name: Pipeline-specific task
+  if: steps.changes.outputs.has-changed-pipelines == 'true'
+  run: ./validate-pipelines.sh
 ```
 
 ### Process Each Asset

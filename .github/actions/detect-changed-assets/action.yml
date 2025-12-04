@@ -6,7 +6,7 @@ inputs:
   base-ref:
     description: 'Base Git reference to compare against (e.g., main, origin/main)'
     required: false
-    default: 'origin/${{ github.event.repository.default_branch }}'
+    default: ${{ format('origin/{0}', github.event.pull_request.base.ref || github.event.repository.default_branch) }}
   head-ref:
     description: 'Head Git reference to compare (defaults to current HEAD)'
     required: false
@@ -38,6 +38,12 @@ outputs:
   has-changes:
     description: 'Whether any components or pipelines have changed (true/false)'
     value: ${{ steps.detect.outputs.has-changes }}
+  has-changed-components:
+    description: 'Whether any components have changed (true/false)'
+    value: ${{ steps.detect.outputs.has-changed-components }}
+  has-changed-pipelines:
+    description: 'Whether any pipelines have changed (true/false)'
+    value: ${{ steps.detect.outputs.has-changed-pipelines }}
   all-changed-files:
     description: 'All changed files (for debugging)'
     value: ${{ steps.detect.outputs.all-changed-files }}

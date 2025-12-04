@@ -51,11 +51,21 @@ third_party/pipelines/<category>/<name>/
 
 ## Outputs
 
-When run in GitHub Actions, writes to:
-- `$GITHUB_OUTPUT`: Key-value pairs for action outputs
-- `$GITHUB_STEP_SUMMARY`: Markdown summary for job
+When run in GitHub Actions, writes to `$GITHUB_OUTPUT`:
+- `changed-components`: Space-separated list
+- `changed-pipelines`: Space-separated list
+- `changed-components-json`: JSON array (compact)
+- `changed-pipelines-json`: JSON array (compact)
+- `changed-components-count`: Integer
+- `changed-pipelines-count`: Integer
+- `has-changes`: Boolean (true if any changes)
+- `has-changed-components`: Boolean (true if components changed)
+- `has-changed-pipelines`: Boolean (true if pipelines changed)
+- `all-changed-files`: Space-separated file list
 
-When run standalone, writes to temp files and displays in terminal.
+Also writes to `$GITHUB_STEP_SUMMARY` for job summary markdown.
+
+When run standalone, outputs are written to temp files and displayed in terminal.
 
 ## Testing
 

@@ -197,6 +197,18 @@ else
 fi
 
 # Has changes?
+if [ ${COMPONENT_COUNT} -gt 0 ]; then
+  HAS_CHANGED_COMPONENTS="true"
+else
+  HAS_CHANGED_COMPONENTS="false"
+fi
+
+if [ ${PIPELINE_COUNT} -gt 0 ]; then
+  HAS_CHANGED_PIPELINES="true"
+else
+  HAS_CHANGED_PIPELINES="false"
+fi
+
 if [ ${COMPONENT_COUNT} -gt 0 ] || [ ${PIPELINE_COUNT} -gt 0 ]; then
   HAS_CHANGES="true"
 else
@@ -215,6 +227,8 @@ ALL_FILES=$(echo "$CHANGED_FILES" | head -100 | tr '\n' ' ')
   echo "changed-components-count=${COMPONENT_COUNT}"
   echo "changed-pipelines-count=${PIPELINE_COUNT}"
   echo "has-changes=${HAS_CHANGES}"
+  echo "has-changed-components=${HAS_CHANGED_COMPONENTS}"
+  echo "has-changed-pipelines=${HAS_CHANGED_PIPELINES}"
   echo "all-changed-files=${ALL_FILES}"
 } >> "$GITHUB_OUTPUT"
 
