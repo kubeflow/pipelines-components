@@ -6,14 +6,17 @@ A modular tool for automatically generating README documentation for Kubeflow Pi
 
 ```
 generate_readme/
-├── __init__.py           # Package initialization
-├── __main__.py           # Entry point for module execution
-├── cli.py                # Command-line interface and argument parsing
-├── constants.py          # Shared constants and logger configuration
-├── content_generator.py  # README content generation logic
-├── writer.py             # Main README generator orchestration and writer
-├── metadata_parser.py    # Metadata extraction from KFP components/pipelines
-└── README.md.j2          # Jinja template for a standardized README.md file
+├── __init__.py                  # Package initialization
+├── __main__.py                  # Entry point for module execution
+├── cli.py                       # Command-line interface and argument parsing
+├── constants.py                 # Shared constants and logger configuration
+├── content_generator.py         # README content generation logic
+├── writer.py                    # Main README generator orchestration and writer
+├── metadata_parser.py           # Metadata extraction from KFP components/pipelines
+├── category_index_generator.py  # Category-level README index generation
+└── templates/                   # Jinja2 templates
+    ├── README.md.j2             # Individual component/pipeline README template
+    └── CATEGORY_README.md.j2    # Category index README template
 ```
 
 ## Usage
@@ -41,6 +44,7 @@ uv run python -m scripts.generate_readme --component components/some_category/my
 - **Custom content preservation**: Preserves user-added content after the `<!-- custom-content -->` marker
 - **Type annotation support**: Handles complex type annotations including Optional, Union, and generics
 - **Component-specific usage examples**: Includes/Updates an example usage for the given pipeline or component, if provided via `example_pipeline.py`
+- **Category index generation**: Automatically creates and updates category-level READMEs that index all components/pipelines in a category
 
 ## Module Components
 
@@ -52,9 +56,13 @@ uv run python -m scripts.generate_readme --component components/some_category/my
 
 - `ReadmeContentGenerator`: Generates formatted README sections from extracted metadata
 
+### category_index_generator.py
+
+- `CategoryIndexGenerator`: Generates category-level README indexes that list all components/pipelines in a category
+
 ### writer.py
 
-- `ReadmeWriter`: Orchestrates the README generation and writing process
+- `ReadmeWriter`: Orchestrates the README generation and writing process for both individual and category READMEs
 
 ### cli.py
 
