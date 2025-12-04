@@ -4,7 +4,8 @@ import argparse
 import logging
 from pathlib import Path
 
-from .constants import logger
+logger = logging.getLogger(__name__)
+
 from .writer import ReadmeWriter
 
 
@@ -130,12 +131,18 @@ def main():
     # Parse arguments
     args = parse_arguments()
 
+    # Configure logging at application entry point
+    log_level = logging.DEBUG if args.verbose else logging.INFO
+    logging.basicConfig(
+        level=log_level,
+        format='%(levelname)s: %(message)s'
+    )
+
     # Create and run the README writer
     writer = ReadmeWriter(
         component_dir=args.component,
         pipeline_dir=args.pipeline,
         output_file=args.output,
-        verbose=args.verbose,
         overwrite=args.overwrite
     )
     writer.generate()

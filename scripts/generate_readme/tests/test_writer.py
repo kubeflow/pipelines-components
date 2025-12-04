@@ -13,7 +13,6 @@ class TestReadmeWriter:
         """Test initialization with component directory."""
         generator = ReadmeWriter(
             component_dir=component_dir,
-            verbose=False,
             overwrite=True
         )
         
@@ -26,7 +25,6 @@ class TestReadmeWriter:
         """Test initialization with pipeline directory."""
         generator = ReadmeWriter(
             pipeline_dir=pipeline_dir,
-            verbose=False,
             overwrite=True
         )
         
@@ -170,15 +168,15 @@ class TestReadmeWriter:
         content = custom_output.read_text()
         assert "# Sample Component" in content
     
-    def test_generate_with_verbose(self, component_dir, caplog):
-        """Test that verbose mode produces debug output."""
+    def test_generate_with_debug_logging(self, component_dir, caplog):
+        """Test that debug messages are logged when debug level is set."""
         import logging
         
+        # Set debug level (normally done by CLI)
         caplog.set_level(logging.DEBUG)
         
         generator = ReadmeWriter(
             component_dir=component_dir,
-            verbose=True,
             overwrite=True
         )
         generator.generate()

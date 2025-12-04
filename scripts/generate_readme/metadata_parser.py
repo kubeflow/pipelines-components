@@ -6,12 +6,13 @@ since we don't want to run arbitrary user-provided code.
 """
 
 import ast
+import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 from docstring_parser import parse as parse_docstring
 
-from .constants import logger
+logger = logging.getLogger(__name__)
 
 
 class MetadataParser:

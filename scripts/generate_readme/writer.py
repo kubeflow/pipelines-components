@@ -5,23 +5,24 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from .constants import CUSTOM_CONTENT_MARKER, logger
+from .constants import CUSTOM_CONTENT_MARKER
 from .content_generator import ReadmeContentGenerator
 from .metadata_parser import MetadataParser
+
+logger = logging.getLogger(__name__)
 
 
 class ReadmeWriter:
     """Writes README documentation for Kubeflow Pipelines components and pipelines."""
 
     def __init__(self, component_dir: Optional[Path] = None, pipeline_dir: Optional[Path] = None,
-                 output_file: Optional[Path] = None, verbose: bool = False, overwrite: bool = False):
+                 output_file: Optional[Path] = None, overwrite: bool = False):
         """Initialize the README writer.
 
         Args:
             component_dir: Path to the component directory (must contain component.py and metadata.yaml).
             pipeline_dir: Path to the pipeline directory (must contain pipeline.py and metadata.yaml).
             output_file: Optional output path for the generated README.
-            verbose: Enable verbose logging output.
             overwrite: Overwrite existing README without prompting.
         """
         # Validate that exactly one of component_dir or pipeline_dir is provided
@@ -46,19 +47,7 @@ class ReadmeWriter:
         self.parser = MetadataParser(self.source_file, self.function_type)
         self.metadata_file = self.source_dir / 'metadata.yaml'
         self.readme_file = output_file if output_file else self.source_dir / "README.md"
-        self.verbose = verbose
         self.overwrite = overwrite
-
-        # Configure logging
-        self._configure_logging()
-
-    def _configure_logging(self) -> None:
-        """Configure logging based on verbose flag."""
-        log_level = logging.DEBUG if self.verbose else logging.INFO
-        logging.basicConfig(
-            level=log_level,
-            format='%(levelname)s: %(message)s'
-        )
 
     def _extract_custom_content(self) -> Optional[str]:
         """Extract custom content from existing README if it has a custom-content marker.
