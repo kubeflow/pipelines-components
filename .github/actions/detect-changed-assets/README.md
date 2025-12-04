@@ -35,6 +35,7 @@ jobs:
 | `base-ref` | Base git reference to compare against | `origin/main` |
 | `head-ref` | Head git reference | `HEAD` |
 | `include-third-party` | Include third_party/ directory | `true` |
+| `filter` | Grep pattern to filter changed files | _(empty)_ |
 
 ## Outputs
 
@@ -49,6 +50,8 @@ jobs:
 | `changed-pipelines` | Space-separated list | `"pipelines/training/pipeline"` |
 | `changed-pipelines-json` | JSON array for matrix | `["pipelines/training/pipeline"]` |
 | `changed-pipelines-count` | Count | `"1"` |
+| `all-changed-files` | All changed files | `"components/training/trainer/component.yaml pipelines/training/pipeline/pipeline.py"` |
+| `filtered-changed-files` | Changed files matching any filter pattern | `"components/training/trainer/component.yaml"` |
 
 ## Common Patterns
 
@@ -107,11 +110,32 @@ jobs:
     done
 ```
 
+### Filter by File Pattern
+
+Detect changes only in specific file types:
+
+```yaml
+- uses: ./.github/actions/detect-changed-assets
+  with:
+    pattern: '\.py$'  # Only Python files
+
+- uses: ./.github/actions/detect-changed-assets
+  with:
+    pattern: '\.(py|yaml)$'  # Python or YAML files
+
+- uses: ./.github/actions/detect-changed-assets
+  with:
+    pattern: '^components/.*/tests/'  # Only test files in components
+```
+
 ## Testing Locally
 
 ```bash
 # Test the detection script directly
 .github/scripts/detect-changed-assets/detect.sh origin/main HEAD true
+
+# With pattern filter (4th argument)
+.github/scripts/detect-changed-assets/detect.sh origin/main HEAD true '\.py$'
 
 # Or run the full test suite
 .github/actions/detect-changed-assets/test.sh

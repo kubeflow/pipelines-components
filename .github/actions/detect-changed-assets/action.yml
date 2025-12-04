@@ -15,6 +15,10 @@ inputs:
     description: 'Whether to include third_party components and pipelines'
     required: false
     default: 'true'
+  filter:
+    description: 'Optional grep pattern to filter changed files (e.g., "\.py$" for Python files only)'
+    required: false
+    default: ''
 
 outputs:
   changed-components:
@@ -45,8 +49,11 @@ outputs:
     description: 'Whether any pipelines have changed (true/false)'
     value: ${{ steps.detect.outputs.has-changed-pipelines }}
   all-changed-files:
-    description: 'All changed files (for debugging)'
+    description: 'All changed files'
     value: ${{ steps.detect.outputs.all-changed-files }}
+  filtered-changed-files:
+    description: 'Changed files matching any filter pattern'
+    value: ${{ steps.detect.outputs.filtered-changed-files }}
 
 runs:
   using: 'composite'
@@ -59,7 +66,8 @@ runs:
         .github/scripts/detect-changed-assets/detect.sh \
           "${{ inputs.base-ref }}" \
           "${{ inputs.head-ref }}" \
-          "${{ inputs.include-third-party }}"
+          "${{ inputs.include-third-party }}" \
+          "${{ inputs.filter }}"
 
 branding:
   icon: 'file-text'

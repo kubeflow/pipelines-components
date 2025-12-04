@@ -20,9 +20,12 @@ Core detection logic for the `detect-changed-assets` composite action.
 # 1. BASE_REF (default: origin/main)
 # 2. HEAD_REF (default: HEAD)
 # 3. INCLUDE_THIRD_PARTY (default: true)
+# 4. FILTER (default: empty - no filtering)
 
-# Example: compare against develop
+# Examples:
 .github/scripts/detect-changed-assets/detect.sh origin/develop HEAD false
+.github/scripts/detect-changed-assets/detect.sh origin/main HEAD true '\.py$'
+.github/scripts/detect-changed-assets/detect.sh origin/main HEAD true '\.(py|yaml)$'
 ```
 
 ## What It Does

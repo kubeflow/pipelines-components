@@ -1,6 +1,6 @@
 #!/bin/bash
 # Detect changed components and pipelines
-# Usage: detect.sh <base-ref> <head-ref> <include-third-party>
+# Usage: detect.sh <base-ref> <head-ref> <include-third-party> <filter>
 
 set -euo pipefail
 
@@ -8,6 +8,7 @@ set -euo pipefail
 BASE_REF="${1:-origin/main}"
 HEAD_REF="${2:-HEAD}"
 INCLUDE_THIRD_PARTY="${3:-true}"
+FILTER="${4:-}"
 
 # Output files
 GITHUB_OUTPUT="${GITHUB_OUTPUT:-/tmp/github-output-$$.txt}"
@@ -28,6 +29,12 @@ if [ -z "$MERGE_BASE" ]; then
                   git diff --name-only "${BASE_REF}" "${HEAD_REF}" 2>/dev/null || echo "")
 else
   CHANGED_FILES=$(git diff --name-only "${MERGE_BASE}" "${HEAD_REF}")
+fi
+
+# Apply pattern filter if specified
+FILTERED_CHANGED_FILES="$CHANGED_FILES"
+if [ -n "$FILTER" ]; then
+  FILTERED_CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -E "$FILTER" || echo "")
 fi
 
 # Parse changed files
@@ -61,7 +68,7 @@ while IFS= read -r file; do
       [[ ! " ${PIPELINES[@]} " =~ " ${PIPELINE_PATH} " ]] && PIPELINES+=("${PIPELINE_PATH}")
     fi
   fi
-done <<< "$CHANGED_FILES"
+done <<< "$FILTERED_CHANGED_FILES"
 
 # Generate outputs
 COMPONENT_COUNT="${#COMPONENTS[@]}"
@@ -98,7 +105,8 @@ HAS_CHANGES=$([ ${COMPONENT_COUNT} -gt 0 ] || [ ${PIPELINE_COUNT} -gt 0 ] && ech
   echo "has-changes=${HAS_CHANGES}"
   echo "has-changed-components=${HAS_CHANGED_COMPONENTS}"
   echo "has-changed-pipelines=${HAS_CHANGED_PIPELINES}"
-  echo "all-changed-files=$(echo "$CHANGED_FILES" | head -100 | tr '\n' ' ')"
+  echo "all-changed-files=$(echo "$CHANGED_FILES" | tr '\n' ' ')"
+  echo "filtered-changed-files=$(echo "$FILTERED_CHANGED_FILES" | tr '\n' ' ')"
 } >> "$GITHUB_OUTPUT"
 
 # Write summary
