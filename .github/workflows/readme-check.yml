@@ -1,0 +1,81 @@
+name: README Validation
+
+on:
+  pull_request:
+    paths:
+      - 'components/**'
+      - 'pipelines/**'
+      - 'third_party/components/**'
+      - 'third_party/pipelines/**'
+      - 'scripts/generate_readme/**'
+      - '.github/workflows/readme-check.yml'
+      - '.github/scripts/**'
+
+jobs:
+  check-readme-sync:
+    name: Check README files are up-to-date
+    runs-on: ubuntu-24.04
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v47
+        with:
+          files: |
+            components/**
+            pipelines/**
+            third_party/components/**
+            third_party/pipelines/**
+            scripts/generate_readme/**
+            .github/scripts/**
+          files_ignore: |
+            **/*.md
+      
+      - name: Check if only README files changed
+        id: check-skip
+        run: |
+          if [ "${{ steps.changed-files.outputs.any_changed }}" != "true" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "Only README files changed, skipping validation"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Install uv
+        if: steps.check-skip.outputs.skip != 'true'
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        if: steps.check-skip.outputs.skip != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: pyproject.toml
+      
+      - name: Install dependencies
+        if: steps.check-skip.outputs.skip != 'true'
+        run: uv sync --locked --all-extras --dev
+      
+      - name: Extract component and pipeline directories
+        if: steps.check-skip.outputs.skip != 'true'
+        id: find-targets
+        run: |
+          echo "Changed files:"
+          echo "${{ steps.changed-files.outputs.all_changed_files }}"
+          
+          # Extract unique component/pipeline directories from changed files
+          targets=$(./.github/scripts/utils/find-changed-components-and-pipelines.sh ${{ steps.changed-files.outputs.all_changed_files }})
+          
+          echo "targets=$targets" >> $GITHUB_OUTPUT
+          echo "Targets to check: $targets"
+      
+      - name: Validate READMEs
+        if: steps.check-skip.outputs.skip != 'true' && steps.find-targets.outputs.targets != ''
+        run: |
+          ./.github/scripts/validate_readmes/test-readme-check.sh --ci ${{ steps.find-targets.outputs.targets }}
