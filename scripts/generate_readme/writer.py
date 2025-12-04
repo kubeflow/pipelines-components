@@ -12,11 +12,11 @@ from .metadata_parser import MetadataParser
 
 class ReadmeWriter:
     """Writes README documentation for Kubeflow Pipelines components and pipelines."""
-    
+
     def __init__(self, component_dir: Optional[Path] = None, pipeline_dir: Optional[Path] = None,
                  output_file: Optional[Path] = None, verbose: bool = False, overwrite: bool = False):
         """Initialize the README writer.
-        
+
         Args:
             component_dir: Path to the component directory (must contain component.py and metadata.yaml).
             pipeline_dir: Path to the pipeline directory (must contain pipeline.py and metadata.yaml).
@@ -42,16 +42,16 @@ class ReadmeWriter:
             self.source_dir = pipeline_dir
             self.source_file = pipeline_dir / 'pipeline.py'
             self.function_type = 'pipeline'
-        
+
         self.parser = MetadataParser(self.source_file, self.function_type)
         self.metadata_file = self.source_dir / 'metadata.yaml'
         self.readme_file = output_file if output_file else self.source_dir / "README.md"
         self.verbose = verbose
         self.overwrite = overwrite
-  
+
         # Configure logging
         self._configure_logging()
-    
+
     def _configure_logging(self) -> None:
         """Configure logging based on verbose flag."""
         log_level = logging.DEBUG if self.verbose else logging.INFO
@@ -62,23 +62,23 @@ class ReadmeWriter:
 
     def _extract_custom_content(self) -> Optional[str]:
         """Extract custom content from existing README if it has a custom-content marker.
-        
+
         Returns:
             The custom content (including marker) if found, None otherwise.
         """
         if not self.readme_file.exists():
             return None
-        
+
         try:
             with open(self.readme_file, 'r', encoding='utf-8') as f:
                 content = f.read()
-            
+
             if CUSTOM_CONTENT_MARKER in content:
                 marker_index = content.find(CUSTOM_CONTENT_MARKER)
                 custom_content = content[marker_index:]
                 logger.debug(f"Found custom content marker, preserving {len(custom_content)} characters")
                 return custom_content
-            
+
             return None
         except Exception as e:
             logger.warning(f"Error reading existing README for custom content: {e}")
@@ -86,18 +86,18 @@ class ReadmeWriter:
 
     def _write_readme_file(self, readme_content: str) -> None:
         """Write the README content to the README.md file.
-        
+
         Preserves any custom content after the <!-- custom-content --> marker.
-        
+
         Args:
             readme_content: The content to write to the README.md file.
-            
+
         Raises:
             SystemExit: If README exists and --overwrite flag is not provided.
         """
         # Extract any custom content before checking for overwrite
         custom_content = self._extract_custom_content()
-        
+
         # Check if file exists and handle overwrite
         if self.readme_file.exists() and not self.overwrite:
             logger.error(f"README.md already exists at {self.readme_file}")
@@ -119,35 +119,34 @@ class ReadmeWriter:
             f.write(readme_content)
         logger.info(f"README.md generated successfully at {self.readme_file}")
 
-    
     def generate(self) -> None:
         """Generate the README documentation.
-        
+
         Raises:
             SystemExit: If function is not found or metadata extraction fails.
         """
         # Find the function
         logger.debug(f"Analyzing file: {self.source_file}")
         function_name = self.parser.find_function()
-        
+
         if not function_name:
             logger.error(f"No component/pipeline function found in {self.source_file}")
             sys.exit(1)
-        
+
         logger.debug(f"Found target decorated function: {function_name}")
-        
+
         # Extract metadata
         metadata = self.parser.extract_metadata(function_name)
         if not metadata:
             logger.error(f"Could not extract metadata from function {function_name}")
             sys.exit(1)
-        
+
         logger.debug(f"Extracted metadata for {len(metadata.get('parameters', {}))} parameters")
-        
+
         # Generate README content
         readme_content_generator = ReadmeContentGenerator(metadata, self.source_dir)
         readme_content = readme_content_generator.generate_readme()
-        
+
         # Write README.md file
         self._write_readme_file(readme_content)
 
@@ -156,4 +155,3 @@ class ReadmeWriter:
         logger.debug(f"Target decorated function name: {metadata.get('name', 'Unknown')}")
         logger.debug(f"Parameters: {len(metadata.get('parameters', {}))}")
         logger.debug(f"Has return type: {'Yes' if metadata.get('returns') else 'No'}")
-
