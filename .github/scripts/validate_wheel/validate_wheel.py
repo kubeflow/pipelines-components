@@ -40,12 +40,12 @@ def get_metadata_content(wheel: zipfile.ZipFile, dist_info_files: List[str]) -> 
     return metadata_content, errors
 
 
-def validate_package_name(metadata_content: str, package_type: str) -> Tuple[List[str], List[str]]:
+def validate_package_name(metadata_content: str) -> Tuple[List[str], List[str]]:
     """Validate the package name in metadata."""
     messages = []
     errors = []
     
-    expected_name = "kfp-components" if package_type == "core" else "kfp-components-third-party"
+    expected_name = "kfp-components"
     if f"Name: {expected_name}" in metadata_content:
         messages.append(f"✓ Package name verified: {expected_name}")
     else:
@@ -115,7 +115,7 @@ def validate_required_directories(file_list: List[str]) -> Tuple[List[str], List
     return messages, errors
 
 
-def validate_init_files(file_list: List[str], package_type: str = "core") -> Tuple[List[str], List[str]]:
+def validate_init_files(file_list: List[str]) -> Tuple[List[str], List[str]]:
     """Validate the presence of __init__.py files and category structure."""
     messages = []
     errors = []
@@ -130,12 +130,8 @@ def validate_init_files(file_list: List[str], package_type: str = "core") -> Tup
     # Check for category-level __init__.py files
     expected_categories = ['training', 'evaluation', 'data_processing', 'deployment']
     for category in expected_categories:
-        if package_type == "third-party":
-            component_init = f"third_party/components/{category}/__init__.py"
-            pipeline_init = f"third_party/pipelines/{category}/__init__.py"
-        else:
-            component_init = f"kfp_components/components/{category}/__init__.py"
-            pipeline_init = f"kfp_components/pipelines/{category}/__init__.py"
+        component_init = f"kfp_components/components/{category}/__init__.py"
+        pipeline_init = f"kfp_components/pipelines/{category}/__init__.py"
         
         found_component = any(component_init in f for f in init_files)
         found_pipeline = any(pipeline_init in f for f in init_files)
@@ -175,13 +171,12 @@ def get_wheel_info(wheel_path: Path, file_list: List[str]) -> List[str]:
     return messages
 
 
-def validate_wheel(wheel_path: Path, package_type: str = "core") -> Tuple[bool, List[str]]:
+def validate_wheel(wheel_path: Path) -> Tuple[bool, List[str]]:
     """
     Validate a wheel file's contents.
     
     Args:
         wheel_path: Path to the wheel file
-        package_type: Either "core" or "third-party"
     
     Returns:
         Tuple of (success, list of validation messages)
@@ -192,7 +187,7 @@ def validate_wheel(wheel_path: Path, package_type: str = "core") -> Tuple[bool, 
     if not wheel_path.exists():
         return False, [f"Error: Wheel file not found: {wheel_path}"]
     
-    messages.append(f"Validating {package_type} package: {wheel_path.name}")
+    messages.append(f"Validating package: {wheel_path.name}")
     
     try:
         with zipfile.ZipFile(wheel_path, 'r') as wheel:
@@ -203,7 +198,7 @@ def validate_wheel(wheel_path: Path, package_type: str = "core") -> Tuple[bool, 
                 # Basic structure validations
                 ('dist_info', lambda: validate_dist_info(file_list)),
                 ('directories', lambda: validate_required_directories(file_list)),
-                ('init_files', lambda: validate_init_files(file_list, package_type)),
+                ('init_files', lambda: validate_init_files(file_list)),
                 ('python_modules', lambda: validate_python_modules(file_list)),
             ]
             
@@ -216,7 +211,7 @@ def validate_wheel(wheel_path: Path, package_type: str = "core") -> Tuple[bool, 
                 if metadata_content:
                     # Add metadata validators
                     validators.extend([
-                        ('package_name', lambda: validate_package_name(metadata_content, package_type)),
+                        ('package_name', lambda: validate_package_name(metadata_content)),
                         ('version', lambda: validate_version(metadata_content)),
                         ('python_requirement', lambda: validate_python_requirement(metadata_content)),
                         ('kfp_dependency', lambda: validate_kfp_dependency(metadata_content)),
@@ -251,17 +246,10 @@ def validate_wheel(wheel_path: Path, package_type: str = "core") -> Tuple[bool, 
 def main():
     parser = argparse.ArgumentParser(description="Validate Kubeflow Pipelines component wheel packages")
     parser.add_argument("wheel_path", help="Path to the wheel file to validate")
-    parser.add_argument(
-        "--type", 
-        choices=["core", "third-party"], 
-        default="core",
-        help="Type of package being validated"
-    )
-    
     args = parser.parse_args()
     
     wheel_path = Path(args.wheel_path)
-    success, messages = validate_wheel(wheel_path, args.type)
+    success, messages = validate_wheel(wheel_path)
     
     for message in messages:
         print(message)

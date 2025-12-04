@@ -17,8 +17,6 @@ assignees: []
 
 **Category:** <!-- training, evaluation, data_processing, deployment, or other -->
 
-**Proposed Tier:** <!-- core (Kubeflow community maintained) or third_party -->
-
 ## Description
 <!-- Provide a clear and comprehensive description of what your component/pipeline does -->
 

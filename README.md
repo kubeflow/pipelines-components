@@ -27,10 +27,6 @@ The Kubeflow Pipelines Components repository serves as:
 │   ├── <component category>/
 │   └── <component category>/
 │
-├── third_party/         # Third-party contributions
-│   ├── components/      # Third-party components
-│   └── pipelines/       # Third-party pipelines
-│
 ├── docs/                # Documentation
 └── scripts/             # Utility scripts
 ```
@@ -51,22 +47,13 @@ The Kubeflow Pipelines Components repository serves as:
 - Python 3.11 or later
 - Kubeflow Pipelines SDK
 
-### Install Core Components (Coming Soon)
+### Install Components (Coming Soon)
 
 Install the official Kubeflow SDK with components:
 
 ```bash
 # Not yet available - coming soon!
 pip install kubeflow
-```
-
-### Install Third-Party Components (Coming Soon)
-
-For vetted third-party contributions:
-
-```bash
-# Not yet available - coming soon!
-pip install kfp-components-third-party
 ```
 
 ### Verify Installation
@@ -118,7 +105,6 @@ def my_pipeline(
 
 Each component includes standardized metadata:
 
-- **Tier**: `core` (community-maintained) or `third_party`
 - **Stability**: `alpha`, `beta`, or `stable`
 - **Dependencies**: Kubeflow and external service requirements
 - **Last Verified**: Date of last verification
@@ -137,7 +123,7 @@ Each component includes standardized metadata:
 - [Onboarding Guide](docs/ONBOARDING.md): Getting started for new contributors
 - [Contributing Guidelines](docs/CONTRIBUTING.md): How to contribute components and pipelines
 - [Best Practices](docs/BESTPRACTICES.md): Component authoring best practices
-- [Governance](docs/GOVERNANCE.md): Repository governance and tier system
+- [Governance](docs/GOVERNANCE.md): Repository governance and ownership model
 - [Agent Guidelines](docs/AGENTS.md): Guidance for code-generation agents
 
 ## 🤝 Contributing
@@ -145,16 +131,14 @@ Each component includes standardized metadata:
 We welcome contributions from the community! To contribute:
 
 1. **Review Guidelines**: Read our [Contributing Guidelines](docs/CONTRIBUTING.md)
-2. **Choose a Tier**: Decide between core (community-maintained) or third-party contribution
-3. **Follow Standards**: Ensure your component includes:
+2. **Follow Standards**: Ensure your component includes:
    - `component.py` or `pipeline.py` - The implementation
    - `metadata.yaml` - Standardized metadata
    - `README.md` - Component documentation
    - `OWNERS` - Maintainer information
    - `tests/` - Unit tests
    - `example_pipelines.py` - Usage examples
-
-4. **Submit PR**: Open a pull request with your contribution
+3. **Submit PR**: Open a pull request with your contribution
 
 ### Quality Standards
 
@@ -187,7 +171,6 @@ Each component has designated owners listed in its `OWNERS` file who:
 ## 📦 Releases
 
 - **Core Package**: `kubeflow` - Official Kubeflow SDK including community-maintained components
-- **Third-Party Package**: `kfp-components-third-party` - Vetted third-party contributions
 - **Versioning**: Follows semantic versioning aligned with Kubeflow releases
 - **Release Cadence**: Regular releases aligned with Kubeflow Pipelines SDK
 

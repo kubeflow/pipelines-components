@@ -1,17 +1,14 @@
 # Repository Governance
 
-This document defines the governance structure for the Kubeflow Pipelines Components Repository.
+This document defines the governance structure for the Kubeflow Pipelines components repository.
 
 ## Table of Contents
 
-- [Two-Tier System](#two-tier-system)
-- [Ownership Models](#ownership-models)
-- [Tier Transitions](#tier-transitions)
-- [Removal Policies](#removal-policies)
-- [Deprecation Policy](#deprecation-policy)
 - [Repository Roles](#repository-roles)
+- [Ownership Model](#ownership-model)
+- [Verification and Removal](#verification-and-removal)
+- [Deprecation Policy](#deprecation-policy)
 - [Decision Making](#decision-making)
-- [Conflict Resolution](#conflict-resolution)
 - [Policy Updates](#policy-updates)
 - [Related Documentation](#related-documentation)
 - [Background](#background)
@@ -20,181 +17,87 @@ This document defines the governance structure for the Kubeflow Pipelines Compon
 
 *Key roles and responsibilities for governing and maintaining the repository.*
 
-### KFP Component Repository Maintainer
+### KFP Components Repository Maintainer
 
-Repository Maintainers are responsible for the stewardship of the Kubeflow Pipelines Components repository. They are defined by having thier GitHub username listed in the `approvers` section of the `OWNERS` file in the repository root.
+Repository Maintainers steward the Kubeflow Pipelines Components repository. They are listed in the root `OWNERS` file under `approvers`.
 
-Respository Maintiners key responsbilities include:
-- Orchestrating releases
-- Setting roadmaps and accepting KEPs related to Kubeflow Pipelines Components
-- Managing the overall project, issues, etc
-- General repository maintenance
+Responsibilities:
+- Orchestrate releases
+- Set roadmaps and accept KEPs related to Kubeflow Pipelines Components
+- Manage overall project health and issue triage
+- Maintain policy and automation
 
+### Component or Pipeline Owner
 
-### Core Component Maintainer
+Owners are listed as `approvers` in an asset’s `OWNERS` file. Every asset must have at least one owner to ensure accountability and continuity. Approvers must be Kubeflow community members.
 
-Core Component Owners are individuals responsible for maintaining an individual core-tier component or pipeline.  They are defined by having thier GitHub username listed in the `approvers` section of the `OWNERS` file of at least one individual core-tier component or pipeline.
+Responsibilities:
+- Act as the main point of contact for their asset(s)
+- Review and approve changes to their asset(s)
+- Keep metadata, documentation, and verification fresh
+- Update or transfer ownership when maintainers change
 
-Core Component Maintainer key responsibilities include:
-- Acting as the main point of contact for their component(s).
-- Reviewing and approving changes to their component(s).
-- Ensuring ongoing quality and documentation for their component(s).
-- Updating or transferring ownership when maintainers change.
+## Ownership Model
 
-Note that all components must have at least two listed owners for redundancy and review coverage.
-
-
-### Third-Party Component Maintainers
-
-Similar to a Core Component Maintainer, a Third-Party Maintainer is responsible for at least one Third-Party tier component or pipelines that they or their teams own.  They are defined by having thier GitHub username listed in the `approvers` section of the `OWNERS` file of at least one individual third-party tier component or pipeline.
-
-Third-Party Component Maintainer key responsibilities include:
-- Acting as the main point of contact for their component(s).
-- Reviewing and approving changes to their component(s).
-- Ensuring ongoing quality and documentation for their component(s).
-- Updating or transferring ownership when maintainers change.
-
-Note that all components must have at least two listed owners for redundancy and review coverage.
-
-## Two-Tier System
-
-*The repository uses a two-tier classification system distinguishing officially supported components from community contributions.*
-
-## Core Tier
-
-
-**Officially supported components** maintained by at least 2 Component Core Maintainers.
-
-**Requirements:**
-- Security review passed
-- Complete documentation
-- Active maintenance commitment
-- Backward compatibility guarantees
-- Unit test provided with exceptional code coverage
-
-**Benefits:**
-- Official support and maintenance
-- Included in python package releases
-- Priority for bug fixes
-- Long-term stability guarantees
-
-### Third-Party Tier
-
-**Community-contributed components** with lighter requirements.
-
-**Requirements:**
-- Unit test provided
-- Basic documentation (README, examples)
-- At least 2 maintainers
-
-**Benefits:**
-- Community visibility
-- Shared maintenance burden
-- Faster contribution process than Core components
-- Good for idea incubation
-- Potential for promotion to Core tier
-
-## Ownership Models
-
-*How ownership, maintenance, and decision-making responsibilities are distributed across tiers.*
-
-### Core Tier
 - **Owned by**: Kubeflow community
-- **Maintained by**: Designated maintainer teams
-- **Decisions by**: Repository and Core Component Maintainers consensus
-- **Support**: Official community support
+- **Maintained by**: Asset owners listed in each `OWNERS` file
+- **Support**: Officially part of the single catalog; support expectations come from the verification SLA and CI requirements
 
-### Third-Party Tier (no Kubeflow org membership required)
-- **Owned by**: Original contributors
-- **Maintained by**: Component owners
-- **Decisions by**: Component owners
-- **Support**: Best-effort community support
+## Verification and Removal
 
-## Tier Transitions
-
-*Process for moving components between Core and Third-Party tiers.*
-
-## Removal Policies
-
-*Timeline and criteria for removing inactive or problematic components from the repository.*
-
-### Verification Process (9 months)
-Components are marked for verification if:
-- No updates in over 9 months
-- Maintainers are unresponsive
-- Compatibility issues
-
-### Removal Process (12 months)
-After 12 months of inactivity:
-1. **Notice**: 30-day removal notice
-2. **Community input**: 2-week feedback period
-3. **Final decision**: KFP Component Repository Maintainers
-4. **Removal**: Delete component code from repository
-
-### Emergency Removal
-Immediate removal for:
-- Severe and/or compatibility-breaking issues
-- Critical security vulnerabilities
-- Legal issues
-- Malicious code
+- Assets must keep `lastVerified` fresh (within 12 months) and pass CI.
+- At ~9 months without verification, automation/open issues should prompt owners to refresh metadata and validation.
+- At 12 months without verification or for unresolved compatibility/security issues, Repository Maintainers may remove the asset from the catalog.
+- Emergency removal may occur for critical security, legal, or malicious code issues.
 
 ## Deprecation Policy
 
-*Structured approach to deprecating core components with adequate notice and migration support.*
-
-### Two-Release Policy
-Components will be deprecated for a minimum of 2 Kubeflow releases before removal.
-
-**Process:**
-1. **Deprecation notice**: Mark as deprecated
-2. **Migration guide**: Provide alternatives
-3. **Community notice**: Announce in releases
-4. **Removal**: After 2 releases
-
+- Use a two-release deprecation window when feasible.
+- Steps:
+  1. Mark deprecated in metadata/README and communicate in release notes.
+  2. Provide migration guidance or alternatives.
+  3. Remove after two Kubeflow releases (or sooner for emergencies as noted above).
 
 ## Decision Making
 
 *Framework for making technical, policy, and strategic decisions within the community.*
 
 ### Decision Types
-- **Technical**: Component owners → KFP Component Repository Maintainers 
-- **Policy**: KFP Component Repository Maintainers 
-- **Strategic**: KFP Component Repository Maintainers 
+- **Technical (asset-level)**: Asset owners, with escalation to Repository Maintainers if needed
+- **Policy**: Repository Maintainers
+- **Strategic**: Repository Maintainers
 
 ### Process
-1. **Proposal**: Create GitHub issue/RFC
+1. **Proposal**: Create a GitHub issue or RFC
 2. **Discussion**: Community feedback
 3. **Decision**: Appropriate authority level
-4. **Implementation**: Assign and track
+4. **Implementation**: Track to completion
 
 ## Policy Updates
 
-*How governance policies are updated to evolve with community needs and learnings.*
-
 **Process:**
-1. **RFC**: Propose changes via GitHub issue
-2. **Community review**: 2-week feedback period
-3. **Maintainers approval**: Majority vote required
-4. **Implementation**: Update documentation and processes
+1. **RFC/Issue**: Propose changes via GitHub issue
+2. **Community review**: 2-week feedback period where practical
+3. **Maintainer approval**: Majority of Repository Maintainers
+4. **Implementation**: Update documentation and automation
 
 **Criteria for updates:**
-- Community needs evolution
-- Process improvements
+- Community needs and process improvements
 - Conflict resolution learnings
-- External requirements changes
+- External requirements and security posture
 
 ---
 
-This governance model ensures quality, sustainability, and community collaboration while maintaining clear processes and expectations.
+This governance model ensures quality, sustainability, and community collaboration while keeping a single, consistent catalog.
 
 ## Related Documentation
 
-- **[Contributing Guide](CONTRIBUTING.md)** - Complete contributor guide with setup, testing, and workflow
-- **[Best Practices Guide](BESTPRACTICES.md)** - Component development best practices *(coming soon)*
-- **[Agents Guide](AGENTS.md)** - AI agent guidance *(coming soon)*
+- **[Contributing Guide](CONTRIBUTING.md)** - Contributor setup, testing, and workflow
+- **[Best Practices Guide](BESTPRACTICES.md)** - Component/pipeline authoring guidance
+- **[Agents Guide](AGENTS.md)** - AI agent guidance
 
 ## Background
 
-This governance model is based on [KEP-913: Components Repository](https://github.com/kubeflow/community/tree/master/proposals/913-components-repo), which established the framework for a curated collection of reusable Kubeflow Pipelines components with clear quality standards and community governance.
+Based on [KEP-913: Components Repository](https://github.com/kubeflow/community/tree/master/proposals/913-components-repo), establishing a curated catalog of reusable Kubeflow Pipelines assets with clear quality standards and community governance.
 
-For questions about governance, contact the pipelines-components repository maintainers (as noted by `approvers` in top-level `OWNERS` file) or open a GitHub issue.
+For questions about governance, contact the Repository Maintainers (root `OWNERS`) or open a GitHub issue.

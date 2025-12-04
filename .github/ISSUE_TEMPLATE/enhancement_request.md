@@ -21,8 +21,6 @@ assignees: []
 
 **Category:** <!-- e.g., training, evaluation, data_processing, deployment -->
 
-**Tier:** <!-- core or third_party -->
-
 ## Problem Statement
 <!-- Is your enhancement request related to a problem? Please describe. -->
 <!-- Example: I'm always frustrated when [...] -->

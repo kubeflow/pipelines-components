@@ -15,8 +15,6 @@ assignees: []
 
 **Name:** <!-- e.g., training/my_component or evaluation/my_pipeline -->
 
-**Tier:** <!-- core or third_party -->
-
 **Category:** <!-- e.g., training, evaluation, data_processing, deployment -->
 
 ## Steps to Reproduce
