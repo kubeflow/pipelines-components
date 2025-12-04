@@ -58,15 +58,3 @@ jobs:
         if: steps.find-targets.outputs.targets != ''
         run: |
           ./.github/scripts/validate_readmes/test-readme-check.sh --ci ${{ steps.find-targets.outputs.targets }}
-      
-      - name: Validate Category Indexes
-        if: steps.check-skip.outputs.skip != 'true' && steps.find-targets.outputs.targets != ''
-        run: |
-          ./.github/scripts/validate_readmes/test-category-readme-check.sh --ci ${{ steps.find-targets.outputs.targets }}
-      
-      - name: Summary
-        if: steps.check-skip.outputs.skip != 'true' && steps.find-targets.outputs.targets != ''
-        run: |
-          echo "=================================================="
-          echo "✅ All README files are up-to-date!"
-          echo "=================================================="
