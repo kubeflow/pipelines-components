@@ -17,7 +17,7 @@ Welcome! This guide covers everything you need to know to contribute components 
 
 Before contributing, ensure you have the following tools installed:
 
-- **Python 3.10+** for component development
+- **Python 3.11+** for component development
 - **uv** ([installation guide](https://docs.astral.sh/uv/getting-started/installation)) to manage Python dependencies including `kfp` and `kfp-kubernetes` packages
 - **pre-commit** ([installation guide](https://pre-commit.com/#installation)) for automated code quality checks
 - **Docker or Podman** to build container images for custom components
@@ -207,7 +207,7 @@ Create your component following the structure above. Here's a basic template:
 # component.py
 from kfp import dsl
 
-@dsl.component(base_image="python:3.10")
+@dsl.component(base_image="python:3.11")
 def hello_world(name: str = "World") -> str:
     """A simple hello world component.
     

@@ -42,7 +42,7 @@ assignees: []
 - **Kubeflow Pipelines Version:** <!-- e.g., 2.5.0 -->
 - **Kubeflow SDK Version:** <!-- e.g., 2.5.0 -->
 - **Kubernetes Version:** <!-- e.g., 1.28 -->
-- **Python Version:** <!-- e.g., 3.10 -->
+- **Python Version:** <!-- e.g., 3.11 -->
 - **Operating System:** <!-- e.g., Fedora 43, macOS Tahoe -->
 - **Kubernetes Distribution:** <!-- e.g., OpenShift, GKE, Kind, Minikube -->
 - **Component/Pipeline Package Version:** <!-- e.g., kfp-components==2.14.6 -->

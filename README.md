@@ -1,7 +1,7 @@
 # Kubeflow Pipelines Components Repository
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
 
 Welcome to the official Kubeflow Pipelines Components repository! This is the centralized hub for reusable components and pipelines within the Kubeflow ecosystem, providing a structured collection of AI workflow building blocks for Kubernetes.
 
@@ -48,7 +48,7 @@ The Kubeflow Pipelines Components repository serves as:
 
 ### Prerequisites
 
-- Python 3.10 or later
+- Python 3.11 or later
 - Kubeflow Pipelines SDK
 
 ### Install Core Components (Coming Soon)
