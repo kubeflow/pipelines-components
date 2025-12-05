@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # Needed for proper versioning
 
@@ -101,14 +101,14 @@ jobs:
           done
 
       - name: Upload Core Package Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: core-package-py${{ matrix.python-version }}
           path: dist/
           retention-days: 30
 
       - name: Upload Third-Party Package Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: third-party-package-py${{ matrix.python-version }}
           path: dist-third-party/
