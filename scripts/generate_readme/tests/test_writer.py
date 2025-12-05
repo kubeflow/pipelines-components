@@ -108,8 +108,8 @@ class TestReadmeWriter:
         assert "## Overview" in content
         assert "## Inputs" in content
         assert "## Outputs" in content
-        # Usage Example should NOT be present when example_pipeline.py doesn't exist
-        assert "## Usage Example" not in content
+        # Usage Examples should NOT be present when example_pipelines.py doesn't exist
+        assert "## Usage Examples" not in content
         assert "## Metadata" in content
     
     def test_generate_pipeline_readme(self, pipeline_dir):
@@ -127,7 +127,7 @@ class TestReadmeWriter:
         content = readme_file.read_text()
         assert "# Sample Pipeline" in content
         assert "## Overview" in content
-        assert "## Usage Example" not in content  # Pipelines don't have usage examples
+        assert "## Usage Examples" not in content  # Pipelines don't have usage examples
     
     def test_generate_preserves_custom_content(self, component_dir):
         """Test that generation preserves custom content."""
@@ -254,14 +254,14 @@ class TestReadmeWriter:
         assert '|' in content  # Has tables
         assert '##' in content  # Has subheaders
     
-    def test_readme_with_example_pipeline(self, component_dir):
-        """Test that README includes usage example when example_pipeline.py exists."""
-        # Create example_pipeline.py file
-        example_file = component_dir / 'example_pipeline.py'
+    def test_readme_with_example_pipelines(self, component_dir):
+        """Test that README includes usage examples when example_pipelines.py exists."""
+        # Create example_pipelines.py file
+        example_file = component_dir / 'example_pipelines.py'
         example_content = '''from kfp import dsl
 from kubeflow.pipelines.components.components import sample_category
 
-@dsl.pipeline(name='example-pipeline')
+@dsl.pipeline(name='example-pipelines')
 def my_pipeline():
     sample_component_task = sample_category.sample_component(
         input_path="input.txt",
@@ -281,6 +281,6 @@ def my_pipeline():
         
         # Now code blocks should be present
         assert '```' in content  # Has code blocks
-        assert '## Usage Example' in content
+        assert '## Usage Examples' in content
         assert 'from kfp import dsl' in content
 

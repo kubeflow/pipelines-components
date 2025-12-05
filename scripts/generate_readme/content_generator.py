@@ -23,7 +23,7 @@ class ReadmeContentGenerator:
         self.metadata = metadata
         self.source_dir = source_dir
         self.metadata_file = source_dir / 'metadata.yaml'
-        self.example_file = source_dir / 'example_pipeline.py'
+        self.example_file = source_dir / 'example_pipelines.py'
         self.owners_file = source_dir / 'OWNERS'
         self.feature_metadata = self._load_feature_metadata()
 
@@ -81,7 +81,7 @@ class ReadmeContentGenerator:
                 return {}
         return {}
 
-    def _load_example_pipeline(self) -> str:
+    def _load_example_pipelines(self) -> str:
         """Load the Example Pipeline file if it exists.
 
         Returns:
@@ -92,7 +92,7 @@ class ReadmeContentGenerator:
                 with open(self.example_file, 'r', encoding='utf-8') as f:
                     return f.read()
             except Exception as e:
-                logger.warning(f"Error reading Example Pipeline file ({self.example_file}): {e}")
+                logger.warning(f"Error reading Example Pipelines file ({self.example_file}): {e}")
                 return ''
         return ''
 
@@ -244,7 +244,7 @@ class ReadmeContentGenerator:
             }
 
         # Load example pipeline if it exists
-        example_code = self._load_example_pipeline()
+        example_code = self._load_example_pipelines()
 
         # Extract links for separate Additional Resources section (removes from feature_metadata)
         links = self.feature_metadata.pop('links', {})

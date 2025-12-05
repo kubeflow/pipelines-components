@@ -26,7 +26,7 @@ uv run python -m scripts.generate_readme --component components/some_category/my
 - **Google-style docstring parsing**: Extracts parameter descriptions and return values
 - **Custom content preservation**: Preserves user-added content after the `<!-- custom-content -->` marker
 - **Type annotation support**: Handles complex type annotations including Optional, Union, and generics
-- **Component-specific usage examples**: Includes/Updates an example usage for the given pipeline or component, if provided via `example_pipeline.py`
+- **Component-specific usage examples**: Includes/Updates an example usage for the given pipeline or component, if provided via `example_pipelines.py`
 
 ## Custom Content
 

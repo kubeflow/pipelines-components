@@ -207,7 +207,7 @@ links:
         assert context['title'] == 'Sample Component'
         assert context['component_name'] == 'sample_component'
         
-        # Check example_code is empty string when no example_pipeline.py exists
+        # Check example_code is empty string when no example_pipelines.py file exists
         assert context['example_code'] == ''
         
         # Check formatted metadata exists
@@ -296,17 +296,17 @@ links:
             component_dir
         )
         
-        # When no example_pipeline.py exists, should return empty string
-        example_code = generator._load_example_pipeline()
+        # When no example_pipelines.py exists, should return empty string
+        example_code = generator._load_example_pipelines()
         assert example_code == ''
         
-        # Create an example_pipeline.py file
-        example_file = component_dir / 'example_pipeline.py'
+        # Create an example_pipelines.py file
+        example_file = component_dir / 'example_pipelines.py'
         example_content = 'from kfp import dsl\n\n@dsl.pipeline()\ndef my_pipeline():\n    pass'
         example_file.write_text(example_content)
         
         # Now it should load the content
-        example_code = generator._load_example_pipeline()
+        example_code = generator._load_example_pipelines()
         assert example_code == example_content
     
     def test_generate_readme_component(self, component_dir, sample_extracted_metadata):
@@ -318,18 +318,18 @@ links:
         
         readme = generator.generate_readme()
         
-        # Check all sections are present (except Usage Example since no example_pipeline.py exists)
+        # Check all sections are present (except Usage Examples since no example_pipelines.py exists)
         assert '# Sample Component' in readme
         assert '## Overview' in readme
         assert '## Inputs' in readme
         assert '## Outputs' in readme
         assert '## Metadata' in readme
         
-        # Usage Example should NOT be present when example_pipeline.py doesn't exist
-        assert '## Usage Example' not in readme
+        # Usage Examples should NOT be present when example_pipelines.py doesn't exist
+        assert '## Usage Examples' not in readme
         
-        # Now test with example_pipeline.py present
-        example_file = component_dir / 'example_pipeline.py'
+        # Now test with example_pipelines.py present
+        example_file = component_dir / 'example_pipelines.py'
         example_file.write_text('from kfp import dsl\n\n@dsl.pipeline()\ndef test_pipeline():\n    pass')
         
         # Regenerate readme
@@ -339,8 +339,8 @@ links:
         )
         readme2 = generator2.generate_readme()
         
-        # Now Usage Example should be present
-        assert '## Usage Example' in readme2
+        # Now Usage Examples should be present
+        assert '## Usage Examples' in readme2
         assert 'from kfp import dsl' in readme2
     
     def test_generate_readme_pipeline(self, pipeline_dir, sample_extracted_metadata):
@@ -360,8 +360,8 @@ links:
         assert '## Outputs' in readme
         assert '## Metadata' in readme
         
-        # Usage example should NOT be present for pipelines
-        assert '## Usage Example' not in readme
+        # Usage Examples should NOT be present for pipelines
+        assert '## Usage Examples' not in readme
     
     def test_generate_readme_empty_metadata(self, temp_dir):
         """Test README generation with empty metadata."""
