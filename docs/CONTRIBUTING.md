@@ -181,7 +181,7 @@ reviewers:
 
 The `OWNERS` file enables code review automation by leveraging PROW commands:
 - **Reviewers** (as well as **Approvers**), upon reviewing a PR and finding it good to merge, can comment `/lgtm`, which applies the `lgtm` label to the PR
-- **Approvers** (but not **Reviewers**) can comment `/approver`, which signfies the PR is approved for automation to merge into the repo.
+- **Approvers** (but not **Reviewers**) can comment `/approve`, which signfies the PR is approved for automation to merge into the repo.
 - If a PR has been labeled with both `lgtm` and `approve`, and all required CI checks are passing, PROW will merge the PR into the destination branch.
 
 See [full Prow documentation](https://docs.prow.k8s.io/docs/components/plugins/approve/approvers/#lgtm-label) for usage details.
