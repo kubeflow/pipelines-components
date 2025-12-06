@@ -1,0 +1,49 @@
+name: validate-metadata-schema
+env:
+  PYTHON_VERSION: 3.11
+  RETRIEVAL_SCRIPT_PATH: $GITHUB_WORKSPACE/.github/resources/scripts/get_items_for_validation.sh
+  VALIDATION_SCRIPT_PATH: $GITHUB_WORKSPACE/scripts/validate_metadata/validate_metadata.py
+on:
+  pull_request:
+    paths:
+      - 'components/**'
+      - 'pipelines/**'
+      - 'scripts/**'
+      - 'third_party/components/**'
+      - 'third_party/pipelines/**'
+
+jobs:
+  validate-metadata-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Test dependencies
+        run: |
+          pip install -r scripts/validate_metadata/requirements.txt
+
+      - name: Retrieve new components and/or pipelines
+        id: get-new-items
+        run: ${{  env.RETRIEVAL_SCRIPT_PATH  }} "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" validate_metadata
+
+      #ToDo: Utilize .github/scripts/find-changed-components-and-pipelines.sh script once merged in from https://github.com/kubeflow/pipelines-components/pull/7
+      - name: Validate new core/third-party components and/or pipelines 
+        if: ${{ steps.get-new-items.outputs.new_items_list != '' }}
+        run: |
+          NEW_ITEMS_ARRAY="${{ steps.get-new-items.outputs.new_items_list }}"
+
+          # Set IFS to a comma, so that the shell will split the string by commas.
+          IFS=','
+          
+          for item in $NEW_ITEMS_ARRAY; do
+            FILE_PATH="$GITHUB_WORKSPACE/$item"
+            echo "Processing item: $item"
+            python "${{  env.VALIDATION_SCRIPT_PATH  }}" --item $FILE_PATH
+          done
