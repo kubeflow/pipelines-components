@@ -1,4 +1,4 @@
-"""Deployment Components Module
+"""Deployment Components Module.
 
 This module re-exports all components in the deployment category for easy import:
     from kubeflow.pipelines.components.deployment import component_name

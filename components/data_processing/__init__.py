@@ -1,4 +1,4 @@
-"""Data Processing Components Module
+"""Data Processing Components Module.
 
 This module re-exports all components in the data_processing category for easy import:
     from kubeflow.pipelines.components.data_processing import component_name

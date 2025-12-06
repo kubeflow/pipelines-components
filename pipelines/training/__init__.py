@@ -1,4 +1,4 @@
-"""Training Pipelines Module
+"""Training Pipelines Module.
 
 This module re-exports all pipelines in the training category for easy import:
     from kubeflow.pipelines.pipelines.training import pipeline_name

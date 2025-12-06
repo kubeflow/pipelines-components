@@ -1,4 +1,4 @@
-"""Training Components Module
+"""Training Components Module.
 
 This module re-exports all components in the training category for easy import:
     from kubeflow.pipelines.components.training import component_name

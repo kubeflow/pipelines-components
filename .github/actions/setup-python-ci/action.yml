@@ -1,3 +1,4 @@
+---
 name: 'Setup Python CI'
 description: 'Sets up Python and uv package manager with dependencies'
 
@@ -5,6 +6,10 @@ inputs:
   python-version:
     description: 'Python version to use'
     required: true
+  extra:
+    description: 'uv extra group to install (defaults to ci)'
+    required: false
+    default: ci
 
 runs:
   using: 'composite'
@@ -27,5 +32,4 @@ runs:
 
     - name: Install dependencies from lock file
       shell: bash
-      run: uv sync --extra ci
-
+      run: uv sync --extra ${{ inputs.extra }}

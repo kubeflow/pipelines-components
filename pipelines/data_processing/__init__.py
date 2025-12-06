@@ -1,4 +1,4 @@
-"""Data Processing Pipelines Module
+"""Data Processing Pipelines Module.
 
 This module re-exports all pipelines in the data_processing category for easy import:
     from kubeflow.pipelines.pipelines.data_processing import pipeline_name

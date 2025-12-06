@@ -19,10 +19,13 @@ Welcome! This guide covers everything you need to know to contribute components 
 Before contributing, ensure you have the following tools installed:
 
 - **Python 3.11+** for component development
-- **uv** ([installation guide](https://docs.astral.sh/uv/getting-started/installation)) to manage Python dependencies including `kfp` and `kfp-kubernetes` packages
-- **pre-commit** ([installation guide](https://pre-commit.com/#installation)) for automated code quality checks
+- **uv** ([installation guide](https://docs.astral.sh/uv/getting-started/installation)) to manage
+  Python dependencies including `kfp` and `kfp-kubernetes` packages
+- **pre-commit** ([installation guide](https://pre-commit.com/#installation)) for automated code
+  quality checks
 - **Docker or Podman** to build container images for custom components
-- **kubectl** ([installation guide](https://kubernetes.io/docs/tasks/tools/)) for Kubernetes operations
+- **kubectl** ([installation guide](https://kubernetes.io/docs/tasks/tools/)) for Kubernetes
+  operations
 
 All contributors must follow the [Kubeflow Community Code of Conduct](https://github.com/kubeflow/community/blob/master/CODE_OF_CONDUCT.md).
 
@@ -55,6 +58,7 @@ uv venv
 source .venv/bin/activate
 uv sync          # Installs package in editable mode
 uv sync --dev    # Include dev dependencies if defined
+uv sync --extra lint # Include linting dependencies (ruff, yamllint)
 
 # Install pre-commit hooks for automatic code quality checks
 pre-commit install
@@ -98,7 +102,8 @@ Pipelines must be organized by category under `pipelines/<category>/`.
 ## Naming Conventions
 
 - **Components and pipelines** use `snake_case` (e.g., `data_preprocessing`, `model_trainer`)
-- **Commit messages** follow [Conventional Commits](https://conventionalcommits.org/) format with type prefix (feat, fix, docs, etc.)
+- **Commit messages** follow [Conventional Commits](https://conventionalcommits.org/) format with
+  type prefix (feat, fix, docs, etc.)
 
 ### Required Files
 
@@ -162,7 +167,8 @@ links:  # Optional, can use custom key-value (not limited to documentation, issu
 
 ### OWNERS File
 
-The OWNERS file enables component owners to self-service maintenance tasks including approvals, metadata updates, and lifecycle management:
+The OWNERS file enables component owners to self-service maintenance tasks including approvals,
+metadata updates, and lifecycle management:
 
 ```yaml
 approvers:
@@ -174,9 +180,12 @@ reviewers:
 
 The `OWNERS` file enables code review automation by leveraging PROW commands:
 
-- **Reviewers** (as well as **Approvers**), upon reviewing a PR and finding it good to merge, can comment `/lgtm`, which applies the `lgtm` label to the PR
-- **Approvers** (but not **Reviewers**) can comment `/approve`, which signifies the PR is approved for automation to merge into the repo.
-- If a PR has been labeled with both `lgtm` and `approve`, and all required CI checks are passing, PROW will merge the PR into the destination branch.
+- **Reviewers** (as well as **Approvers**), upon reviewing a PR and finding it good to merge, can
+  comment `/lgtm`, which applies the `lgtm` label to the PR
+- **Approvers** (but not **Reviewers**) can comment `/approve`, which signifies the PR is approved
+  for automation to merge into the repo.
+- If a PR has been labeled with both `lgtm` and `approve`, and all required CI checks are passing,
+  PROW will merge the PR into the destination branch.
 
 See [full Prow documentation](https://docs.prow.k8s.io/docs/components/plugins/approve/approvers/#lgtm-label) for usage details.
 
@@ -236,7 +245,8 @@ def test_hello_world_custom_name():
 
 ### 3. Document Your Component
 
-This repository requires a standardized README.md. As such, we have provided a README generation utility, which can be found in the `scripts` directory.
+This repository requires a standardized README.md. As such, we have provided a README generation
+utility, which can be found in the `scripts` directory.
 
 Read more in the [README Generator Script Documentation](./scripts/generate_readme/README.md).
 
@@ -259,11 +269,24 @@ pytest tests/test_my_component.py -v
 Ensure your code meets quality standards:
 
 ```bash
-# Format checking (120 character line length)
-black --check --line-length 120 .
+# Format and lint with ruff
+uv run ruff format --check .      # Check formatting (120 char line length)
+uv run ruff check .                # Check linting, docstrings, and import order
 
-# Docstring validation (Google convention)
-pydocstyle --convention=google .
+# Or use make commands for convenience
+make lint                          # Run all linting checks
+make format                        # Auto-format and auto-fix issues
+
+# Validate import guard (enforces stdlib-only top-level imports)
+uv run python .github/scripts/check_imports/check_imports.py \
+  --config .github/scripts/check_imports/import_exceptions.json \
+  --restrict-to components pipelines scripts
+
+# Validate YAML files
+uv run yamllint -c .yamllint.yml .
+
+# Validate Markdown files
+markdownlint -c .markdownlint.json **/*.md
 
 # Validate metadata schema
 python scripts/validate_metadata.py
@@ -271,6 +294,12 @@ python scripts/validate_metadata.py
 # Run all pre-commit hooks
 pre-commit run --all-files
 ```
+
+**Import Guard**: This repository enforces that top-level imports must be limited to Python's
+standard library. Heavy dependencies (like `kfp`, `pandas`, etc.) should be imported within
+function/pipeline bodies. Exceptions can be added to
+`.github/scripts/check_imports/import_exceptions.json` when justified (e.g., for test files
+importing `pytest`).
 
 ### Building Custom Container Images
 
@@ -288,7 +317,10 @@ docker run --rm my-component:test echo "Hello, world!"
 
 GitHub Actions automatically runs these checks on every pull request:
 
-- Code formatting (Black), linting (Flake8), docstring validation (pydocstyle), type checking (MyPy)
+- **Python linting**: Code formatting, style checks, docstring validation, and import sorting
+- **Import guard**: Validates that top-level imports are limited to Python's standard library
+- **YAML linting**: Validates YAML file syntax and style (yamllint)
+- **Markdown linting**: Validates Markdown formatting and style (markdownlint)
 - Unit and integration tests with coverage reporting
 - Container image builds for components with Containerfiles
 - Security vulnerability scans
@@ -344,8 +376,10 @@ All pull requests must complete the following:
 ## Getting Help
 
 - **Governance questions**: See [GOVERNANCE.md](GOVERNANCE.md) for ownership, verification, and process details
-- **Community discussion**: Join `#kubeflow-pipelines` channel on the [CNCF Slack](https://www.kubeflow.org/docs/about/community/#kubeflow-slack-channels)
-- **Bug reports and feature requests**: Open an issue at [GitHub Issues](https://github.com/kubeflow/pipelines-components/issues)
+- **Community discussion**: Join `#kubeflow-pipelines` channel on the
+  [CNCF Slack](https://www.kubeflow.org/docs/about/community/#kubeflow-slack-channels)
+- **Bug reports and feature requests**: Open an issue at
+  [GitHub Issues](https://github.com/kubeflow/pipelines-components/issues)
 
 ---
 

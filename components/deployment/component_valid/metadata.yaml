@@ -1,3 +1,4 @@
+---
 name: invalid-dependency-semantic-versioning
 stability: stable
 dependencies:

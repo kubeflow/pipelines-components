@@ -1,4 +1,4 @@
-"""Deployment Pipelines Module
+"""Deployment Pipelines Module.
 
 This module re-exports all pipelines in the deployment category for easy import:
     from kubeflow.pipelines.pipelines.deployment import pipeline_name

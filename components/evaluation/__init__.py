@@ -1,4 +1,4 @@
-"""Evaluation Components Module
+"""Evaluation Components Module.
 
 This module re-exports all components in the evaluation category for easy import:
     from kubeflow.pipelines.components.evaluation import component_name

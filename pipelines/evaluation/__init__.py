@@ -1,4 +1,4 @@
-"""Evaluation Pipelines Module
+"""Evaluation Pipelines Module.
 
 This module re-exports all pipelines in the evaluation category for easy import:
     from kubeflow.pipelines.pipelines.evaluation import pipeline_name
