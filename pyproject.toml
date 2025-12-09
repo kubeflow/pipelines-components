@@ -38,23 +38,23 @@ Issues = "https://github.com/kubeflow/pipelines-components/issues"
 
 [tool.setuptools]
 packages = [
-    "kubeflow.pipelines.components",
-    "kubeflow.pipelines.components.components",
-    "kubeflow.pipelines.components.components.training",
-    "kubeflow.pipelines.components.components.evaluation", 
-    "kubeflow.pipelines.components.components.data_processing",
-    "kubeflow.pipelines.components.components.deployment",
-    "kubeflow.pipelines.components.pipelines",
-    "kubeflow.pipelines.components.pipelines.training",
-    "kubeflow.pipelines.components.pipelines.evaluation",
-    "kubeflow.pipelines.components.pipelines.data_processing",
-    "kubeflow.pipelines.components.pipelines.deployment"
+    "kfp_components",
+    "kfp_components.components",
+    "kfp_components.components.training",
+    "kfp_components.components.evaluation", 
+    "kfp_components.components.data_processing",
+    "kfp_components.components.deployment",
+    "kfp_components.pipelines",
+    "kfp_components.pipelines.training",
+    "kfp_components.pipelines.evaluation",
+    "kfp_components.pipelines.data_processing",
+    "kfp_components.pipelines.deployment"
 ]
 
 [tool.setuptools.package-dir]
-"kubeflow.pipelines.components" = "."
-"kubeflow.pipelines.components.components" = "components"
-"kubeflow.pipelines.components.pipelines" = "pipelines"
+"kfp_components" = "."
+"kfp_components.components" = "components"
+"kfp_components.pipelines" = "pipelines"
 
 [tool.setuptools.package-data]
 "*" = ["*.yaml", "*.yml", "*.json"]

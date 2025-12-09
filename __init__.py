@@ -4,9 +4,9 @@ Kubeflow Pipelines Components
 A collection of reusable components and pipelines for Kubeflow Pipelines.
 
 Usage:
-    from kubeflow.pipelines.components import components, pipelines
-    from kubeflow.pipelines.components.components import training
-    from kubeflow.pipelines.components.pipelines import evaluation
+    from kfp_components import components, pipelines
+    from kfp_components.components import training
+    from kfp_components.pipelines import evaluation
 """
 
 # Import submodules to enable the convenient import patterns shown above

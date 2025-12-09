@@ -78,7 +78,7 @@ After building, you can install and test the wheel locally:
 uv pip install dist/kfp_components-*.whl
 
 # Test imports work correctly
-python -c "from kubeflow.pipelines.components import components, pipelines; print('Core package imports OK')"
+python -c "from kfp_components import components, pipelines; print('Core package imports OK')"
 ```
 
 ## What We Accept

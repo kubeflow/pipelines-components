@@ -259,7 +259,7 @@ class TestReadmeWriter:
         # Create example_pipelines.py file
         example_file = component_dir / 'example_pipelines.py'
         example_content = '''from kfp import dsl
-from kubeflow.pipelines.components.components import sample_category
+from kfp_components.components import sample_category
 
 @dsl.pipeline(name='example-pipelines')
 def my_pipeline():

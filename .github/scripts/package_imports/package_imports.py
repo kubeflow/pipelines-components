@@ -3,7 +3,7 @@
 Test that installed packages can be imported successfully.
 
 This script verifies that all expected modules from the kfp-components
-package can be imported using the kubeflow.pipelines.components namespace.
+package can be imported using the kfp_components namespace.
 """
 
 import argparse
@@ -20,8 +20,8 @@ def test_imports() -> bool:
     
     # Test main modules
     try:
-        import kubeflow.pipelines.components as kfp_components
-        from kubeflow.pipelines.components import components, pipelines
+        import kfp_components  # type: ignore[import-not-found]
+        from kfp_components import components, pipelines  # type: ignore[import-not-found]
         print("✓ Main modules imported successfully")
     except ImportError as e:
         print(f"✗ Failed to import main modules: {e}")
@@ -32,8 +32,8 @@ def test_imports() -> bool:
     categories = ['training', 'evaluation', 'data_processing', 'deployment']
     
     for category in categories:
-        comp_module = f"kubeflow.pipelines.components.components.{category}"
-        pipe_module = f"kubeflow.pipelines.components.pipelines.{category}"
+        comp_module = f"kfp_components.components.{category}"
+        pipe_module = f"kfp_components.pipelines.{category}"
             
         try:
             importlib.import_module(comp_module)

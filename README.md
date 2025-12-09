@@ -62,10 +62,10 @@ Once the packages are available, you'll be able to verify the installation:
 
 ```python
 # Coming soon - example verification code
-from kubeflow.pipelines.components import training, evaluation, data_processing
+from kfp_components.components import training, evaluation, data_processing
 
 # Example: Use a training component
-from kubeflow.pipelines.components.training import my_component
+from kfp_components.components.training import my_component
 
 # List available components
 print(dir(training))
@@ -77,8 +77,8 @@ print(dir(training))
 
 ```python
 from kfp import dsl
-from kubeflow.pipelines.components.training import model_trainer
-from kubeflow.pipelines.components.evaluation import model_evaluator
+from kfp_components.components.training import model_trainer
+from kfp_components.components.evaluation import model_evaluator
 
 @dsl.pipeline(
     name="my-ai-pipeline",
