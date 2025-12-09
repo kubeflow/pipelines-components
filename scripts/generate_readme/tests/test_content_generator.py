@@ -329,32 +329,40 @@ links:
         readme = generator.generate_readme()
 
         # Should still generate basic sections
-        assert "# Test" in readme
-        assert "## Overview" in readme
-
-    def test_format_title_snake_case(self, component_dir, sample_extracted_metadata):
+        assert '# Test' in readme
+        assert '## Overview' in readme
+    
+    def test_format_title_snake_case(self):
         """Test formatting snake_case titles."""
-        generator = ReadmeContentGenerator(sample_extracted_metadata, component_dir)
-
-        assert generator._format_title("my_field_name") == "My Field Name"
-        assert generator._format_title("test_value") == "Test Value"
-        assert generator._format_title("single") == "Single"
-
-    def test_format_title_camel_case(self, component_dir, sample_extracted_metadata):
+        from generate_readme.utils import format_title
+        
+        assert format_title('my_field_name') == 'My Field Name'
+        assert format_title('test_value') == 'Test Value'
+        assert format_title('single') == 'Single'
+    
+    def test_format_title_camel_case(self):
         """Test formatting camelCase titles."""
-        generator = ReadmeContentGenerator(sample_extracted_metadata, component_dir)
-
-        assert generator._format_title("myFieldName") == "My Field Name"
-        assert generator._format_title("testValue") == "Test Value"
-
-    def test_format_title_acronyms(self, component_dir, sample_extracted_metadata):
+        from generate_readme.utils import format_title
+        
+        assert format_title('myFieldName') == 'My Field Name'
+        assert format_title('testValue') == 'Test Value'
+    
+    def test_format_title_acronyms(self):
         """Test that known acronyms are kept uppercase."""
-        generator = ReadmeContentGenerator(sample_extracted_metadata, component_dir)
-
-        assert generator._format_title("kfp_version") == "KFP Version"
-        assert generator._format_title("api_endpoint") == "API Endpoint"
-        assert generator._format_title("user_id") == "User ID"
-
+        from generate_readme.utils import format_title
+        
+        assert format_title('kfp_version') == 'KFP Version'
+        assert format_title('api_endpoint') == 'API Endpoint'
+        assert format_title('user_id') == 'User ID'
+    
+    def test_format_title_kebab_case(self):
+        """Test formatting kebab-case titles."""
+        from generate_readme.utils import format_title
+        
+        assert format_title('my-field-name') == 'My Field Name'
+        assert format_title('sample-pipeline') == 'Sample Pipeline'
+        assert format_title('kfp-component') == 'KFP Component'
+    
     def test_format_value_basic_types(self, component_dir, sample_extracted_metadata):
         """Test formatting basic value types."""
         generator = ReadmeContentGenerator(sample_extracted_metadata, component_dir)

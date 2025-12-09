@@ -8,6 +8,7 @@ from jinja2 import Environment, FileSystemLoader
 
 from .constants import CATEGORY_README_TEMPLATE
 from .metadata_parser import MetadataParser
+from .utils import format_title
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +133,7 @@ class CategoryIndexGenerator:
             link = f"./{item_dir.name}/README.md"
             
             return {
-                'name': name,
+                'name': formatted_name,
                 'overview': overview,
                 'link': link,
             }
@@ -162,7 +163,7 @@ class CategoryIndexGenerator:
         
         # Prepare template context
         context = {
-            'category_name': self.category_name.replace('_', ' ').title(),
+            'category_name': format_title(self.category_name),
             'is_component': self.is_component,
             'type_name': 'Components' if self.is_component else 'Pipelines',
             'items': items,

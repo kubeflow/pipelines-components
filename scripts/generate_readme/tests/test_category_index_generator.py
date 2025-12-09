@@ -81,7 +81,7 @@ class TestCategoryIndexGenerator:
         info = generator._extract_item_info(item_dir)
         
         assert info is not None
-        assert info['name'] == 'sample_component'
+        assert info['name'] == 'Sample Component'
         assert 'A sample component for testing' in info['overview']
         assert info['link'] == './component1/README.md'
     
@@ -94,7 +94,7 @@ class TestCategoryIndexGenerator:
         info = generator._extract_item_info(pipe_dir)
         
         assert info is not None
-        assert info['name'] == 'sample-pipeline'
+        assert info['name'] == 'Sample Pipeline'
         assert 'A sample pipeline for testing' in info['overview']
         assert info['link'] == './pipeline1/README.md'
     
@@ -147,7 +147,7 @@ class TestCategoryIndexGenerator:
         content = generator.generate()
         
         assert '# Dev Components' in content
-        assert 'sample_component' in content
+        assert 'Sample Component' in content
         assert 'A sample component for testing' in content
         assert './component1/README.md' in content
         assert './component2/README.md' in content
@@ -160,7 +160,7 @@ class TestCategoryIndexGenerator:
         content = generator.generate()
         
         assert '# Training Pipelines' in content
-        assert 'sample-pipeline' in content
+        assert 'Sample Pipeline' in content
         assert 'A sample pipeline for testing' in content
         assert './pipeline1/README.md' in content
         assert './pipeline2/README.md' in content

@@ -247,11 +247,11 @@ class MetadataParser:
     def _is_target_decorator(self, decorator: ast.AST) -> bool:
         """Check if a decorator is a KFP component or pipeline decorator.
 
-        Supports the following decorator formats (using component as an example):
+        Supports the following decorator formats:
         - @component (direct import: from kfp.dsl import component)
-        - @dsl.component (from kfp import dsl)
+        - @dsl.pipeline (from kfp import dsl)
         - @kfp.dsl.component (import kfp)
-        - All of the above with parentheses: @component(), @dsl.component(), etc.
+        - All of the above with parentheses: @pipeline(), @dsl.component(), etc.
 
         Args:
             decorator: AST node representing the decorator.
