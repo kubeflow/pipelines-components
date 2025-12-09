@@ -305,7 +305,7 @@ def my_pipeline():
         
         content = category_readme.read_text()
         assert '# Dev Components' in content
-        assert 'sample_component' in content
+        assert 'Sample Component' in content
     
     def test_generate_updates_existing_category_index(self, tmp_path, sample_component_file, sample_component_metadata):
         """Test that generate() overwrites existing category index."""
@@ -352,5 +352,5 @@ def my_pipeline():
         
         content = category_readme.read_text()
         assert '# Training Pipelines' in content
-        assert 'sample-pipeline' in content
+        assert 'Sample Pipeline' in content
 

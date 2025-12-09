@@ -1,13 +1,13 @@
 """README content generator for KFP components and pipelines."""
 
 import logging
-import re
 from pathlib import Path
 from typing import Any, Dict
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
 from .constants import README_TEMPLATE
+from .utils import format_title
 
 logger = logging.getLogger(__name__)
 
@@ -98,34 +98,6 @@ class ReadmeContentGenerator:
                 return ''
         return ''
 
-    def _format_title(self, title: str) -> str:
-        """Format a title from snake_case or camelCase to Title Case.
-
-        Args:
-            title: The title to format.
-
-        Returns:
-            Formatted title in Title Case with spaces.
-        """
-        # First, handle camelCase by inserting spaces before capitals
-        title = re.sub(r'([a-z])([A-Z])', r'\1 \2', title)
-
-        # Replace underscores with spaces
-        title = title.replace('_', ' ')
-
-        # Split into words and capitalize each
-        words = title.split()
-        formatted_words = []
-
-        for word in words:
-            # Keep known acronyms in uppercase
-            if word.upper() in ['KFP', 'API', 'URL', 'ID', 'UI', 'CI', 'CD']:
-                formatted_words.append(word.upper())
-            else:
-                formatted_words.append(word.capitalize())
-
-        return ' '.join(formatted_words)
-
     def _format_key(self, key: str) -> str:
         """Format a metadata key for human-readable display.
 
@@ -135,7 +107,7 @@ class ReadmeContentGenerator:
         Returns:
             Formatted key as a string.
         """
-        return self._format_title(key)
+        return format_title(key)
 
     def _format_value(self, value: Any, depth: int = 0) -> str:
         """Format a metadata value for human-readable display.
@@ -194,7 +166,7 @@ class ReadmeContentGenerator:
             Dictionary with formatted keys and values.
         """
         return {
-            self._format_title(key): self._format_value(value)
+            format_title(key): self._format_value(value)
             for key, value in self.feature_metadata.items()
         }
 
@@ -217,7 +189,7 @@ class ReadmeContentGenerator:
         component_name = self.feature_metadata.get('name', self.metadata.get('name', 'Component'))
 
         # Prepare title
-        title = self._format_title(component_name)
+        title = format_title(component_name)
 
         # Prepare overview
         overview = self.metadata.get('overview', '')
