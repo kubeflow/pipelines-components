@@ -1,6 +1,6 @@
 # Detect Changed Components and Pipelines
 
-Custom GitHub Action to detect changed components and pipelines without third-party dependencies.
+Custom GitHub Action to detect changed components and pipelines.
 
 ## Quick Start
 
@@ -34,8 +34,7 @@ jobs:
 |-------|-------------|---------|
 | `base-ref` | Base git reference to compare against | `origin/main` |
 | `head-ref` | Head git reference | `HEAD` |
-| `include-third-party` | Include third_party/ directory | `true` |
-| `filter` | Grep pattern to filter changed files | _(empty)_ |
+| `filter` | Grep pattern to filter changed components, pipelines, and files | _(empty)_ |
 
 ## Outputs
 
@@ -117,25 +116,28 @@ Detect changes only in specific file types:
 ```yaml
 - uses: ./.github/actions/detect-changed-assets
   with:
-    pattern: '\.py$'  # Only Python files
+    filter: '\.py$'  # Only Python files
 
 - uses: ./.github/actions/detect-changed-assets
   with:
-    pattern: '\.(py|yaml)$'  # Python or YAML files
+    filter: '\.(py|yaml)$'  # Python or YAML files
 
 - uses: ./.github/actions/detect-changed-assets
   with:
-    pattern: '^components/.*/tests/'  # Only test files in components
+    filter: '^components/.*/tests/'  # Only test files in components
 ```
 
 ## Testing Locally
 
 ```bash
 # Test the detection script directly
-.github/scripts/detect-changed-assets/detect.sh origin/main HEAD true
+python3 .github/scripts/detect_changed_assets/detect.py --base-ref origin/main --head-ref HEAD
 
-# With pattern filter (4th argument)
-.github/scripts/detect-changed-assets/detect.sh origin/main HEAD true '\.py$'
+# With pattern filter
+python3 .github/scripts/detect_changed_assets/detect.py --base-ref origin/main --filter '\.py$'
+
+# Show help
+python3 .github/scripts/detect_changed_assets/detect.py --help
 
 # Or run the full test suite
 .github/actions/detect-changed-assets/test.sh
@@ -149,6 +151,5 @@ Detect changes only in specific file types:
 4. Parses paths to identify components/pipelines:
    - `components/<category>/<name>/` → `components/<category>/<name>`
    - `pipelines/<category>/<name>/` → `pipelines/<category>/<name>`
-   - Same for `third_party/` if enabled
 5. Deduplicates (multiple files in same component = one entry)
 6. Outputs in multiple formats

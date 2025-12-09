@@ -44,8 +44,6 @@ Core detection logic for the `detect-changed-assets` composite action.
 # Matches these patterns:
 components/<category>/<name>/
 pipelines/<category>/<name>/
-third_party/components/<category>/<name>/
-third_party/pipelines/<category>/<name>/
 
 # Example:
 # Changed file: components/training/my_trainer/component.py

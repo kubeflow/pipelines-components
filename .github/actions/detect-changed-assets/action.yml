@@ -1,5 +1,5 @@
 name: 'Detect Changed Components and Pipelines'
-description: 'Detects changed components and pipelines in the repository without third-party dependencies'
+description: 'Detects changed components and pipelines in the repository'
 author: 'Kubeflow Pipelines Components Team'
 
 inputs:
@@ -11,10 +11,6 @@ inputs:
     description: 'Head Git reference to compare (defaults to current HEAD)'
     required: false
     default: 'HEAD'
-  include-third-party:
-    description: 'Whether to include third_party components and pipelines'
-    required: false
-    default: 'true'
   filter:
     description: 'Optional grep pattern to filter changed files (e.g., "\.py$" for Python files only)'
     required: false
@@ -63,13 +59,11 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
-        .github/scripts/detect-changed-assets/detect.sh \
-          "${{ inputs.base-ref }}" \
-          "${{ inputs.head-ref }}" \
-          "${{ inputs.include-third-party }}" \
-          "${{ inputs.filter }}"
+        python3 .github/scripts/detect_changed_assets/detect.py \
+          --base-ref "${{ inputs.base-ref }}" \
+          --head-ref "${{ inputs.head-ref }}" \
+          --filter "${{ inputs.filter }}"
 
 branding:
   icon: 'file-text'
   color: 'blue'
-
