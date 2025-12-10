@@ -55,7 +55,7 @@ class MetadataParser:
             Dictionary containing parsed docstring information.
         """
         if not docstring:
-            return {"overview": "", "args": {}, "returns_description": ""}
+            raise ValueError(f"Target function in {self.file_path.name} is missing required docstring.")
 
         # Parse docstring using docstring-parser library
         parsed = parse_docstring(docstring)
@@ -197,6 +197,9 @@ class MetadataParser:
             # Parse docstring for Args and Returns sections
             docstring_info = self._parse_google_docstring(docstring)
 
+            if docstring_info.get('overview') is None:
+                raise ValueError(f"Function docstring for {function_name} in {self.file_path.name} does not contain a required overview summary")
+
             # Extract basic function information
             metadata = {"name": component_name, "docstring": docstring, "parameters": {}, "returns": {}}
             metadata.update(docstring_info)
@@ -242,7 +245,7 @@ class MetadataParser:
 
         except Exception as e:
             logger.error(f"Error extracting metadata for function {function_name}: {e}")
-            return {}
+            raise
 
     def _is_target_decorator(self, decorator: ast.AST) -> bool:
         """Check if a decorator is a KFP component or pipeline decorator.

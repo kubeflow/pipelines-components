@@ -13,6 +13,10 @@ from .utils import format_title
 logger = logging.getLogger(__name__)
 
 
+# Maximum length of the overview string in the category index README.md
+MAX_OVERVIEW_LENGTH = 120
+
+
 class CategoryIndexGenerator:
     """Generates category-level README.md that indexes all components/pipelines in a category."""
     
@@ -24,6 +28,8 @@ class CategoryIndexGenerator:
             is_component: True if indexing components, False if indexing pipelines.
         """
         self.category_dir = category_dir
+        if category_dir.exists() is False:
+            raise ValueError(f"Required category directory not found: {category_dir}")
         self.is_component = is_component
         self.category_name = category_dir.name
         
@@ -56,35 +62,26 @@ class CategoryIndexGenerator:
         
         return items
     
-    def _get_preferred_name(self, item_dir: Path, metadata: Dict, function_name: str) -> str:
-        """Get the preferred name for an item, checking metadata.yaml first.
-        
-        This matches the priority used in individual README generation:
-        1. Name from metadata.yaml
-        2. Name from function decorator
-        3. Function name
+    def _get_display_name(self, item_dir: Path) -> str:
+        """Get the display name for an item, retrieved from the `name` field in metadata.yaml.
         
         Args:
             item_dir: Path to the component/pipeline directory.
-            metadata: Extracted metadata from the function.
-            function_name: The function's name.
             
         Returns:
-            The preferred name to use.
+            The display name to use.
         """
         # Try to load metadata.yaml
         metadata_file = item_dir / 'metadata.yaml'
-        if metadata_file.exists():
-            try:
-                with open(metadata_file, 'r', encoding='utf-8') as f:
-                    yaml_data = yaml.safe_load(f)
-                    if yaml_data and 'name' in yaml_data:
-                        return yaml_data['name']
-            except Exception as e:
-                logger.debug(f"Could not load name from {metadata_file}: {e}")
-        
-        # Fall back to decorator name, then function name
-        return metadata.get('name', function_name)
+        try:
+            with open(metadata_file, 'r', encoding='utf-8') as f:
+                yaml_data = yaml.safe_load(f)
+                if yaml_data and 'name' in yaml_data:
+                    return yaml_data['name']
+        except Exception as e:
+            logger.debug(f"Could not load name from {metadata_file.name}: {e}")
+            raise e
+        raise ValueError(f"Required `name` field not found in {metadata_file.name}")
     
     def _extract_item_info(self, item_dir: Path) -> Optional[Dict[str, str]]:
         """Extract name and overview from a component/pipeline.
@@ -111,30 +108,25 @@ class CategoryIndexGenerator:
                 return None
             
             # Extract metadata
-            metadata = parser.extract_metadata(function_name)
-            if not metadata:
-                logger.warning(f"Could not extract metadata from {source_file}")
+            function_metadata = parser.extract_metadata(function_name)
+            if not function_metadata:
+                logger.warning(f"Could not extract function metadata from {source_file}")
                 return None
             
-            # Get name - prefer metadata.yaml, then decorator name, then function name
-            name = self._get_preferred_name(item_dir, metadata, function_name)
+            name = self._get_display_name(item_dir)
             # Format name to match individual README titles
             formatted_name = format_title(name)
             
             # Get overview from docstring
-            overview = metadata.get('overview', '')
-            if not overview:
-                overview = "No description available."
-            else:
-                # Take only the first line/sentence for the index
-                overview = overview.split('\n')[0].strip()
+            overview = function_metadata.get('overview')
+            overview = overview.split('\n')[0].strip()
             
             # Create relative link to the item's README
             link = f"./{item_dir.name}/README.md"
             
             return {
                 'name': formatted_name,
-                'overview': overview,
+                'overview': overview[:MAX_OVERVIEW_LENGTH],
                 'link': link,
             }
             

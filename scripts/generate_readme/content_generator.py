@@ -48,9 +48,16 @@ class ReadmeContentGenerator:
         Returns:
             Dictionary containing the aggregated feature metadata.
         """
+        if self.metadata_file.exists() is False:
+            raise ValueError(f"Required metadata.yaml file not found in {self.source_dir}")
         try:
             with open(self.metadata_file, "r", encoding="utf-8") as f:
                 yaml_data = yaml.safe_load(f)
+            if yaml_data is None:
+                raise ValueError(f"Required metadata.yaml file is empty: {self.metadata_file}")
+
+            if 'name' not in yaml_data:
+                raise ValueError(f"Required `name` field not found in {self.metadata_file.name}")
 
             # Remove 'ci' field if present
             if yaml_data and "ci" in yaml_data:
@@ -187,7 +194,7 @@ class ReadmeContentGenerator:
             Dictionary containing all variables needed by the template.
         """
         # Prefer name from metadata.yaml over function name
-        component_name = self.feature_metadata.get("name", self.metadata.get("name", "Component"))
+        component_name = self.feature_metadata.get('name')
 
         # Prepare title
         title = format_title(component_name)
