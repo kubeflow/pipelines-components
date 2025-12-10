@@ -44,7 +44,6 @@ usage() {
     echo "Examples:"
     echo "  $0 components/dev/hello_world"
     echo "  $0 pipelines/training/my_pipeline"
-    echo "  $0 third_party/components/dev/external_component"
     echo "  $0 --ci components/dev/hello_world pipelines/dev/my_pipeline  # CI mode, multiple targets"
     exit 1
 }
@@ -55,12 +54,12 @@ run_readme_generator() {
     
     # Determine if it's a component or pipeline
     local TYPE_FLAG
-    if [[ "$TARGET_DIR" == components/* ]] || [[ "$TARGET_DIR" == third_party/components/* ]]; then
+    if [[ "$TARGET_DIR" == components/* ]]; then
         TYPE_FLAG="--component"
-    elif [[ "$TARGET_DIR" == pipelines/* ]] || [[ "$TARGET_DIR" == third_party/pipelines/* ]]; then
+    elif [[ "$TARGET_DIR" == pipelines/* ]]; then
         TYPE_FLAG="--pipeline"
     else
-        print_error "Invalid directory: $TARGET_DIR. Must be in components/, pipelines/, third_party/components/, or third_party/pipelines/"
+        print_error "Invalid directory: $TARGET_DIR. Must be in components/ or pipelines/"
         return 1
     fi
 
@@ -185,12 +184,8 @@ validate_readmes() {
         # Extract category directory (parent of component/pipeline dir)
         category_dir=$(dirname "$target_dir")
         
-        # Skip if at root level (components/, pipelines/, third_party/)
-        if [[ "$category_dir" == "components" ]] || \
-           [[ "$category_dir" == "pipelines" ]] || \
-           [[ "$category_dir" == "third_party" ]] || \
-           [[ "$category_dir" == "third_party/components" ]] || \
-           [[ "$category_dir" == "third_party/pipelines" ]]; then
+        # Skip if at root level (components/, pipelines/)
+        if [[ "$category_dir" == "components" ]] || [[ "$category_dir" == "pipelines" ]]; then
             continue
         fi
         
