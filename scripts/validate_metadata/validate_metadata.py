@@ -75,18 +75,18 @@ def validate_dir(path: str) -> Path:
     """
     path = Path(path)
     if not path.exists():
-        raise argparse.ArgumentTypeError("Directory '{}' does not exist".format(path))
+        raise argparse.ArgumentTypeError(f"Directory '{path}' does not exist")
 
     if not path.is_dir():
-        raise argparse.ArgumentTypeError("'{}' is not a directory".format(path))
+        raise argparse.ArgumentTypeError(f"'{path}' is not a directory")
 
     file_path = path / OWNERS
     if not file_path.exists():
-        raise argparse.ArgumentTypeError("{} does not contain an {} file".format(path, OWNERS))
+        raise argparse.ArgumentTypeError(f"{path} does not contain an {OWNERS} file")
 
     metadata_file = path / METADATA
     if not metadata_file.exists():
-        raise argparse.ArgumentTypeError("'{}' does not contain a {} file".format(path, METADATA))
+        raise argparse.ArgumentTypeError(f"'{path}' does not contain a {METADATA} file")
 
     return path
 
@@ -100,16 +100,16 @@ def validate_owners_file(filepath: Path):
         ValidationError: If filepath input is not a file, heading 'approvers:' is missing, or no approvers are listed.
     """
     if not filepath.is_file():
-        raise ValidationError("{} is not a valid filepath.".format(filepath))
+        raise ValidationError(f"{filepath} is not a valid filepath.")
 
     with open(filepath) as f:
         for line, next_line in pairwise(f):
             if line.startswith("approvers:") and next_line.startswith("-") and len(next_line) > 2:
-                logging.info("OWNERS file at {} contains at least one approver under heading 'approvers:'.".format(filepath))
+                logging.info(f"OWNERS file at {filepath} contains at least one approver under heading 'approvers:'.")
                 return
 
     # If this line is reached, no approvers were found.
-    raise ValidationError("OWNERS file at {} requires 1+ approver under heading 'approvers:'.".format(filepath))
+    raise ValidationError(f"OWNERS file at {filepath} requires 1+ approver under heading 'approvers:'.")
 
 def validate_metadata_yaml(filepath: Path):
     """Validate that the input filepath represents a metadata.yaml file with a valid schema.
@@ -121,17 +121,17 @@ def validate_metadata_yaml(filepath: Path):
         ValidationError: If 'lastVerified' empty, or validate_date_verified() or validate_required_fields() fails.
     """
     if not filepath.is_file():
-        raise ValidationError("{} is not a valid filepath.".format(filepath))
+        raise ValidationError(f"{filepath} is not a valid filepath.")
     with open(filepath) as f:
         metadata = yaml.safe_load(f)
 
         # Validate metadata.yaml has been verified within one year of the current date.
         if "lastVerified" not in metadata:
-            raise ValidationError("Metadata at {} has corresponding metadata.yaml with no 'lastVerified' value.".format(filepath))
+            raise ValidationError(f"Metadata at {filepath} has corresponding metadata.yaml with no 'lastVerified' value.")
 
         last_verified = metadata.get("lastVerified")
         if not validate_date_verified(last_verified):
-            raise ValidationError("Metadata at {} has corresponding metadata.yaml with invalid 'lastVerified' value: {}.".format(filepath, last_verified))
+            raise ValidationError(f"Metadata at {filepath} has corresponding metadata.yaml with invalid 'lastVerified' value: {last_verified}.")
 
         # Validate required fields and their corresponding values.
         validate_required_fields(metadata)
@@ -152,13 +152,13 @@ def validate_date_verified(last_verified: datetime) -> bool:
     """
     # Validate input date formatting.
     if not isinstance(last_verified, datetime):
-        logging.error("'lastVerified' should be format YYYY-MM-DDT00:00:00Z, but instead is: {}.".format(last_verified))
+        logging.error(f"'lastVerified' should be format YYYY-MM-DDT00:00:00Z, but instead is: {last_verified}.")
         return False
     # Validate input date to be within 1 year of the current date.
     today = datetime.now(timezone.utc)
     delta = abs((today - last_verified).days)
     if delta >= 365:
-        logging.error("'lastVerified' should be within 1 year of current date, but is {} days over.".format(delta))
+        logging.error(f"'lastVerified' should be within 1 year of current date, but is {delta} days over.")
         return False
     return True
 
@@ -182,9 +182,10 @@ def validate_required_fields(metadata: dict):
     # Retrieve name from metadata.
     name = metadata.get("name")
     if name is None:
-        raise ValidationError("Missing required field 'name' in {}.".format(METADATA))
+        raise ValidationError(f"Missing required field 'name' in {METADATA}.")
     if not isinstance(name, str):
-        raise ValidationError("{} value identified in field 'name' in {}: '{}'. Value for 'name' must be string.".format(type(name).__name__, METADATA, name))
+        type_name = type(name).__name__
+        raise ValidationError(f"{type_name} value identified in field 'name' in {METADATA}: '{name}'. Value for 'name' must be string.")
 
     # Convert metadata keys to a set and compare against REQUIRED_FIELDS set.
     input_fields_set = set(input_metadata_fields)
@@ -192,13 +193,13 @@ def validate_required_fields(metadata: dict):
     if required_fields_set != input_fields_set:
         missing_fields = required_fields_set - input_fields_set
         if len(missing_fields) > 0:
-            raise ValidationError("Missing required field(s) in {} for '{}': {}.".format(METADATA, name, missing_fields))
+            raise ValidationError(f"Missing required field(s) in {METADATA} for '{name}': {missing_fields}.")
         extra_fields = input_fields_set - required_fields_set
         if len(extra_fields) > 0:
-            raise ValidationError("Unexpected field(s) in {} for '{}': {}.".format(METADATA, name, extra_fields))
+            raise ValidationError(f"Unexpected field(s) in {METADATA} for '{name}': {extra_fields}.")
     # Compare input fields against REQUIRED FIELDS as lists to verify elements are ordered correctly.
     if list(input_metadata_fields) != REQUIRED_FIELDS:
-        raise ValidationError("Field(s) located incorrectly in {} for '{}'. Expected order is {}.".format(METADATA, name, REQUIRED_FIELDS))
+        raise ValidationError(f"Field(s) located incorrectly in {METADATA} for '{name}'. Expected order is {REQUIRED_FIELDS}.")
 
     # Validate field values.
     for field in metadata:
@@ -207,32 +208,32 @@ def validate_required_fields(metadata: dict):
         if field == "tier":
             tier_val = metadata.get("tier")
             if tier_val not in TIER_OPTIONS:
-                raise ValidationError("Invalid 'tier' value in {} for '{}': '{}'. Expected a scalar string from the following options: {}.".format(METADATA, name, tier_val, TIER_OPTIONS))
+                raise ValidationError(f"Invalid 'tier' value in {METADATA} for '{name}': '{tier_val}'. Expected a scalar string from the following options: {TIER_OPTIONS}.")
 
         elif field == "stability":
             stability_val = metadata.get("stability")
             if stability_val not in STABILITY_OPTIONS:
-                raise ValidationError("Invalid 'stability' value in {} for '{}': '{}'. Expected one of: {}.".format(METADATA, name, stability_val, STABILITY_OPTIONS))
+                raise ValidationError(f"Invalid 'stability' value in {METADATA} for '{name}': '{stability_val}'. Expected one of: {STABILITY_OPTIONS}.")
 
         elif field == "dependencies":
             # Dependencies should be a dictionary.
             dependency_val = metadata.get("dependencies")
             if not isinstance(dependency_val, dict):
-                raise ValidationError("{} value identified for field 'dependencies' in {} for '{}'. Value must be array.".format(value_type, METADATA, name))
+                raise ValidationError(f"{value_type} value identified for field 'dependencies' in {METADATA} for '{name}'. Value must be array.")
             dependency_types = set(dependency_val.keys())
 
             # Dependencies should contain 'kubeflow' and can contain 'external_services'.
             if not (dependency_types == {"kubeflow"} or dependency_types == {"kubeflow", "external_services"}):
-                raise ValidationError("The following field(s) were found in dependencies: {}. Expected {}.".format(list(dependency_val.keys()), DEPENDENCIES_FIELDS))
+                raise ValidationError(f"The following field(s) were found in dependencies: {list(dependency_val.keys())}. Expected {DEPENDENCIES_FIELDS}.")
 
             # Kubeflow Pipelines is a required dependency.
             kf_dependencies = dependency_val.get("kubeflow")
             ext_dependencies = dependency_val.get("external_services")
             if not isinstance(kf_dependencies, list) or (ext_dependencies is not None and not isinstance(ext_dependencies, list)):
-                raise ValidationError("Dependency sub-types for '{}' should contain lists but instead are {} and {}.".format(name, type(kf_dependencies), type(ext_dependencies)))
+                raise ValidationError(f"Dependency sub-types for '{name}' should contain lists but instead are {type(kf_dependencies)} and {type(ext_dependencies)}.")
             kfp_present = any(d.get('name') == 'Pipelines' for d in kf_dependencies)
             if not kfp_present:
-                raise ValidationError("{} for '{}' is missing Kubeflow Pipelines dependency.".format(METADATA, name))
+                raise ValidationError(f"{METADATA} for '{name}' is missing Kubeflow Pipelines dependency.")
 
             for dependency_type in [kf_dependencies, ext_dependencies]:
                 if dependency_type is None:
@@ -245,29 +246,29 @@ def validate_required_fields(metadata: dict):
             # Dependency versions must be correctly formatted by semantic versioning.
             invalid_dependencies = get_invalid_versions(kf_dependencies) + get_invalid_versions(ext_dependencies)
             if len(invalid_dependencies) > 0:
-                raise ValidationError(f"{METADATA} for '{name}' contains one or more dependencies with invalid semantic versioning: {invalid_dependencies}.")        
+                raise ValidationError(f"{METADATA} for '{name}' contains one or more dependencies with invalid semantic versioning: {invalid_dependencies}.")
 
         elif field == "tags":
             tags_val = metadata.get("tags")
             if not (isinstance(tags_val, list)):
-                raise ValidationError("{} value identified in field 'tags' in {} for '{}'. Value must be string array.".format(value_type, METADATA, name))
+                raise ValidationError(f"{value_type} value identified in field 'tags' in {METADATA} for '{name}'. Value must be string array.")
             if not all(isinstance(item, str) for item in tags_val):
-                raise ValidationError("The following tags in {} for '{}': {}. Expected an array of scalar strings.".format(METADATA, name, tags_val))
+                raise ValidationError(f"The following tags in {METADATA} for '{name}': {tags_val}. Expected an array of scalar strings.")
         elif field == "ci":
             ci_val = metadata.get("ci")
             if not isinstance(ci_val, dict):
-                raise ValidationError("{} value identified for field 'ci' in {} for '{}'. Value must be dictionary.".format(value_type, METADATA, name))
+                raise ValidationError(f"{value_type} value identified for field 'ci' in {METADATA} for '{name}'. Value must be dictionary.")
             keys = set(ci_val.keys())
             if not (keys == {"skip_dependency_probe"}):
-                raise ValidationError("The following field(s) were found in field 'ci' in {} for '{}': {}. Only field 'skip_dependency_probe' is valid.".format(METADATA, name, list(ci_val.keys())))
+                raise ValidationError(f"The following field(s) were found in field 'ci' in {METADATA} for '{name}': {list(ci_val.keys())}. Only field 'skip_dependency_probe' is valid.")
             probe = ci_val.get("skip_dependency_probe")
             if probe is not None and not isinstance(probe, bool):
-                raise ValidationError("{} expects a boolean value for skip_dependency_probe but {} value provided: '{}'.".format(METADATA, type(probe).__name__, probe))
+                raise ValidationError(f"{METADATA} expects a boolean value for skip_dependency_probe but {type(probe).__name__} value provided: '{probe}'.")
 
         elif field == "links":
             links_value = metadata.get("links")
             if not isinstance(links_value, dict):
-                raise ValidationError("{} value identified in field 'links' in {} for '{}'. Value must be dictionary.".format(value_type, METADATA, name))
+                raise ValidationError(f"{value_type} value identified in field 'links' in {METADATA} for '{name}'. Value must be dictionary.")
 
 def get_invalid_versions(dependencies: list[dict]) -> list[dict]:
     """Return a list of the input dependencies that contain invalid semantic versioning.
@@ -316,8 +317,8 @@ def main():
         sys.exit(1)
 
     # Validation successful.
-    logging.info("Validation successful for {}.".format(input_dir))
-    print("Validation successful for {}.".format(input_dir))
+    logging.info(f"Validation successful for {input_dir}.")
+    print(f"Validation successful for {input_dir}.")
 
 if __name__ == "__main__":
     main()
