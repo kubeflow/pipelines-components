@@ -98,6 +98,18 @@ wheels = [
 ]
 
 [[package]]
+name = "ci"
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4f/ef/15940a20e25b395e1c438b29c740bac1d08f6eff7f2256a6a4a32e9d6d09/ci-0.1.1.tar.gz", hash = "sha256:0554380c55b122d20937a748db0cc6b3f20ed4956401622d24f837b80463a947", size = 3272, upload-time = "2019-05-14T16:14:35.404Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9e/0a/d9196c831d4cde0a51d97d9aad4a9fe34cf7a5629caf13298acf8b4a44df/ci-0.1.1-py3-none-any.whl", hash = "sha256:0a7f277229a9e5ee07cf8e44c7800e2b26a92e1d2944b4353c9f052668e8c90a", size = 3906, upload-time = "2019-05-14T16:14:34.045Z" },
+]
+
+[[package]]
 name = "click"
 version = "8.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -413,12 +425,13 @@ ci = [
     { name = "pytest" },
 ]
 dev = [
+    { name = "ci" },
     { name = "docstring-parser" },
     { name = "jinja2" },
     { name = "pytest" },
     { name = "pytest-cov" },
-    { name = "pyyaml" },
     { name = "ruff" },
+    { name = "semver" },
     { name = "yamllint" },
 ]
 lint = [
@@ -432,6 +445,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
+    { name = "ci", marker = "extra == 'dev'", specifier = ">=0.1.1" },
     { name = "docstring-parser", marker = "extra == 'ci'" },
     { name = "jinja2", marker = "extra == 'ci'" },
     { name = "kfp", specifier = ">=2.15.0" },
@@ -443,6 +457,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.1.0" },
     { name = "pyyaml" },
     { name = "ruff", marker = "extra == 'lint'", specifier = "==0.8.4" },
+    { name = "semver", marker = "extra == 'dev'", specifier = ">=3.0.4" },
     { name = "yamllint", marker = "extra == 'lint'", specifier = "==1.35.1" },
 ]
 provides-extras = ["lint", "test", "ci", "dev"]
@@ -831,6 +846,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/43/a9/1676ee9106995381e3d34bccac5bb28df70194167337ed4854c20f27c7ba/ruff-0.8.4-py3-none-win32.whl", hash = "sha256:552fb6d861320958ca5e15f28b20a3d071aa83b93caee33a87b471f99a6c0835", size = 8805621, upload-time = "2024-12-19T13:36:18.551Z" },
     { url = "https://files.pythonhosted.org/packages/10/98/ed6b56a30ee76771c193ff7ceeaf1d2acc98d33a1a27b8479cbdb5c17a23/ruff-0.8.4-py3-none-win_amd64.whl", hash = "sha256:f21a1143776f8656d7f364bd264a9d60f01b7f52243fbe90e7670c0dfe0cf65d", size = 9660086, upload-time = "2024-12-19T13:36:21.323Z" },
     { url = "https://files.pythonhosted.org/packages/13/9f/026e18ca7d7766783d779dae5e9c656746c6ede36ef73c6d934aaf4a6dec/ruff-0.8.4-py3-none-win_arm64.whl", hash = "sha256:9183dd615d8df50defa8b1d9a074053891ba39025cf5ae88e8bcb52edcc4bf08", size = 9074500, upload-time = "2024-12-19T13:36:23.92Z" },
+]
+
+[[package]]
+name = "semver"
+version = "3.0.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/72/d1/d3159231aec234a59dd7d601e9dd9fe96f3afff15efd33c1070019b26132/semver-3.0.4.tar.gz", hash = "sha256:afc7d8c584a5ed0a11033af086e8af226a9c0b206f313e0301f8dd7b6b589602", size = 269730, upload-time = "2025-01-24T13:19:27.617Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a6/24/4d91e05817e92e3a61c8a21e08fd0f390f5301f1c448b137c57c4bc6e543/semver-3.0.4-py3-none-any.whl", hash = "sha256:9c824d87ba7f7ab4a1890799cec8596f15c1241cb473404ea1cb0c55e4b04746", size = 17912, upload-time = "2025-01-24T13:19:24.949Z" },
 ]
 
 [[package]]
