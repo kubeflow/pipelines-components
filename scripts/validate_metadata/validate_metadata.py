@@ -1,8 +1,6 @@
 import argparse
-import os
 import sys
 from itertools import pairwise
-
 import yaml
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,7 +10,7 @@ from semver import Version
 
 # The following ordered fields are required in a metadata.yaml file.
 REQUIRED_FIELDS = ["name", "tier", "stability", "dependencies", "lastVerified"]
-# The following fields are optional in a metadata.yaml file.'
+# The following fields are optional in a metadata.yaml file.
 OPTIONAL_FIELDS = ["tags", "ci", "links"]
 # 'Tier' must be 'core' or 'third-party'.
 TIER_OPTIONS = ["core", "third_party"]
@@ -21,7 +19,7 @@ STABILITY_OPTIONS = ["alpha", "beta", "stable"]
 # 'Dependencies' must contain 'kubeflow' and can contain 'external_services'.
 DEPENDENCIES_FIELDS = ["kubeflow", "external_services"]
 # A given dependency must contain 'name' and 'version' fields.
-DEPENDENCY=["name", "version"]
+DEPENDENCY_REQUIRED_FIELDS=["name", "version"]
 # Comparison operators for dependency versions.
 COMPARISON = {">=", "<=", "=="}
 
@@ -76,7 +74,6 @@ def validate_dir(path: str) -> Path:
         argparse.ArgumentTypeError: If validation fails.
     """
     path = Path(path)
-    print(os.getcwd())
     if not path.exists():
         raise argparse.ArgumentTypeError("Directory '{}' does not exist".format(path))
 
@@ -114,7 +111,7 @@ def validate_owners_file(filepath: Path):
     # If this line is reached, no approvers were found.
     raise ValidationError("OWNERS file at {} requires 1+ approver under heading 'approvers:'.".format(filepath))
 
-def validate_metadata_yaml(filepath: Path) -> bool:
+def validate_metadata_yaml(filepath: Path):
     """Validate that the input filepath represents a metadata.yaml file with a valid schema.
 
     Args:
@@ -182,7 +179,7 @@ def validate_required_fields(metadata: dict):
         if field in input_metadata_fields:
             input_metadata_fields.remove(field)
 
-    # Retrieve name name.
+    # Retrieve name from metadata.
     name = metadata.get("name")
     if name is None:
         raise ValidationError("Missing required field 'name' in {}.".format(METADATA))
@@ -237,10 +234,18 @@ def validate_required_fields(metadata: dict):
             if not kfp_present:
                 raise ValidationError("{} for '{}' is missing Kubeflow Pipelines dependency.".format(METADATA, name))
 
+            for dependency_type in [kf_dependencies, ext_dependencies]:
+                if dependency_type is None:
+                    continue
+                for dependency in dependency_type:
+                    for field in DEPENDENCY_REQUIRED_FIELDS:
+                        if field not in dependency:
+                            raise ValidationError(f"Missing required field '{field}' in dependency: {dependency}.")
+
             # Dependency versions must be correctly formatted by semantic versioning.
             invalid_dependencies = get_invalid_versions(kf_dependencies) + get_invalid_versions(ext_dependencies)
             if len(invalid_dependencies) > 0:
-                raise ValidationError("{} for '{}' contains one or more dependencies with invalid semantic versioning: {}.".format(METADATA, name, invalid_dependencies))
+                raise ValidationError(f"{METADATA} for '{name}' contains one or more dependencies with invalid semantic versioning: {invalid_dependencies}.")        
 
         elif field == "tags":
             tags_val = metadata.get("tags")
@@ -281,6 +286,7 @@ def get_invalid_versions(dependencies: list[dict]) -> list[dict]:
         # If the dependency version is null or non-string, it is invalid.
         if version is None or not isinstance(version, str):
             invalid.append(dependency)
+            continue
         # Strip leading '==', '>=' or '<=' from dependency version, if applicable.
         if len(version) > 1 and version[:2] in COMPARISON:
             version = version[2:]
@@ -291,7 +297,7 @@ def get_invalid_versions(dependencies: list[dict]) -> list[dict]:
 def main():
     """Main entry point for the CLI."""
     args = parse_args()
-    input_dir = args.component
+    input_dir = args.dir
 
     # Validate OWNERS
     try:
