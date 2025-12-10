@@ -519,13 +519,18 @@ def _print_summary(
         for image in sorted(all_base_images):
             status = " [INVALID]" if image in all_invalid else " [VALID]"
             print(f"  - {image}{status}")
+    elif total_assets == 0:
+        # Skip base image message when no assets - more specific message below
+        pass
+    elif failed_assets > 0:
+        print("No base images could be extracted (some assets failed to compile/load)")
     else:
-        print("No custom base images found (all using defaults or no assets discovered)")
+        print("No custom base images found (all using defaults)")
 
     print()
 
     if total_assets == 0:
-        print("Note: No components or pipelines were discovered.")
+        print("No components or pipelines were discovered.")
         print("Components should be at: components/<category>/<name>/component.py")
         print("Pipelines should be at: pipelines/<category>/<name>/pipeline.py")
         return 0
@@ -542,6 +547,7 @@ def _print_summary(
         return 1
 
     if failed_assets > 0:
+        print(f"FAILED: {failed_assets} asset(s) could not be processed. See errors above.")
         return 1
 
     print("SUCCESS: All base images are valid.")

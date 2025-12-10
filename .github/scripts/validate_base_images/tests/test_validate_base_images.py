@@ -836,6 +836,49 @@ class TestPrintSummary:
         assert exit_code == 0
         captured = capsys.readouterr()
         assert "No components or pipelines were discovered" in captured.out
+        assert "No custom base images found" not in captured.out
+
+    def test_print_summary_failed_assets(self, capsys):
+        """Test printing summary when assets fail to compile/load."""
+        config = ValidationConfig()
+        results = [
+            {
+                "path": "/path/to/comp.py",
+                "category": "training",
+                "name": "broken_comp",
+                "type": "component",
+                "compiled": False,
+                "errors": ["Failed to load module: Some error"],
+                "base_images": set(),
+                "invalid_base_images": [],
+                "missing_containerfile": False,
+            }
+        ]
+        exit_code = _print_summary(results, set(), config)
+        assert exit_code == 1
+        captured = capsys.readouterr()
+        assert "Failed to process: 1" in captured.out
+        assert "No base images could be extracted (some assets failed to compile/load)" in captured.out
+        assert "FAILED: 1 asset(s) could not be processed" in captured.out
+
+    def test_print_summary_default_images_only(self, capsys):
+        """Test printing summary when assets use only default images."""
+        config = ValidationConfig()
+        results = [
+            {
+                "compiled": True,
+                "errors": [],
+                "base_images": set(),
+                "invalid_base_images": [],
+                "missing_containerfile": False,
+            }
+        ]
+        exit_code = _print_summary(results, set(), config)
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "Successfully compiled: 1" in captured.out
+        assert "No custom base images found (all using defaults)" in captured.out
+        assert "SUCCESS: All base images are valid" in captured.out
 
 
 class TestProcessAssets:
