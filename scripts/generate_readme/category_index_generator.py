@@ -113,7 +113,6 @@ class CategoryIndexGenerator:
             if not function_metadata:
                 logger.warning(f"Could not extract function metadata from {source_file}")
                 return None
-
             name = self._get_display_name(item_dir)
             # Format name to match individual README titles
             formatted_name = format_title(name)
