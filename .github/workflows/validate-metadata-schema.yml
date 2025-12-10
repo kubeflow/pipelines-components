@@ -1,7 +1,6 @@
 name: validate-metadata-schema
 env:
   PYTHON_VERSION: 3.11
-  RETRIEVAL_SCRIPT_PATH: $GITHUB_WORKSPACE/.github/resources/scripts/get_items_for_validation.sh
   VALIDATION_SCRIPT_PATH: $GITHUB_WORKSPACE/scripts/validate_metadata/validate_metadata.py
 on:
   pull_request:
@@ -9,8 +8,6 @@ on:
       - 'components/**'
       - 'pipelines/**'
       - 'scripts/**'
-      - 'third_party/components/**'
-      - 'third_party/pipelines/**'
 
 jobs:
   validate-metadata-schema:
@@ -20,30 +17,46 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - name: Setup Python CI
+        uses: ./.github/actions/setup-python-ci
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Test dependencies
+      # TODO(gfrasca): Centralize this and following step with the detect-changed-assets action.
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v47
+        with:
+          files: |
+            components/**
+            pipelines/**
+            third_party/components/**
+            third_party/pipelines/**
+            scripts/validate_metadata/**
+            .github/scripts/**
+          files_ignore: |
+            **/*.md
+
+      - name: Retrieve changed components and/or pipelines
+        id: get-changed-items
         run: |
-          pip install -r scripts/validate_metadata/requirements.txt
+          echo "Changed files:"
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" 
+    
+          # Extract unique component/pipeline directories from changed files
+          targets=$(./.github/scripts/utils/find-changed-components-and-pipelines.sh ${{ steps.changed-files.outputs.all_changed_files }})
+    
+          echo "targets=$targets" >> $GITHUB_OUTPUT
+          echo "Targets to check: $targets"
 
-      - name: Retrieve new components and/or pipelines
-        id: get-new-items
-        run: ${{  env.RETRIEVAL_SCRIPT_PATH  }} "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" validate_metadata
 
-      #ToDo: Utilize .github/scripts/find-changed-components-and-pipelines.sh script once merged in from https://github.com/kubeflow/pipelines-components/pull/7
-      - name: Validate new core/third-party components and/or pipelines 
-        if: ${{ steps.get-new-items.outputs.new_items_list != '' }}
+      - name: Validate changed core/third-party components and/or pipelines 
+        if: ${{ steps.get-changed-items.outputs.targets != '' }}
         run: |
-          NEW_ITEMS_ARRAY="${{ steps.get-new-items.outputs.new_items_list }}"
-
-          # Set IFS to a comma, so that the shell will split the string by commas.
-          IFS=','
+          CHANGED_DIRS="${{ steps.get-changed-items.outputs.targets }}"
           
-          for item in $NEW_ITEMS_ARRAY; do
+          for item in $CHANGED_DIRS; do
             FILE_PATH="$GITHUB_WORKSPACE/$item"
             echo "Processing item: $item"
-            python "${{  env.VALIDATION_SCRIPT_PATH  }}" --item $FILE_PATH
+            uv run "${{ env.VALIDATION_SCRIPT_PATH }}" --dir "$FILE_PATH"
           done
