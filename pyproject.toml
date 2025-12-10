@@ -60,4 +60,10 @@ packages = [
 "*" = ["*.yaml", "*.yml", "*.json"]
 
 [tool.pytest.ini_options]
-testpaths = ["scripts/generate_readme/tests"]
+testpaths = ["scripts/generate_readme/tests", "scripts/validate_metadata"]
+
+[dependency-groups]
+dev = [
+    "ci>=0.1.1",
+    "semver>=3.0.4",
+]

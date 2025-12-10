@@ -33,37 +33,37 @@ class ValidateMetadataTestDir:
         ValidateMetadataTestFile(
             file_name='valid_metadata.yaml',
             expected_exception=None,
-            expected_exception_msg=""
+            expected_exception_msg=None
         ),
         ValidateMetadataTestFile(
             file_name='excluding_tags.yaml',
             expected_exception=None,
-            expected_exception_msg=""
+            expected_exception_msg=None
         ),
         ValidateMetadataTestFile(
             file_name='excluding_ext_dependencies.yaml',
             expected_exception=None,
-            expected_exception_msg=""
+            expected_exception_msg=None
         ),
         ValidateMetadataTestFile(
             file_name='excluding_ci.yaml',
             expected_exception=None,
-            expected_exception_msg=""
+            expected_exception_msg=None
         ),
         ValidateMetadataTestFile(
             file_name='excluding_ci_dependency_probe.yaml',
             expected_exception=None,
-            expected_exception_msg=""
+            expected_exception_msg=None
         ),
         ValidateMetadataTestFile(
             file_name='excluding_links.yaml',
             expected_exception=None,
-            expected_exception_msg=""
+            expected_exception_msg=None
         ),
         ValidateMetadataTestFile(
             file_name='custom_links_category.yaml',
             expected_exception=None,
-            expected_exception_msg=""
+            expected_exception_msg=None
         ),
     ]
 )
@@ -237,22 +237,22 @@ def test_validate_owners_yaml_failure(test_data):
         ValidateMetadataTestDir(
             dir_name='missing',
             expected_exception=argparse.ArgumentTypeError,
-            expected_exception_msg=""
+            expected_exception_msg=None
         ),
         ValidateMetadataTestDir(
             dir_name='dir_is_not_dir.txt',
             expected_exception=argparse.ArgumentTypeError,
-            expected_exception_msg=""
+            expected_exception_msg=None
         ),
         ValidateMetadataTestDir(
             dir_name='missing_owners_file',
             expected_exception=argparse.ArgumentTypeError,
-            expected_exception_msg=""
+            expected_exception_msg=None
         ),
         ValidateMetadataTestDir(
             dir_name='missing_metadata_file',
             expected_exception=argparse.ArgumentTypeError,
-            expected_exception_msg=""
+            expected_exception_msg=None
         )
     ])
 def test_validate_metadata_files_in_dir_failure(test_data):
