@@ -20,7 +20,9 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11", "3.13"]
-        script-test-paths: ["scripts/generate_readme/tests"]
+        script-test-paths: 
+          - "scripts/generate_readme/tests"
+          - "scripts/validate_metadata"
 
     name: Test Utility Unit Tests (Python ${{ matrix.python-version }})
 
