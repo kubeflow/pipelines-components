@@ -138,7 +138,7 @@ def pipeline_dir(temp_dir, sample_pipeline_file, sample_pipeline_metadata):
 
 
 @pytest.fixture
-def category_with_components(temp_dir, sample_component_file):
+def category_with_components(temp_dir, sample_component_file, sample_component_metadata):
     """Create a category directory with sample components.
     
     Returns a tuple of (category_dir, list of component directories).
@@ -146,14 +146,14 @@ def category_with_components(temp_dir, sample_component_file):
     category_dir = temp_dir / "components" / "dev"
     category_dir.mkdir(parents=True)
     
-    comp1_dir = create_component_dir(category_dir, "component1", sample_component_file)
-    comp2_dir = create_component_dir(category_dir, "component2", sample_component_file)
+    comp1_dir = create_component_dir(category_dir, "component1", sample_component_file, sample_component_metadata)
+    comp2_dir = create_component_dir(category_dir, "component2", sample_component_file, sample_component_metadata)
     
     return category_dir, [comp1_dir, comp2_dir]
 
 
 @pytest.fixture
-def category_with_pipelines(temp_dir, sample_pipeline_file):
+def category_with_pipelines(temp_dir, sample_pipeline_file, sample_pipeline_metadata):
     """Create a category directory with sample pipelines.
     
     Returns a tuple of (category_dir, list of pipeline directories).
@@ -161,8 +161,8 @@ def category_with_pipelines(temp_dir, sample_pipeline_file):
     category_dir = temp_dir / "pipelines" / "training"
     category_dir.mkdir(parents=True)
     
-    pipe1_dir = create_pipeline_dir(category_dir, "pipeline1", sample_pipeline_file)
-    pipe2_dir = create_pipeline_dir(category_dir, "pipeline2", sample_pipeline_file)
+    pipe1_dir = create_pipeline_dir(category_dir, "pipeline1", sample_pipeline_file, sample_pipeline_metadata)
+    pipe2_dir = create_pipeline_dir(category_dir, "pipeline2", sample_pipeline_file, sample_pipeline_metadata)
     
     return category_dir, [pipe1_dir, pipe2_dir]
 

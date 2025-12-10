@@ -98,12 +98,12 @@ class TestCategoryIndexGenerator:
         assert 'A sample pipeline for testing' in info['overview']
         assert info['link'] == './pipeline1/README.md'
     
-    def test_extract_item_info_multiline_overview(self, tmp_path, component_multiline_overview):
+    def test_extract_item_info_multiline_overview(self, tmp_path, component_multiline_overview, sample_component_metadata):
         """Test that only first line of overview is used in index."""
         category_dir = tmp_path / "components" / "dev"
         category_dir.mkdir(parents=True)
         
-        item_dir = create_component_dir(category_dir, "test_comp", component_multiline_overview)
+        item_dir = create_component_dir(category_dir, "test_comp", component_multiline_overview, sample_component_metadata)
         
         generator = CategoryIndexGenerator(category_dir, is_component=True)
         info = generator._extract_item_info(item_dir)
@@ -112,18 +112,18 @@ class TestCategoryIndexGenerator:
         assert info['overview'] == 'First line of overview.'
         assert 'longer description' not in info['overview']
     
-    def test_extract_item_info_no_overview(self, tmp_path, component_no_docstring):
-        """Test extraction when component has no docstring."""
+    def test_extract_item_info_no_overview(self, tmp_path, component_no_docstring, sample_component_metadata):
+        """Test extraction fails when component has no docstring (overview is required)."""
         category_dir = tmp_path / "components" / "dev"
         category_dir.mkdir(parents=True)
         
-        item_dir = create_component_dir(category_dir, "no_docs", component_no_docstring)
+        item_dir = create_component_dir(category_dir, "no_docs", component_no_docstring, sample_component_metadata)
         
         generator = CategoryIndexGenerator(category_dir, is_component=True)
         info = generator._extract_item_info(item_dir)
         
-        assert info is not None
-        assert info['overview'] == 'No description available.'
+        # Should return None since overview is required
+        assert info is None
     
     def test_extract_item_info_missing_file(self, tmp_path):
         """Test extraction when source file is missing."""
