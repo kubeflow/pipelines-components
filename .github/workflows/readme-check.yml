@@ -5,8 +5,6 @@ on:
     paths:
       - 'components/**'
       - 'pipelines/**'
-      - 'third_party/components/**'
-      - 'third_party/pipelines/**'
       - 'scripts/generate_readme/**'
       - '.github/workflows/readme-check.yml'
       - '.github/scripts/**'
@@ -29,8 +27,6 @@ jobs:
           files: |
             components/**
             pipelines/**
-            third_party/components/**
-            third_party/pipelines/**
             scripts/generate_readme/**
             .github/scripts/**
           files_ignore: |

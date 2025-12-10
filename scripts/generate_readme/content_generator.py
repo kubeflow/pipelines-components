@@ -20,7 +20,7 @@ class ReadmeContentGenerator:
         """Initialize the generator with metadata.
 
         Args:
-            metadata: Metadata extracted by ComponentMetadataParser or PipelineMetadataParser.
+            metadata: Metadata extracted by MetadataParser.
             source_dir: Path to the component/pipeline directory.
         """
         self.metadata = metadata
@@ -38,7 +38,7 @@ class ReadmeContentGenerator:
             lstrip_blocks=True,
         )
         self.template = self.env.get_template(README_TEMPLATE)
-    
+
     def _load_feature_metadata(self) -> Dict[str, Any]:
         """Load and parse feature metadata from metadata.yaml and OWNERS files.
 
