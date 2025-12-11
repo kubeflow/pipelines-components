@@ -98,6 +98,18 @@ wheels = [
 ]
 
 [[package]]
+name = "ci"
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4f/ef/15940a20e25b395e1c438b29c740bac1d08f6eff7f2256a6a4a32e9d6d09/ci-0.1.1.tar.gz", hash = "sha256:0554380c55b122d20937a748db0cc6b3f20ed4956401622d24f837b80463a947", size = 3272, upload-time = "2019-05-14T16:14:35.404Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9e/0a/d9196c831d4cde0a51d97d9aad4a9fe34cf7a5629caf13298acf8b4a44df/ci-0.1.1-py3-none-any.whl", hash = "sha256:0a7f277229a9e5ee07cf8e44c7800e2b26a92e1d2944b4353c9f052668e8c90a", size = 3906, upload-time = "2019-05-14T16:14:34.045Z" },
+]
+
+[[package]]
 name = "click"
 version = "8.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -327,6 +339,12 @@ dev = [
     { name = "pyyaml" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "ci" },
+    { name = "semver" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "docstring-parser", marker = "extra == 'ci'" },
@@ -337,6 +355,12 @@ requires-dist = [
     { name = "pyyaml", marker = "extra == 'ci'" },
 ]
 provides-extras = ["ci", "dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "ci", specifier = ">=0.1.1" },
+    { name = "semver", specifier = ">=3.0.4" },
+]
 
 [[package]]
 name = "kfp-pipeline-spec"
@@ -674,6 +698,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/da/8a/22b7beea3ee0d44b1916c0c1cb0ee3af23b700b6da9f04991899d0c555d4/rsa-4.9.1.tar.gz", hash = "sha256:e7bdbfdb5497da4c07dfd35530e1a902659db6ff241e39d9953cad06ebd0ae75", size = 29034, upload-time = "2025-04-16T09:51:18.218Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/64/8d/0133e4eb4beed9e425d9a98ed6e081a55d195481b7632472be1af08d2f6b/rsa-4.9.1-py3-none-any.whl", hash = "sha256:68635866661c6836b8d39430f97a996acbd61bfa49406748ea243539fe239762", size = 34696, upload-time = "2025-04-16T09:51:17.142Z" },
+]
+
+[[package]]
+name = "semver"
+version = "3.0.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/72/d1/d3159231aec234a59dd7d601e9dd9fe96f3afff15efd33c1070019b26132/semver-3.0.4.tar.gz", hash = "sha256:afc7d8c584a5ed0a11033af086e8af226a9c0b206f313e0301f8dd7b6b589602", size = 269730, upload-time = "2025-01-24T13:19:27.617Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a6/24/4d91e05817e92e3a61c8a21e08fd0f390f5301f1c448b137c57c4bc6e543/semver-3.0.4-py3-none-any.whl", hash = "sha256:9c824d87ba7f7ab4a1890799cec8596f15c1241cb473404ea1cb0c55e4b04746", size = 17912, upload-time = "2025-01-24T13:19:24.949Z" },
 ]
 
 [[package]]
