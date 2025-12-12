@@ -7,10 +7,10 @@ directories, compiles them using kfp.compiler to generate IR YAML, and extracts
 base_image values from the pipeline specifications.
 
 Usage:
-    uv run python .github/scripts/validate_base_images/validate_base_images.py
+    uv run python scripts/validate_base_images/validate_base_images.py
 
     # With custom allowed prefix:
-    uv run python .github/scripts/validate_base_images/validate_base_images.py \\
+    uv run python scripts/validate_base_images/validate_base_images.py \\
         --allowed-prefix ghcr.io/myorg/
 """
 
@@ -64,7 +64,7 @@ def set_config(config: ValidationConfig) -> None:
 
 def get_repo_root() -> Path:
     """Get the repository root directory."""
-    return Path(__file__).parent.parent.parent.parent.resolve()
+    return Path(__file__).parent.parent.parent.resolve()
 
 
 def discover_assets(base_dir: Path, asset_type: str) -> list[dict[str, Any]]:

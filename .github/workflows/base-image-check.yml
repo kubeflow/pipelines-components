@@ -12,7 +12,7 @@ on:
     paths:
       - 'components/**'
       - 'pipelines/**'
-      - '.github/scripts/validate_base_images/**'
+      - 'scripts/validate_base_images/**'
       - '.github/scripts/utils/**'
       - '.github/workflows/base-image-check.yml'
 
@@ -40,4 +40,4 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Run base image validation
-        run: uv run python .github/scripts/validate_base_images/validate_base_images.py
+        run: uv run python scripts/validate_base_images/validate_base_images.py

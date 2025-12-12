@@ -288,10 +288,10 @@ Run the validation locally:
 
 ```bash
 # Run with default settings
-uv run python .github/scripts/validate_base_images/validate_base_images.py
+uv run python scripts/validate_base_images/validate_base_images.py
 
 # Override the allowed prefix (for testing or forks)
-uv run python .github/scripts/validate_base_images/validate_base_images.py \
+uv run python scripts/validate_base_images/validate_base_images.py \
     --allowed-prefix ghcr.io/myorg/
 ```
 
