@@ -21,6 +21,7 @@ dependencies = [
 ci = [
     "pyyaml",
     "pytest",
+    "pytest-timeout",
     "docstring-parser",
     "jinja2",
 ]
