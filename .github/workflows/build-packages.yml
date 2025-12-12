@@ -1,3 +1,4 @@
+---
 name: Build and Test Python Packages
 
 on:
@@ -53,7 +54,7 @@ jobs:
         run: |
           echo "Installing package..."
           uv pip install --python test-env dist/*.whl
-          
+
           echo "Testing package imports..."
           test-env/bin/python .github/scripts/package_imports/package_imports.py
 
