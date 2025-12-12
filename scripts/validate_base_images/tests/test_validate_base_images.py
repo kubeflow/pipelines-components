@@ -15,6 +15,8 @@ from validate_base_images import (
     _collect_violations,
     _print_summary,
     _process_assets,
+    build_component_asset,
+    build_pipeline_asset,
     check_containerfile_exists,
     compile_and_get_yaml,
     discover_assets,
@@ -29,6 +31,8 @@ from validate_base_images import (
     main,
     parse_args,
     process_asset,
+    resolve_component_path,
+    resolve_pipeline_path,
     set_config,
     validate_base_images,
 )
@@ -52,11 +56,6 @@ class TestValidationConfig:
         """Test default configuration values."""
         config = ValidationConfig()
         assert config.allowed_prefix == "ghcr.io/kubeflow/"
-
-    def test_custom_prefix(self):
-        """Test custom prefix configuration."""
-        config = ValidationConfig(allowed_prefix="ghcr.io/custom/")
-        assert config.allowed_prefix == "ghcr.io/custom/"
 
 
 class TestIsPythonImage:
@@ -84,12 +83,64 @@ class TestParseArgs:
     def test_default_args(self):
         """Test default argument values."""
         args = parse_args([])
-        assert args.allowed_prefix == ALLOWED_BASE_IMAGE_PREFIX
+        assert args.component == []
+        assert args.pipeline == []
 
-    def test_allowed_prefix_arg(self):
-        """Test --allowed-prefix argument."""
-        args = parse_args(["--allowed-prefix", "ghcr.io/myorg/"])
-        assert args.allowed_prefix == "ghcr.io/myorg/"
+    def test_component_repeatable(self):
+        args = parse_args(
+            ["--component", "components/training/a", "--component", "components/training/b"]
+        )
+        assert args.component == ["components/training/a", "components/training/b"]
+
+    def test_pipeline_repeatable(self):
+        args = parse_args(
+            ["--pipeline", "pipelines/training/a", "--pipeline", "pipelines/training/b"]
+        )
+        assert args.pipeline == ["pipelines/training/a", "pipelines/training/b"]
+
+
+class TestTargetResolution:
+    def test_resolve_component_dir(self):
+        repo_root = RESOURCES_DIR
+        p = resolve_component_path(repo_root, "components/training/custom_image_component")
+        assert p.exists()
+        assert p.name == "component.py"
+
+    def test_resolve_pipeline_dir(self):
+        repo_root = RESOURCES_DIR
+        p = resolve_pipeline_path(repo_root, "pipelines/training/multi_image_pipeline")
+        assert p.exists()
+        assert p.name == "pipeline.py"
+
+    def test_reject_path_outside_components(self):
+        repo_root = RESOURCES_DIR
+        with pytest.raises(ValueError):
+            resolve_component_path(repo_root, "pipelines/training/multi_image_pipeline")
+
+    def test_reject_path_outside_pipelines(self):
+        repo_root = RESOURCES_DIR
+        with pytest.raises(ValueError):
+            resolve_pipeline_path(repo_root, "components/training/custom_image_component")
+
+    def test_build_component_asset(self):
+        repo_root = RESOURCES_DIR
+        component_file = resolve_component_path(
+            repo_root, "components/training/custom_image_component"
+        )
+        asset = build_component_asset(repo_root, component_file)
+        assert asset["category"] == "training"
+        assert asset["name"] == "custom_image_component"
+        assert asset["module_path"].endswith("component.py")
+
+    def test_build_pipeline_asset(self):
+        repo_root = RESOURCES_DIR
+        pipeline_file = resolve_pipeline_path(
+            repo_root, "pipelines/training/multi_image_pipeline"
+        )
+        asset = build_pipeline_asset(repo_root, pipeline_file)
+        assert asset["category"] == "training"
+        assert asset["name"] == "multi_image_pipeline"
+        assert asset["module_path"].endswith("pipeline.py")
 
 
 class TestGetRepoRoot:
@@ -436,12 +487,6 @@ class TestIsValidBaseImage:
         assert not is_valid_base_image("ghcr.io/kubeflow")
         assert not is_valid_base_image("ghcr.io/kubeflow-fake/image:v1")
 
-    def test_custom_config(self):
-        """Test validation with custom configuration."""
-        config = ValidationConfig(allowed_prefix="ghcr.io/myorg/")
-        assert is_valid_base_image("ghcr.io/myorg/image:v1", config)
-        assert not is_valid_base_image("ghcr.io/kubeflow/image:v1", config)
-
 
 class TestValidateBaseImages:
     """Tests for validate_base_images function."""
@@ -484,17 +529,6 @@ class TestValidateBaseImages:
         invalid = validate_base_images(set())
         assert invalid == []
 
-    def test_with_custom_config(self):
-        """Test validation with custom configuration."""
-        config = ValidationConfig(allowed_prefix="ghcr.io/myorg/")
-        images = {
-            "ghcr.io/myorg/valid:v1",
-            "ghcr.io/kubeflow/invalid:v1",
-        }
-        invalid = validate_base_images(images, config)
-        assert len(invalid) == 1
-        assert "ghcr.io/kubeflow/invalid:v1" in invalid
-
 
 class TestIsCustomKubeflowImage:
     """Tests for is_custom_kubeflow_image function."""
@@ -518,12 +552,6 @@ class TestIsCustomKubeflowImage:
         assert not is_custom_kubeflow_image("docker.io/custom:latest")
         assert not is_custom_kubeflow_image("gcr.io/project/image:v1.0")
         assert not is_custom_kubeflow_image("quay.io/some/image:tag")
-
-    def test_with_custom_config(self):
-        """Test detection with custom configuration."""
-        config = ValidationConfig(allowed_prefix="ghcr.io/myorg/")
-        assert is_custom_kubeflow_image("ghcr.io/myorg/image:v1", config)
-        assert not is_custom_kubeflow_image("ghcr.io/kubeflow/image:v1", config)
 
 
 class TestCheckContainerfileExists:
@@ -931,15 +959,16 @@ class TestMainFunction:
             # Should find violations in resources (invalid images)
             assert exit_code == 1  # Resources contain invalid images
 
-    def test_main_with_custom_prefix(self, capsys):
-        """Test main function with custom allowed prefix."""
+    def test_main_with_selected_component_only(self, capsys):
         with patch("validate_base_images.get_repo_root") as mock_root:
             mock_root.return_value = RESOURCES_DIR
 
-            main(["--allowed-prefix", "ghcr.io/custom/"])
+            exit_code = main(["--component", "components/training/custom_image_component"])
 
             captured = capsys.readouterr()
-            assert "Allowed prefix: ghcr.io/custom/" in captured.out
+            assert "Selected 1 component(s)" in captured.out
+            assert "Selected 0 pipeline(s)" in captured.out
+            assert exit_code == 1
 
     def test_main_empty_directory(self, capsys):
         """Test main function with empty directory."""

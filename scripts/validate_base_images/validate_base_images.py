@@ -8,10 +8,6 @@ base_image values from the pipeline specifications.
 
 Usage:
     uv run python scripts/validate_base_images/validate_base_images.py
-
-    # With custom allowed prefix:
-    uv run python scripts/validate_base_images/validate_base_images.py \\
-        --allowed-prefix ghcr.io/myorg/
 """
 
 import argparse
@@ -31,6 +27,8 @@ from kfp import compiler
 
 ALLOWED_BASE_IMAGE_PREFIX = "ghcr.io/kubeflow/"
 PYTHON_IMAGE_PATTERN = re.compile(r"^python:\d+\.\d+.*$")
+COMPONENT_FILENAME = "component.py"
+PIPELINE_FILENAME = "pipeline.py"
 
 
 def is_python_image(image: str) -> bool:
@@ -65,6 +63,70 @@ def set_config(config: ValidationConfig) -> None:
 def get_repo_root() -> Path:
     """Get the repository root directory."""
     return Path(__file__).parent.parent.parent.resolve()
+
+
+def resolve_component_path(repo_root: Path, raw: str) -> Path:
+    path = Path(raw)
+    if not path.is_absolute():
+        path = repo_root / path
+    path = path.resolve()
+
+    if path.is_dir():
+        path = (path / COMPONENT_FILENAME).resolve()
+
+    components_root = (repo_root / "components").resolve()
+    if not path.is_relative_to(components_root):
+        raise ValueError(f"Component path must be under {components_root}: {path}")
+
+    if path.name != COMPONENT_FILENAME:
+        raise ValueError(f"Component path must point to {COMPONENT_FILENAME}: {path}")
+
+    if not path.exists():
+        raise ValueError(f"Component file not found: {path}")
+
+    return path
+
+
+def resolve_pipeline_path(repo_root: Path, raw: str) -> Path:
+    path = Path(raw)
+    if not path.is_absolute():
+        path = repo_root / path
+    path = path.resolve()
+
+    if path.is_dir():
+        path = (path / PIPELINE_FILENAME).resolve()
+
+    pipelines_root = (repo_root / "pipelines").resolve()
+    if not path.is_relative_to(pipelines_root):
+        raise ValueError(f"Pipeline path must be under {pipelines_root}: {path}")
+
+    if path.name != PIPELINE_FILENAME:
+        raise ValueError(f"Pipeline path must point to {PIPELINE_FILENAME}: {path}")
+
+    if not path.exists():
+        raise ValueError(f"Pipeline file not found: {path}")
+
+    return path
+
+
+def _build_asset_dict_from_repo_path(repo_root: Path, asset_root: str, asset_file: Path, expected_filename: str) -> dict[str, Any]:
+    root = (repo_root / asset_root).resolve()
+    resolved = asset_file.resolve()
+    if resolved.name != expected_filename:
+        raise ValueError(f"Expected {expected_filename} under {asset_root}: {asset_file}")
+    rel = resolved.relative_to(root)
+    if len(rel.parts) < 3:
+        raise ValueError(f"Path must be {asset_root}/<category>/<name>/{expected_filename}: {asset_file}")
+    category, name = rel.parts[0], rel.parts[1]
+    return {"path": asset_file, "category": category, "name": name, "module_path": str(asset_file)}
+
+
+def build_component_asset(repo_root: Path, component_file: Path) -> dict[str, Any]:
+    return _build_asset_dict_from_repo_path(repo_root, "components", component_file, COMPONENT_FILENAME)
+
+
+def build_pipeline_asset(repo_root: Path, pipeline_file: Path) -> dict[str, Any]:
+    return _build_asset_dict_from_repo_path(repo_root, "pipelines", pipeline_file, PIPELINE_FILENAME)
 
 
 def discover_assets(base_dir: Path, asset_type: str) -> list[dict[str, Any]]:
@@ -483,52 +545,43 @@ def _print_violations(violations: list[dict[str, Any]], config: ValidationConfig
             print()
 
 
-def _print_summary(
-    all_results: list[dict[str, Any]],
-    all_base_images: set[str],
-    config: ValidationConfig,
-) -> int:
-    """Print summary and return exit code."""
-    violations = _collect_violations(all_results)
-
-    if violations:
-        _print_violations(violations, config)
-
-    print("=" * 70)
-    print("Summary")
-    print("=" * 70)
-
+def _compute_summary_counts(all_results: list[dict[str, Any]]) -> tuple[int, int, int, int, int, int]:
     total_assets = len(all_results)
     compiled_assets = sum(1 for r in all_results if r["compiled"])
     failed_assets = sum(1 for r in all_results if r["errors"])
     assets_with_images = sum(1 for r in all_results if r["base_images"])
     assets_with_invalid_images = sum(1 for r in all_results if r["invalid_base_images"])
     assets_missing_containerfile = sum(1 for r in all_results if r["missing_containerfile"])
+    return (
+        total_assets,
+        compiled_assets,
+        failed_assets,
+        assets_with_images,
+        assets_with_invalid_images,
+        assets_missing_containerfile,
+    )
 
-    print(f"Total assets discovered: {total_assets}")
-    print(f"Successfully compiled: {compiled_assets}")
-    print(f"Failed to process: {failed_assets}")
-    print(f"Assets with custom base images: {assets_with_images}")
-    print(f"Assets with invalid base images: {assets_with_invalid_images}")
-    print(f"Assets missing Containerfile: {assets_missing_containerfile}")
-    print()
 
+def _print_base_images_section(total_assets: int, failed_assets: int, all_base_images: set[str], violations: list[dict[str, Any]]) -> None:
     if all_base_images:
         all_invalid = {v["image"] for v in violations}
         print("All unique base images found:")
         for image in sorted(all_base_images):
             status = " [INVALID]" if image in all_invalid else " [VALID]"
             print(f"  - {image}{status}")
-    elif total_assets == 0:
-        # Skip base image message when no assets - more specific message below
-        pass
-    elif failed_assets > 0:
+        return
+
+    if total_assets == 0:
+        return
+
+    if failed_assets > 0:
         print("No base images could be extracted (some assets failed to compile/load)")
-    else:
-        print("No custom base images found (all using defaults)")
+        return
 
-    print()
+    print("No custom base images found (all using defaults)")
 
+
+def _print_final_status(total_assets: int, failed_assets: int, violations: list[dict[str, Any]], config: ValidationConfig) -> int:
     if total_assets == 0:
         print("No components or pipelines were discovered.")
         print("Components should be at: components/<category>/<name>/component.py")
@@ -554,10 +607,52 @@ def _print_summary(
     return 0
 
 
+def _print_summary(
+    all_results: list[dict[str, Any]],
+    all_base_images: set[str],
+    config: ValidationConfig,
+) -> int:
+    """Print summary and return exit code."""
+    violations = _collect_violations(all_results)
+
+    if violations:
+        _print_violations(violations, config)
+
+    print("=" * 70)
+    print("Summary")
+    print("=" * 70)
+
+    (
+        total_assets,
+        compiled_assets,
+        failed_assets,
+        assets_with_images,
+        assets_with_invalid_images,
+        assets_missing_containerfile,
+    ) = _compute_summary_counts(all_results)
+
+    print(f"Total assets discovered: {total_assets}")
+    print(f"Successfully compiled: {compiled_assets}")
+    print(f"Failed to process: {failed_assets}")
+    print(f"Assets with custom base images: {assets_with_images}")
+    print(f"Assets with invalid base images: {assets_with_invalid_images}")
+    print(f"Assets missing Containerfile: {assets_missing_containerfile}")
+    print()
+
+    _print_base_images_section(total_assets, failed_assets, all_base_images, violations)
+
+    print()
+    return _print_final_status(total_assets, failed_assets, violations, config)
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        description="Validate base images in KFP components and pipelines.",
+        description=(
+            "Validate base images used by Kubeflow Pipelines components and pipelines.\n\n"
+            "The validator compiles components/pipelines with the KFP compiler and extracts\n"
+            "runtime images from the generated IR."
+        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Valid base images are:
@@ -568,16 +663,32 @@ Examples:
   # Run with default settings
   %(prog)s
 
-  # Override the allowed prefix
-  %(prog)s --allowed-prefix ghcr.io/myorg/
+  # Validate specific assets only
+  %(prog)s --component components/training/sample_model_trainer
+  %(prog)s --pipeline pipelines/training/simple_training
+  %(prog)s --component components/training/sample_model_trainer --pipeline pipelines/training/simple_training
         """,
     )
 
     parser.add_argument(
-        "--allowed-prefix",
-        type=str,
-        default=ALLOWED_BASE_IMAGE_PREFIX,
-        help=f"Required prefix for custom base images (default: {ALLOWED_BASE_IMAGE_PREFIX})",
+        "--component",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help=(
+            "Validate a specific component. Accepts either a directory like "
+            "'components/<category>/<name>' or a direct '.../component.py' path. Repeatable."
+        ),
+    )
+    parser.add_argument(
+        "--pipeline",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help=(
+            "Validate a specific pipeline. Accepts either a directory like "
+            "'pipelines/<category>/<name>' or a direct '.../pipeline.py' path. Repeatable."
+        ),
     )
 
     return parser.parse_args(argv)
@@ -585,7 +696,7 @@ Examples:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    config = ValidationConfig(allowed_prefix=args.allowed_prefix)
+    config = ValidationConfig()
     set_config(config)
 
     repo_root = get_repo_root()
@@ -598,11 +709,30 @@ def main(argv: list[str] | None = None) -> int:
     print("Also allowed: python:<tag> images")
     print()
 
-    components = discover_assets(repo_root / "components", "component")
-    print(f"Discovered {len(components)} component(s)")
+    selected_components = bool(args.component)
+    selected_pipelines = bool(args.pipeline)
+    is_targeted = selected_components or selected_pipelines
 
-    pipelines = discover_assets(repo_root / "pipelines", "pipeline")
-    print(f"Discovered {len(pipelines)} pipeline(s)")
+    if is_targeted:
+        components: list[dict[str, Any]] = []
+        pipelines: list[dict[str, Any]] = []
+
+        for raw in args.component:
+            component_file = resolve_component_path(repo_root, raw)
+            components.append(build_component_asset(repo_root, component_file))
+
+        for raw in args.pipeline:
+            pipeline_file = resolve_pipeline_path(repo_root, raw)
+            pipelines.append(build_pipeline_asset(repo_root, pipeline_file))
+
+        print(f"Selected {len(components)} component(s)")
+        print(f"Selected {len(pipelines)} pipeline(s)")
+    else:
+        components = discover_assets(repo_root / "components", "component")
+        print(f"Discovered {len(components)} component(s)")
+
+        pipelines = discover_assets(repo_root / "pipelines", "pipeline")
+        print(f"Discovered {len(pipelines)} pipeline(s)")
     print()
 
     all_results: list[dict[str, Any]] = []

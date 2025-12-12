@@ -281,6 +281,7 @@ All components and pipelines must use approved base images. The validation scrip
 - Default image resolution
 
 **Valid base images:**
+
 - Images starting with `ghcr.io/kubeflow/` (Kubeflow official registry)
 - Standard Python images (`python:<version>`, e.g., `python:3.11`, `python:3.11-slim`)
 
@@ -289,10 +290,6 @@ Run the validation locally:
 ```bash
 # Run with default settings
 uv run python scripts/validate_base_images/validate_base_images.py
-
-# Override the allowed prefix (for testing or forks)
-uv run python scripts/validate_base_images/validate_base_images.py \
-    --allowed-prefix ghcr.io/myorg/
 ```
 
 The script allows any standard Python image matching `python:<version>` (e.g., `python:3.11`, `python:3.10-slim`) in addition to Kubeflow registry images.

@@ -60,4 +60,4 @@ uv run pytest */tests/ -v --tb=short
 - **Unit tests** live at `<script_name>/tests/test_*.py`
 - `resources/` directories contain test data/mocks
 - Only files in `*/tests/` directories are run by `scripts-tests.yml`
-
+- The `.github/scripts/` directory follows the same structure and testing conventions for CI-only scripts

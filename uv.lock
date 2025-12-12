@@ -311,6 +311,7 @@ version = "1.11.0"
 source = { editable = "." }
 dependencies = [
     { name = "kfp" },
+    { name = "pyyaml" },
 ]
 
 [package.optional-dependencies]
@@ -318,13 +319,11 @@ ci = [
     { name = "docstring-parser" },
     { name = "jinja2" },
     { name = "pytest" },
-    { name = "pyyaml" },
 ]
 dev = [
     { name = "docstring-parser" },
     { name = "jinja2" },
     { name = "pytest" },
-    { name = "pyyaml" },
 ]
 
 [package.metadata]
@@ -334,7 +333,7 @@ requires-dist = [
     { name = "kfp", specifier = ">=2.15.0" },
     { name = "kfp-components", extras = ["ci"], marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'ci'" },
-    { name = "pyyaml", marker = "extra == 'ci'" },
+    { name = "pyyaml" },
 ]
 provides-extras = ["ci", "dev"]
 
