@@ -1,0 +1,43 @@
+name: Base Image Validation
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'components/**'
+      - 'pipelines/**'
+      - 'scripts/validate_base_images/**'
+      - '.github/scripts/utils/**'
+      - '.github/workflows/base-image-check.yml'
+
+# Cancel in-progress runs when a new commit is pushed to the same PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-base-images:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.13"]
+
+    name: Validate Base Images (Python ${{ matrix.python-version }})
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python CI
+        uses: ./.github/actions/setup-python-ci
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run base image validation
+        run: uv run python scripts/validate_base_images/validate_base_images.py

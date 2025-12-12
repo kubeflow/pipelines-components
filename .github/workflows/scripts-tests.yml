@@ -11,6 +11,7 @@ on:
       - main
     paths:
       - '.github/scripts/**'
+      - 'scripts/**'
       - '.github/workflows/scripts-tests.yml'
       - '.github/actions/setup-python-ci/**'
       - 'pyproject.toml'
@@ -21,8 +22,11 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11", "3.13"]
+        scripts-dir:
+          - .github/scripts
+          - scripts
 
-    name: Test Scripts (Python ${{ matrix.python-version }})
+    name: Test ${{ matrix.scripts-dir }} (Python ${{ matrix.python-version }})
 
     steps:
       - name: Checkout Repository
@@ -33,6 +37,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Run tests
-        working-directory: .github/scripts
-        run: uv run pytest */tests/ -v --tb=short
+      - name: Run tests (${{ matrix.scripts-dir }})
+        working-directory: ${{ matrix.scripts-dir }}
+        shell: bash
+        run: |
+          if compgen -G "*/tests" > /dev/null; then
+            uv run pytest */tests/ -v --tb=short
+          else
+            echo "No */tests directories found under '${{ matrix.scripts-dir }}'; skipping."
+          fi

@@ -272,6 +272,28 @@ python scripts/validate_metadata.py
 pre-commit run --all-files
 ```
 
+### Base Image Validation
+
+All components and pipelines must use approved base images. The validation script compiles components using `kfp.compiler` to extract the actual runtime images, which correctly handles:
+
+- Variable references (`base_image=MY_IMAGE`)
+- `functools.partial` wrappers
+- Default image resolution
+
+**Valid base images:**
+
+- Images starting with `ghcr.io/kubeflow/` (Kubeflow official registry)
+- Standard Python images (`python:<version>`, e.g., `python:3.11`, `python:3.11-slim`)
+
+Run the validation locally:
+
+```bash
+# Run with default settings
+uv run python scripts/validate_base_images/validate_base_images.py
+```
+
+The script allows any standard Python image matching `python:<version>` (e.g., `python:3.11`, `python:3.10-slim`) in addition to Kubeflow registry images.
+
 ### Building Custom Container Images
 
 If your component uses a custom image, test the container build:

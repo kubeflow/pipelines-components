@@ -14,12 +14,12 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "kfp>=2.15.0",
+    "pyyaml",
 ]
 
 [project.optional-dependencies]
 # CI
 ci = [
-    "pyyaml",
     "pytest",
     "docstring-parser",
     "jinja2",
