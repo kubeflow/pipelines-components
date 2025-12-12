@@ -5,8 +5,6 @@ on:
     paths:
       - 'components/**'
       - 'pipelines/**'
-      - 'third_party/components/**'
-      - 'third_party/pipelines/**'
       - 'scripts/generate_readme/**'
       - '.github/workflows/readme-check.yml'
       - '.github/scripts/**'
@@ -29,8 +27,6 @@ jobs:
           files: |
             components/**
             pipelines/**
-            third_party/components/**
-            third_party/pipelines/**
             scripts/generate_readme/**
             .github/scripts/**
           files_ignore: |
@@ -56,5 +52,4 @@ jobs:
       - name: Validate READMEs
         if: steps.find-targets.outputs.targets != ''
         run: |
-          ./.github/scripts/validate_readmes/test-readme-check.sh --ci ${{ steps.find-targets.outputs.targets }}
-      
+          ./.github/scripts/validate_readmes/test-readme-check.sh ${{ steps.find-targets.outputs.targets }}

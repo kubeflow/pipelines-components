@@ -36,13 +36,11 @@ class TestMetadataParser:
         assert 'result of processing' in result['returns_description']
     
     def test_parse_google_docstring_empty(self):
-        """Test parsing an empty docstring."""
+        """Test parsing an empty docstring raises ValueError (docstring is required)."""
         parser = MetadataParser(Path("dummy.py"), 'component')
-        result = parser._parse_google_docstring("")
         
-        assert result['overview'] == ''
-        assert result['args'] == {}
-        assert result['returns_description'] == ''
+        with pytest.raises(ValueError, match="missing required docstring"):
+            parser._parse_google_docstring("")
     
     def test_parse_google_docstring_multiline_arg_description(self):
         """Test parsing arguments with multi-line descriptions."""
@@ -329,7 +327,7 @@ def my_custom_component(param: str):
         assert 'function name' in metadata['overview']
 
     def test_extract_metadata_no_docstring(self, temp_dir):
-        """Test extracting metadata from component without docstring."""
+        """Test extracting metadata from component without docstring raises ValueError (docstring is required)."""
         component_file = temp_dir / "component.py"
         component_file.write_text("""
 from kfp import dsl
@@ -340,14 +338,10 @@ def my_component(param: str) -> str:
 """)
 
         parser = MetadataParser(component_file, 'component')
-        metadata = parser.extract_metadata('my_component')
 
-        # Should still extract basic info
-        assert metadata['name'] == 'my_component'
-        assert metadata['overview'] == ''
-        assert 'param' in metadata['parameters']
-        assert metadata['parameters']['param']['type'] == 'str'
-        assert metadata['returns']['type'] == 'str'
+        # Should raise ValueError since docstring is required
+        with pytest.raises(ValueError, match="missing required docstring"):
+            parser.extract_metadata('my_component')
 
     def test_extract_metadata_optional_types(self, temp_dir):
         """Test extracting metadata with Optional types."""
@@ -700,15 +694,10 @@ def dummy_comp():
 def my_pipeline(param: str):
     dummy_comp()
 """)
-
-        parser = MetadataParser(pipeline_file, 'pipeline')
-        metadata = parser.extract_metadata('my_pipeline')
-
-        # Should still extract basic info
-        assert metadata['name'] == 'my_pipeline'
-        assert metadata['overview'] == ''
-        assert 'param' in metadata['parameters']
-        assert metadata['parameters']['param']['type'] == 'str'
+        # Should raise ValueError if docstring is missing
+        with pytest.raises(ValueError):
+            parser = MetadataParser(pipeline_file, 'pipeline')
+            parser.extract_metadata('my_pipeline')
 
     def test_extract_metadata_optional_types(self, temp_dir):
         """Test extracting metadata with Optional types."""

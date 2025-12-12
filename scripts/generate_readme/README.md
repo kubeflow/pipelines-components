@@ -27,6 +27,7 @@ uv run python -m scripts.generate_readme --component components/some_category/my
 - **Custom content preservation**: Preserves user-added content after the `<!-- custom-content -->` marker
 - **Type annotation support**: Handles complex type annotations including Optional, Union, and generics
 - **Component-specific usage examples**: Includes/Updates an example usage for the given pipeline or component, if provided via `example_pipelines.py`
+- **Category index generation**: Automatically creates and updates category-level READMEs that index all components/pipelines in a category
 
 ## Custom Content
 

@@ -1,11 +1,13 @@
 """README content generator for KFP components and pipelines."""
 
 import logging
-import re
 from pathlib import Path
 from typing import Any, Dict
 import yaml
 from jinja2 import Environment, FileSystemLoader
+
+from .constants import README_TEMPLATE
+from .utils import format_title
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +19,7 @@ class ReadmeContentGenerator:
         """Initialize the generator with metadata.
 
         Args:
-            metadata: Metadata extracted by ComponentMetadataParser or PipelineMetadataParser.
+            metadata: Metadata extracted by MetadataParser.
             source_dir: Path to the component/pipeline directory.
         """
         self.metadata = metadata
@@ -28,13 +30,13 @@ class ReadmeContentGenerator:
         self.feature_metadata = self._load_feature_metadata()
 
         # Set up Jinja2 environment
-        template_dir = Path(__file__).parent
+        template_dir = Path(__file__).parent / 'templates'
         self.env = Environment(
             loader=FileSystemLoader(template_dir),
             trim_blocks=True,
             lstrip_blocks=True,
         )
-        self.template = self.env.get_template('README.md.j2')
+        self.template = self.env.get_template(README_TEMPLATE)
 
     def _load_feature_metadata(self) -> Dict[str, Any]:
         """Load and parse feature metadata from metadata.yaml and OWNERS files.
@@ -45,9 +47,16 @@ class ReadmeContentGenerator:
         Returns:
             Dictionary containing the aggregated feature metadata.
         """
+        if self.metadata_file.exists() is False:
+            raise ValueError(f"Required metadata.yaml file not found in {self.source_dir}")
         try:
             with open(self.metadata_file, 'r', encoding='utf-8') as f:
                 yaml_data = yaml.safe_load(f)
+            if yaml_data is None:
+                raise ValueError(f"Required metadata.yaml file is empty: {self.metadata_file}")
+
+            if 'name' not in yaml_data:
+                raise ValueError(f"Required `name` field not found in {self.metadata_file.name}")
 
             # Remove 'ci' field if present
             if yaml_data and 'ci' in yaml_data:
@@ -96,34 +105,6 @@ class ReadmeContentGenerator:
                 return ''
         return ''
 
-    def _format_title(self, title: str) -> str:
-        """Format a title from snake_case or camelCase to Title Case.
-
-        Args:
-            title: The title to format.
-
-        Returns:
-            Formatted title in Title Case with spaces.
-        """
-        # First, handle camelCase by inserting spaces before capitals
-        title = re.sub(r'([a-z])([A-Z])', r'\1 \2', title)
-
-        # Replace underscores with spaces
-        title = title.replace('_', ' ')
-
-        # Split into words and capitalize each
-        words = title.split()
-        formatted_words = []
-
-        for word in words:
-            # Keep known acronyms in uppercase
-            if word.upper() in ['KFP', 'API', 'URL', 'ID', 'UI', 'CI', 'CD']:
-                formatted_words.append(word.upper())
-            else:
-                formatted_words.append(word.capitalize())
-
-        return ' '.join(formatted_words)
-
     def _format_key(self, key: str) -> str:
         """Format a metadata key for human-readable display.
 
@@ -133,7 +114,7 @@ class ReadmeContentGenerator:
         Returns:
             Formatted key as a string.
         """
-        return self._format_title(key)
+        return format_title(key)
 
     def _format_value(self, value: Any, depth: int = 0) -> str:
         """Format a metadata value for human-readable display.
@@ -192,7 +173,7 @@ class ReadmeContentGenerator:
             Dictionary with formatted keys and values.
         """
         return {
-            self._format_title(key): self._format_value(value)
+            format_title(key): self._format_value(value)
             for key, value in self.feature_metadata.items()
         }
 
@@ -212,10 +193,10 @@ class ReadmeContentGenerator:
             Dictionary containing all variables needed by the template.
         """
         # Prefer name from metadata.yaml over function name
-        component_name = self.feature_metadata.get('name', self.metadata.get('name', 'Component'))
+        component_name = self.feature_metadata.get('name')
 
         # Prepare title
-        title = self._format_title(component_name)
+        title = format_title(component_name)
 
         # Prepare overview
         overview = self.metadata.get('overview', '')
