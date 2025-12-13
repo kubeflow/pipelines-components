@@ -1,0 +1,25 @@
+name: Compile and Validate Components
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  compile-check:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python CI
+        uses: ./.github/actions/setup-python-ci
+        with:
+          python-version: "3.11"
+
+      - name: Run compile check
+        run: |d
+          uv run python .github/scripts/compile_check/compile_check.py --tier all
+
