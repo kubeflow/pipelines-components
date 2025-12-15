@@ -1,0 +1,1312 @@
+# PIPELINE DEFINITION
+# Name: yoda-finetune
+# Description: Prepare Yoda dataset, finetune a base model with LoRA, and evaluate baseline vs fine-tuned
+# Inputs:
+#    eval_limit: int
+#    model_name: str [Default: 'meta-llama/Llama-3.2-3B-Instruct']
+components:
+  comp-evaluate-yoda-model:
+    executorLabel: exec-evaluate-yoda-model
+    inputDefinitions:
+      artifacts:
+        custom_translation_dataset:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+          isOptional: true
+        lora_adapter:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+          isOptional: true
+      parameters:
+        add_bos_token:
+          defaultValue: true
+          isOptional: true
+          parameterType: BOOLEAN
+        batch_size:
+          defaultValue: 1.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        dtype:
+          defaultValue: auto
+          isOptional: true
+          parameterType: STRING
+        gpu_memory_utilization:
+          defaultValue: 0.8
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+        include_classification_tasks:
+          defaultValue: true
+          isOptional: true
+          parameterType: BOOLEAN
+        include_summarization_tasks:
+          defaultValue: true
+          isOptional: true
+          parameterType: BOOLEAN
+        limit:
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        log_prompts:
+          defaultValue: true
+          isOptional: true
+          parameterType: BOOLEAN
+        max_batch_size:
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        max_model_len:
+          defaultValue: 4096.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        model_path:
+          parameterType: STRING
+        verbosity:
+          defaultValue: INFO
+          isOptional: true
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        output_metrics:
+          artifactType:
+            schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+        output_prompts:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+        output_results:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+  comp-evaluate-yoda-model-2:
+    executorLabel: exec-evaluate-yoda-model-2
+    inputDefinitions:
+      artifacts:
+        custom_translation_dataset:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+          isOptional: true
+        lora_adapter:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+          isOptional: true
+      parameters:
+        add_bos_token:
+          defaultValue: true
+          isOptional: true
+          parameterType: BOOLEAN
+        batch_size:
+          defaultValue: 1.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        dtype:
+          defaultValue: auto
+          isOptional: true
+          parameterType: STRING
+        gpu_memory_utilization:
+          defaultValue: 0.8
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+        include_classification_tasks:
+          defaultValue: true
+          isOptional: true
+          parameterType: BOOLEAN
+        include_summarization_tasks:
+          defaultValue: true
+          isOptional: true
+          parameterType: BOOLEAN
+        limit:
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        log_prompts:
+          defaultValue: true
+          isOptional: true
+          parameterType: BOOLEAN
+        max_batch_size:
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        max_model_len:
+          defaultValue: 4096.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        model_path:
+          parameterType: STRING
+        verbosity:
+          defaultValue: INFO
+          isOptional: true
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        output_metrics:
+          artifactType:
+            schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+        output_prompts:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+        output_results:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+  comp-prepare-yoda-dataset:
+    executorLabel: exec-prepare-yoda-dataset
+    inputDefinitions:
+      parameters:
+        operation_map:
+          defaultValue:
+            rename_column:
+              sentence: prompt
+          description: 'Specify list of operations you want to perform on the data
+            set before splitting it e.g. {"rename_column": {"sentence":"prompt"},
+            "remove_columns": "translation"}'
+          isOptional: true
+          parameterType: STRUCT
+        train_split_ratio:
+          defaultValue: 0.8
+          description: 'Ratio of data to use for training (0.0-1.0).
+
+            Defaults to 0.8 (80% train, 20% eval).'
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+        yoda_input_dataset:
+          description: Dataset to download from HuggingFace
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        yoda_eval_dataset:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        yoda_train_dataset:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-train-model:
+    executorLabel: exec-train-model
+    inputDefinitions:
+      artifacts:
+        input_dataset:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        adam_beta1:
+          defaultValue: 0.9
+          description: Beta1 parameter for Adam optimizer. Defaults to 0.9.
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+        adam_beta2:
+          defaultValue: 0.999
+          description: Beta2 parameter for Adam optimizer. Defaults to 0.999.
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+        adam_epsilon:
+          defaultValue: 1.0e-08
+          description: Epsilon parameter for Adam optimizer. Defaults to 1e-8.
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+        batch_size:
+          defaultValue: 16.0
+          description: Per-device training batch size. Defaults to 16.
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        epochs:
+          defaultValue: 10.0
+          description: Number of training epochs. Defaults to 10.
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        kubernetes_config:
+          isOptional: true
+          parameterType: TASK_CONFIG
+        learning_rate:
+          defaultValue: 0.0003
+          description: Learning rate for training optimization. Defaults to 3e-4.
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+        logging_steps:
+          defaultValue: 10.0
+          description: Number of steps between logging outputs. Defaults to 10.
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        lora_rank:
+          defaultValue: 8.0
+          description: LoRA adapter rank (lower = fewer parameters, faster training).
+            Defaults to 8.
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        max_length:
+          defaultValue: 64.0
+          description: Maximum token sequence length for training. Defaults to 64.
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        max_steps:
+          description: Maximum number of training steps. If specified, overrides epochs.
+            Defaults to None.
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        model_name:
+          description: HuggingFace model identifier (e.g., "meta-llama/Llama-3.2-3B-Instruct").
+          parameterType: STRING
+        num_nodes:
+          defaultValue: 2.0
+          description: Number of nodes for distributed training. Defaults to 2.
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        optimizer:
+          defaultValue: adamw_torch
+          description: Optimizer to use (e.g., "adamw_torch", "adamw_torch_fused").
+            Defaults to "adamw_torch".
+          isOptional: true
+          parameterType: STRING
+        pvc_path:
+          description: Base path within the PVC for storing outputs.
+          parameterType: STRING
+        run_id:
+          description: Unique identifier for this training run. Use dsl.PIPELINE_JOB_ID_PLACEHOLDER.
+          parameterType: STRING
+        save_steps:
+          description: Number of steps between model checkpoints. Defaults to None.
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        save_strategy:
+          defaultValue: epoch
+          description: Checkpoint saving strategy ("epoch" or "steps"). Defaults to
+            "epoch".
+          isOptional: true
+          parameterType: STRING
+        trainer_runtime:
+          defaultValue: torch-distributed
+          description: Runtime to use for Kubeflow Trainer. Defaults to "torch-distributed".
+          isOptional: true
+          parameterType: STRING
+        use_flash_attention:
+          defaultValue: false
+          description: Whether to use Flash Attention 2 for improved performance.
+            Defaults to False.
+          isOptional: true
+          parameterType: BOOLEAN
+        weight_decay:
+          defaultValue: 0.01
+          description: Weight decay for regularization. Defaults to 0.01.
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+    outputDefinitions:
+      artifacts:
+        output_metrics:
+          artifactType:
+            schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+        output_model:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+    taskConfigPassthroughs:
+    - field: RESOURCES
+    - field: KUBERNETES_TOLERATIONS
+    - field: KUBERNETES_NODE_SELECTOR
+    - field: KUBERNETES_AFFINITY
+    - applyToTask: true
+      field: ENV
+    - applyToTask: true
+      field: KUBERNETES_VOLUMES
+deploymentSpec:
+  executors:
+    exec-evaluate-yoda-model:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - evaluate_yoda_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'transformers'\
+          \ 'torch' 'accelerate' 'lm-eval[vllm]' 'unitxt' 'sacrebleu' 'datasets' \
+          \ &&  python3 -m pip install --quiet --no-warn-script-location 'kfp==2.15.2'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef evaluate_yoda_model(\n        model_path: str,\n        output_metrics:\
+          \ dsl.Output[dsl.Metrics],\n        output_results: dsl.Output[dsl.Artifact],\n\
+          \        output_prompts: dsl.Output[dsl.Artifact],\n        lora_adapter:\
+          \ dsl.Input[dsl.Model] = None,\n        batch_size: int = 1,\n        limit:\
+          \ int = None,\n        max_model_len: int = 4096,\n        gpu_memory_utilization:\
+          \ float = 0.8,\n        dtype: str = \"auto\",\n        add_bos_token: bool\
+          \ = True,\n        include_classification_tasks: bool = True,\n        include_summarization_tasks:\
+          \ bool = True,\n        custom_translation_dataset: dsl.Input[dsl.Dataset]\
+          \ = None,\n        log_prompts: bool = True,\n        verbosity: str = \"\
+          INFO\",\n        max_batch_size: int = None,\n):\n    import logging\n \
+          \   import os\n    import json\n    import time\n    import random\n   \
+          \ from typing import Dict, Any, Optional\n\n    from lm_eval.tasks.unitxt\
+          \ import task\n    from lm_eval.api.registry import get_model\n    from\
+          \ lm_eval.api.model import LM\n    from lm_eval.evaluator import evaluate\n\
+          \    from lm_eval.tasks import get_task_dict\n    from lm_eval.api.instance\
+          \ import Instance\n    from lm_eval import tasks\n    from lm_eval.api.task\
+          \ import TaskConfig\n    from lm_eval.api.metrics import mean\n    from\
+          \ datasets import load_from_disk\n    import torch\n    import sacrebleu\n\
+          \n    class TranslationTask(tasks.Task):\n        \"\"\"\n        A custom\
+          \ lm-eval task for translation, using the greedy_until method\n        and\
+          \ evaluating with the BLEU metric.\n        \"\"\"\n\n        VERSION =\
+          \ 0\n\n        def __init__(self, dataset_path, task_name: str, log_prompts=False,\
+          \ prompts_log=None):\n            self.dataset_path = dataset_path\n   \
+          \         self.task_name = task_name\n            self.log_prompts = log_prompts\n\
+          \            self.prompts_log = [] if prompts_log is None else prompts_log\n\
+          \            config = TaskConfig(task=task_name, dataset_path=dataset_path)\n\
+          \            super().__init__(config=config)\n            self.config.task\
+          \ = task_name\n            self.fewshot_rnd = random.Random()\n\n      \
+          \  def download(\n                self, data_dir=None, cache_dir=None, download_mode=None,\
+          \ **kwargs\n        ) -> None:\n            self.dataset = {\"test\": load_from_disk(self.dataset_path)}\n\
+          \n        def has_test_docs(self):\n            return \"test\" in self.dataset\n\
+          \n        def has_validation_docs(self):\n            return False\n\n \
+          \       def has_training_docs(self):\n            return False\n\n     \
+          \   def test_docs(self):\n            return self.dataset[\"test\"]\n\n\
+          \        def doc_to_text(self, doc):\n            return doc[\"prompt\"\
+          ]\n\n        def doc_to_target(self, doc):\n            return doc[\"completion\"\
+          ]\n\n        def construct_requests(self, doc, ctx, **kwargs):\n       \
+          \     kwargs.pop(\"apply_chat_template\", False)\n            kwargs.pop(\"\
+          chat_template\", False)\n            return Instance(\n                request_type=\"\
+          generate_until\",\n                doc=doc,\n                arguments=(ctx,\
+          \ {}),\n                idx=0,\n                **kwargs,\n            )\n\
+          \n        def process_results(self, doc, results):\n            (generated_text,)\
+          \ = results\n\n            prediction = generated_text.strip()\n\n     \
+          \       if self.log_prompts:\n                try:\n                   \
+          \ self.prompts_log.append(\n                        {\"prompt\": self.doc_to_text(doc),\
+          \ \"response\": prediction}\n                    )\n                except\
+          \ Exception:\n                    # Best-effort logging; avoid breaking\
+          \ evaluation if logging fails\n                    pass\n\n            predictions\
+          \ = [prediction]\n            references = [[self.doc_to_target(doc).strip()]]\n\
+          \n            bleu_score = sacrebleu.corpus_bleu(predictions, references).score\n\
+          \n            exact_match = 1.0 if prediction == references[0][0] else 0.0\n\
+          \n            return {\"bleu\": bleu_score, \"exact_match\": exact_match}\n\
+          \n        def aggregation(self):\n            return {\"bleu\": mean, \"\
+          exact_match\": mean}\n\n        def should_decontaminate(self):\n      \
+          \      return False\n\n        def doc_to_prefix(self, doc):\n         \
+          \   return \"\"\n\n        def higher_is_better(self):\n            return\
+          \ {\"bleu\": True, \"exact_match\": True}\n\n    TASK_CONFIGS = {\n    \
+          \    \"classification\": [\n            {\n                \"task\": \"\
+          classification_rte_simple\",\n                \"recipe\": \"card=cards.rte,template=templates.classification.multi_class.relation.simple\"\
+          ,\n                \"group\": \"classification\",\n                \"output_type\"\
+          : \"generate_until\",\n            },\n            {\n                \"\
+          task\": \"classification_rte_default\",\n                \"recipe\": \"\
+          card=cards.rte,template=templates.classification.multi_class.relation.default\"\
+          ,\n                \"group\": \"classification\",\n                \"output_type\"\
+          : \"generate_until\",\n            },\n            {\n                \"\
+          task\": \"classification_rte_wnli\",\n                \"recipe\": \"card=cards.wnli,template=templates.classification.multi_class.relation.simple\"\
+          ,\n                \"group\": \"classification\",\n                \"output_type\"\
+          : \"generate_until\",\n            },\n        ],\n        \"summarization\"\
+          : [\n            {\n                \"task\": \"summarization_xsum_formal\"\
+          ,\n                \"recipe\": \"card=cards.xsum,template=templates.summarization.abstractive.formal,num_demos=0\"\
+          ,\n                \"group\": \"summarization\",\n                \"output_type\"\
+          : \"generate_until\",\n            }\n        ],\n    }\n\n    logging.basicConfig(\n\
+          \        level=getattr(logging, verbosity.upper()),\n        format=\"%(asctime)s\
+          \ - %(name)s - %(levelname)s - %(message)s\",\n    )\n    logger = logging.getLogger(__name__)\n\
+          \n    os.environ[\"HF_HUB_DISABLE_TELEMETRY\"] = \"1\"\n    os.environ[\"\
+          HF_HUB_DISABLE_SYMLINKS_WARNING\"] = \"1\"\n\n    logger.info(\"Validating\
+          \ parameters...\")\n\n    if not torch.cuda.is_available():\n        raise\
+          \ ValueError(\"CUDA is not available\")\n\n    if not (0.0 <= gpu_memory_utilization\
+          \ <= 1.0):\n        raise ValueError(\"gpu_memory_utilization must be between\
+          \ 0.0 and 1.0\")\n\n    if batch_size <= 0:\n        raise ValueError(\"\
+          batch_size must be positive\")\n\n    if max_model_len <= 0:\n        raise\
+          \ ValueError(\"max_model_len must be positive\")\n\n    if limit is not\
+          \ None and limit <= 0:\n        raise ValueError(\"limit must be positive\
+          \ or None\")\n\n    if (\n            not include_classification_tasks\n\
+          \            and not include_summarization_tasks\n            and not custom_translation_dataset\n\
+          \    ):\n        raise ValueError(\n            \"At least one of include_classification_tasks,\
+          \ include_summarization_tasks, or custom_translation_dataset must be provided\"\
+          \n        )\n\n    logger.info(\"Parameter validation passed\")\n\n    logger.info(\"\
+          Creating tasks...\")\n    start_time = time.time()\n\n    eval_tasks = []\n\
+          \    prompt_response_log = []\n\n    if custom_translation_dataset:\n  \
+          \      logger.info(\"Adding custom translation task...\")\n        translation_task\
+          \ = TranslationTask(\n            custom_translation_dataset.path,\n   \
+          \         \"custom_translation\",\n            log_prompts=log_prompts,\n\
+          \            prompts_log=prompt_response_log,\n        )\n        eval_tasks.append(translation_task)\n\
+          \n    if include_classification_tasks:\n        logger.info(\"Adding classification\
+          \ tasks...\")\n        classification_configs = TASK_CONFIGS[\"classification\"\
+          ]\n\n        for config in classification_configs:\n            task_obj\
+          \ = task.Unitxt(config=config)\n            # TODO: Remove after https://github.com/EleutherAI/lm-evaluation-harness/pull/3225\
+          \ is merged.\n            task_obj.config.task = config[\"task\"]\n    \
+          \        eval_tasks.append(task_obj)\n\n    if include_summarization_tasks:\n\
+          \        logger.info(\"Adding summarization tasks...\")\n        summarization_config\
+          \ = TASK_CONFIGS[\"summarization\"][0]\n\n        task_obj = task.Unitxt(config=summarization_config)\n\
+          \        # TODO: Remove after https://github.com/EleutherAI/lm-evaluation-harness/pull/3225\
+          \ is merged.\n        task_obj.config.task = summarization_config[\"task\"\
+          ]\n        eval_tasks.append(task_obj)\n\n    task_dict = get_task_dict(eval_tasks)\n\
+          \    logger.info(f\"Created {len(eval_tasks)} tasks in {time.time() - start_time:.2f}s\"\
+          )\n\n    logger.info(\"Loading model...\")\n    start_time = time.time()\n\
+          \n    try:\n        model_args = {\n            \"add_bos_token\": add_bos_token,\n\
+          \            \"dtype\": dtype,\n            \"max_model_len\": max_model_len,\n\
+          \            \"gpu_memory_utilization\": gpu_memory_utilization,\n     \
+          \       \"pretrained\": model_path,\n            \"trust_remote_code\":\
+          \ True,\n        }\n\n        # Optionally provide LoRA adapter to lm-eval's\
+          \ VLLM backend\n        # The backend expects `lora_local_path` and internally\
+          \ constructs the LoRARequest.\n        if lora_adapter and lora_adapter.path:\n\
+          \            logger.info(\"LoRA adapter provided; passing lora_local_path\
+          \ to VLLM backend\")\n            model_args[\"lora_local_path\"] = lora_adapter.path\n\
+          \n        model_class = get_model(\"vllm\")\n        additional_config =\
+          \ {\n            \"batch_size\": batch_size,\n            \"max_batch_size\"\
+          : max_batch_size,\n            \"device\": None,\n        }\n\n        loaded_model\
+          \ = model_class.create_from_arg_obj(model_args, additional_config)\n   \
+          \     logger.info(f\"Model loaded successfully in {time.time() - start_time:.2f}s\"\
+          )\n    except Exception as e:\n        logger.error(f\"Failed to load model:\
+          \ {e}\")\n        raise RuntimeError(f\"Model loading failed: {e}\")\n\n\
+          \    logger.info(\"Starting evaluation...\")\n    start_time = time.time()\n\
+          \n    results = evaluate(\n        lm=loaded_model,\n        task_dict=task_dict,\n\
+          \        limit=limit,\n        verbosity=verbosity,\n    )\n\n    logger.info(f\"\
+          Evaluation completed in {time.time() - start_time:.2f}s\")\n\n    logger.info(\"\
+          Saving results...\")\n\n    def clean_for_json(obj):\n        \"\"\"Recursively\
+          \ clean objects to make them JSON serializable.\"\"\"\n        if isinstance(obj,\
+          \ dict):\n            return {k: clean_for_json(v) for k, v in obj.items()}\n\
+          \        elif isinstance(obj, list):\n            return [clean_for_json(item)\
+          \ for item in obj]\n        elif isinstance(obj, (int, float, str, bool,\
+          \ type(None))):\n            return obj\n        else:\n            # Convert\
+          \ non-serializable objects to string representation\n            return\
+          \ str(obj)\n\n    clean_results = clean_for_json(results)\n\n    output_results.name\
+          \ = \"results.json\"\n\n    with open(output_results.path, \"w\") as f:\n\
+          \        json.dump(clean_results, f, indent=2)\n    logger.info(f\"Results\
+          \ saved to {output_results.path}\")\n\n    # Save prompt/response log for\
+          \ custom TranslationTask only\n    if log_prompts and custom_translation_dataset\
+          \ and len(prompt_response_log) > 0:\n        try:\n            output_prompts.name\
+          \ = \"prompts.json\"\n            with open(output_prompts.path, \"w\")\
+          \ as f:\n                json.dump(prompt_response_log, f, indent=2)\n \
+          \           logger.info(f\"Prompt/response log saved to {output_prompts.path}\"\
+          )\n        except Exception as e:\n            logger.warning(f\"Failed\
+          \ to save prompt/response log: {e}\")\n\n    logger.info(\"Logging metrics...\"\
+          )\n\n    for task_name, task_results in clean_results[\"results\"].items():\n\
+          \        for metric_name, metric_value in task_results.items():\n      \
+          \      if isinstance(metric_value, (int, float)):\n                # Skip\
+          \ metrics that are 0 due to a bug in the RHOAI UI.\n                # TODO:\
+          \ Fix RHOAI UI to handle 0 values.\n                # TODO: Ignore store_session_info\
+          \ from metrics in RHOAI UI.\n                if metric_value == 0:\n   \
+          \                 continue\n\n                metric_key = f\"{task_name}_{metric_name}\"\
+          \n                output_metrics.log_metric(metric_key, metric_value)\n\
+          \                logger.debug(f\"Logged metric: {metric_key} = {metric_value}\"\
+          )\n\n    logger.info(\"Metrics logged successfully\")\n\n    logger.info(\"\
+          Pipeline completed successfully\")\n\n"
+        image: registry.access.redhat.com/ubi9/python-311:latest
+        resources:
+          accelerator:
+            count: '1'
+            resourceCount: '1'
+            resourceType: nvidia.com/gpu
+            type: nvidia.com/gpu
+          cpuRequest: 4.0
+          memoryRequest: 100.0
+          resourceCpuRequest: 4000m
+          resourceMemoryRequest: 100G
+    exec-evaluate-yoda-model-2:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - evaluate_yoda_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'transformers'\
+          \ 'torch' 'accelerate' 'lm-eval[vllm]' 'unitxt' 'sacrebleu' 'datasets' \
+          \ &&  python3 -m pip install --quiet --no-warn-script-location 'kfp==2.15.2'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef evaluate_yoda_model(\n        model_path: str,\n        output_metrics:\
+          \ dsl.Output[dsl.Metrics],\n        output_results: dsl.Output[dsl.Artifact],\n\
+          \        output_prompts: dsl.Output[dsl.Artifact],\n        lora_adapter:\
+          \ dsl.Input[dsl.Model] = None,\n        batch_size: int = 1,\n        limit:\
+          \ int = None,\n        max_model_len: int = 4096,\n        gpu_memory_utilization:\
+          \ float = 0.8,\n        dtype: str = \"auto\",\n        add_bos_token: bool\
+          \ = True,\n        include_classification_tasks: bool = True,\n        include_summarization_tasks:\
+          \ bool = True,\n        custom_translation_dataset: dsl.Input[dsl.Dataset]\
+          \ = None,\n        log_prompts: bool = True,\n        verbosity: str = \"\
+          INFO\",\n        max_batch_size: int = None,\n):\n    import logging\n \
+          \   import os\n    import json\n    import time\n    import random\n   \
+          \ from typing import Dict, Any, Optional\n\n    from lm_eval.tasks.unitxt\
+          \ import task\n    from lm_eval.api.registry import get_model\n    from\
+          \ lm_eval.api.model import LM\n    from lm_eval.evaluator import evaluate\n\
+          \    from lm_eval.tasks import get_task_dict\n    from lm_eval.api.instance\
+          \ import Instance\n    from lm_eval import tasks\n    from lm_eval.api.task\
+          \ import TaskConfig\n    from lm_eval.api.metrics import mean\n    from\
+          \ datasets import load_from_disk\n    import torch\n    import sacrebleu\n\
+          \n    class TranslationTask(tasks.Task):\n        \"\"\"\n        A custom\
+          \ lm-eval task for translation, using the greedy_until method\n        and\
+          \ evaluating with the BLEU metric.\n        \"\"\"\n\n        VERSION =\
+          \ 0\n\n        def __init__(self, dataset_path, task_name: str, log_prompts=False,\
+          \ prompts_log=None):\n            self.dataset_path = dataset_path\n   \
+          \         self.task_name = task_name\n            self.log_prompts = log_prompts\n\
+          \            self.prompts_log = [] if prompts_log is None else prompts_log\n\
+          \            config = TaskConfig(task=task_name, dataset_path=dataset_path)\n\
+          \            super().__init__(config=config)\n            self.config.task\
+          \ = task_name\n            self.fewshot_rnd = random.Random()\n\n      \
+          \  def download(\n                self, data_dir=None, cache_dir=None, download_mode=None,\
+          \ **kwargs\n        ) -> None:\n            self.dataset = {\"test\": load_from_disk(self.dataset_path)}\n\
+          \n        def has_test_docs(self):\n            return \"test\" in self.dataset\n\
+          \n        def has_validation_docs(self):\n            return False\n\n \
+          \       def has_training_docs(self):\n            return False\n\n     \
+          \   def test_docs(self):\n            return self.dataset[\"test\"]\n\n\
+          \        def doc_to_text(self, doc):\n            return doc[\"prompt\"\
+          ]\n\n        def doc_to_target(self, doc):\n            return doc[\"completion\"\
+          ]\n\n        def construct_requests(self, doc, ctx, **kwargs):\n       \
+          \     kwargs.pop(\"apply_chat_template\", False)\n            kwargs.pop(\"\
+          chat_template\", False)\n            return Instance(\n                request_type=\"\
+          generate_until\",\n                doc=doc,\n                arguments=(ctx,\
+          \ {}),\n                idx=0,\n                **kwargs,\n            )\n\
+          \n        def process_results(self, doc, results):\n            (generated_text,)\
+          \ = results\n\n            prediction = generated_text.strip()\n\n     \
+          \       if self.log_prompts:\n                try:\n                   \
+          \ self.prompts_log.append(\n                        {\"prompt\": self.doc_to_text(doc),\
+          \ \"response\": prediction}\n                    )\n                except\
+          \ Exception:\n                    # Best-effort logging; avoid breaking\
+          \ evaluation if logging fails\n                    pass\n\n            predictions\
+          \ = [prediction]\n            references = [[self.doc_to_target(doc).strip()]]\n\
+          \n            bleu_score = sacrebleu.corpus_bleu(predictions, references).score\n\
+          \n            exact_match = 1.0 if prediction == references[0][0] else 0.0\n\
+          \n            return {\"bleu\": bleu_score, \"exact_match\": exact_match}\n\
+          \n        def aggregation(self):\n            return {\"bleu\": mean, \"\
+          exact_match\": mean}\n\n        def should_decontaminate(self):\n      \
+          \      return False\n\n        def doc_to_prefix(self, doc):\n         \
+          \   return \"\"\n\n        def higher_is_better(self):\n            return\
+          \ {\"bleu\": True, \"exact_match\": True}\n\n    TASK_CONFIGS = {\n    \
+          \    \"classification\": [\n            {\n                \"task\": \"\
+          classification_rte_simple\",\n                \"recipe\": \"card=cards.rte,template=templates.classification.multi_class.relation.simple\"\
+          ,\n                \"group\": \"classification\",\n                \"output_type\"\
+          : \"generate_until\",\n            },\n            {\n                \"\
+          task\": \"classification_rte_default\",\n                \"recipe\": \"\
+          card=cards.rte,template=templates.classification.multi_class.relation.default\"\
+          ,\n                \"group\": \"classification\",\n                \"output_type\"\
+          : \"generate_until\",\n            },\n            {\n                \"\
+          task\": \"classification_rte_wnli\",\n                \"recipe\": \"card=cards.wnli,template=templates.classification.multi_class.relation.simple\"\
+          ,\n                \"group\": \"classification\",\n                \"output_type\"\
+          : \"generate_until\",\n            },\n        ],\n        \"summarization\"\
+          : [\n            {\n                \"task\": \"summarization_xsum_formal\"\
+          ,\n                \"recipe\": \"card=cards.xsum,template=templates.summarization.abstractive.formal,num_demos=0\"\
+          ,\n                \"group\": \"summarization\",\n                \"output_type\"\
+          : \"generate_until\",\n            }\n        ],\n    }\n\n    logging.basicConfig(\n\
+          \        level=getattr(logging, verbosity.upper()),\n        format=\"%(asctime)s\
+          \ - %(name)s - %(levelname)s - %(message)s\",\n    )\n    logger = logging.getLogger(__name__)\n\
+          \n    os.environ[\"HF_HUB_DISABLE_TELEMETRY\"] = \"1\"\n    os.environ[\"\
+          HF_HUB_DISABLE_SYMLINKS_WARNING\"] = \"1\"\n\n    logger.info(\"Validating\
+          \ parameters...\")\n\n    if not torch.cuda.is_available():\n        raise\
+          \ ValueError(\"CUDA is not available\")\n\n    if not (0.0 <= gpu_memory_utilization\
+          \ <= 1.0):\n        raise ValueError(\"gpu_memory_utilization must be between\
+          \ 0.0 and 1.0\")\n\n    if batch_size <= 0:\n        raise ValueError(\"\
+          batch_size must be positive\")\n\n    if max_model_len <= 0:\n        raise\
+          \ ValueError(\"max_model_len must be positive\")\n\n    if limit is not\
+          \ None and limit <= 0:\n        raise ValueError(\"limit must be positive\
+          \ or None\")\n\n    if (\n            not include_classification_tasks\n\
+          \            and not include_summarization_tasks\n            and not custom_translation_dataset\n\
+          \    ):\n        raise ValueError(\n            \"At least one of include_classification_tasks,\
+          \ include_summarization_tasks, or custom_translation_dataset must be provided\"\
+          \n        )\n\n    logger.info(\"Parameter validation passed\")\n\n    logger.info(\"\
+          Creating tasks...\")\n    start_time = time.time()\n\n    eval_tasks = []\n\
+          \    prompt_response_log = []\n\n    if custom_translation_dataset:\n  \
+          \      logger.info(\"Adding custom translation task...\")\n        translation_task\
+          \ = TranslationTask(\n            custom_translation_dataset.path,\n   \
+          \         \"custom_translation\",\n            log_prompts=log_prompts,\n\
+          \            prompts_log=prompt_response_log,\n        )\n        eval_tasks.append(translation_task)\n\
+          \n    if include_classification_tasks:\n        logger.info(\"Adding classification\
+          \ tasks...\")\n        classification_configs = TASK_CONFIGS[\"classification\"\
+          ]\n\n        for config in classification_configs:\n            task_obj\
+          \ = task.Unitxt(config=config)\n            # TODO: Remove after https://github.com/EleutherAI/lm-evaluation-harness/pull/3225\
+          \ is merged.\n            task_obj.config.task = config[\"task\"]\n    \
+          \        eval_tasks.append(task_obj)\n\n    if include_summarization_tasks:\n\
+          \        logger.info(\"Adding summarization tasks...\")\n        summarization_config\
+          \ = TASK_CONFIGS[\"summarization\"][0]\n\n        task_obj = task.Unitxt(config=summarization_config)\n\
+          \        # TODO: Remove after https://github.com/EleutherAI/lm-evaluation-harness/pull/3225\
+          \ is merged.\n        task_obj.config.task = summarization_config[\"task\"\
+          ]\n        eval_tasks.append(task_obj)\n\n    task_dict = get_task_dict(eval_tasks)\n\
+          \    logger.info(f\"Created {len(eval_tasks)} tasks in {time.time() - start_time:.2f}s\"\
+          )\n\n    logger.info(\"Loading model...\")\n    start_time = time.time()\n\
+          \n    try:\n        model_args = {\n            \"add_bos_token\": add_bos_token,\n\
+          \            \"dtype\": dtype,\n            \"max_model_len\": max_model_len,\n\
+          \            \"gpu_memory_utilization\": gpu_memory_utilization,\n     \
+          \       \"pretrained\": model_path,\n            \"trust_remote_code\":\
+          \ True,\n        }\n\n        # Optionally provide LoRA adapter to lm-eval's\
+          \ VLLM backend\n        # The backend expects `lora_local_path` and internally\
+          \ constructs the LoRARequest.\n        if lora_adapter and lora_adapter.path:\n\
+          \            logger.info(\"LoRA adapter provided; passing lora_local_path\
+          \ to VLLM backend\")\n            model_args[\"lora_local_path\"] = lora_adapter.path\n\
+          \n        model_class = get_model(\"vllm\")\n        additional_config =\
+          \ {\n            \"batch_size\": batch_size,\n            \"max_batch_size\"\
+          : max_batch_size,\n            \"device\": None,\n        }\n\n        loaded_model\
+          \ = model_class.create_from_arg_obj(model_args, additional_config)\n   \
+          \     logger.info(f\"Model loaded successfully in {time.time() - start_time:.2f}s\"\
+          )\n    except Exception as e:\n        logger.error(f\"Failed to load model:\
+          \ {e}\")\n        raise RuntimeError(f\"Model loading failed: {e}\")\n\n\
+          \    logger.info(\"Starting evaluation...\")\n    start_time = time.time()\n\
+          \n    results = evaluate(\n        lm=loaded_model,\n        task_dict=task_dict,\n\
+          \        limit=limit,\n        verbosity=verbosity,\n    )\n\n    logger.info(f\"\
+          Evaluation completed in {time.time() - start_time:.2f}s\")\n\n    logger.info(\"\
+          Saving results...\")\n\n    def clean_for_json(obj):\n        \"\"\"Recursively\
+          \ clean objects to make them JSON serializable.\"\"\"\n        if isinstance(obj,\
+          \ dict):\n            return {k: clean_for_json(v) for k, v in obj.items()}\n\
+          \        elif isinstance(obj, list):\n            return [clean_for_json(item)\
+          \ for item in obj]\n        elif isinstance(obj, (int, float, str, bool,\
+          \ type(None))):\n            return obj\n        else:\n            # Convert\
+          \ non-serializable objects to string representation\n            return\
+          \ str(obj)\n\n    clean_results = clean_for_json(results)\n\n    output_results.name\
+          \ = \"results.json\"\n\n    with open(output_results.path, \"w\") as f:\n\
+          \        json.dump(clean_results, f, indent=2)\n    logger.info(f\"Results\
+          \ saved to {output_results.path}\")\n\n    # Save prompt/response log for\
+          \ custom TranslationTask only\n    if log_prompts and custom_translation_dataset\
+          \ and len(prompt_response_log) > 0:\n        try:\n            output_prompts.name\
+          \ = \"prompts.json\"\n            with open(output_prompts.path, \"w\")\
+          \ as f:\n                json.dump(prompt_response_log, f, indent=2)\n \
+          \           logger.info(f\"Prompt/response log saved to {output_prompts.path}\"\
+          )\n        except Exception as e:\n            logger.warning(f\"Failed\
+          \ to save prompt/response log: {e}\")\n\n    logger.info(\"Logging metrics...\"\
+          )\n\n    for task_name, task_results in clean_results[\"results\"].items():\n\
+          \        for metric_name, metric_value in task_results.items():\n      \
+          \      if isinstance(metric_value, (int, float)):\n                # Skip\
+          \ metrics that are 0 due to a bug in the RHOAI UI.\n                # TODO:\
+          \ Fix RHOAI UI to handle 0 values.\n                # TODO: Ignore store_session_info\
+          \ from metrics in RHOAI UI.\n                if metric_value == 0:\n   \
+          \                 continue\n\n                metric_key = f\"{task_name}_{metric_name}\"\
+          \n                output_metrics.log_metric(metric_key, metric_value)\n\
+          \                logger.debug(f\"Logged metric: {metric_key} = {metric_value}\"\
+          )\n\n    logger.info(\"Metrics logged successfully\")\n\n    logger.info(\"\
+          Pipeline completed successfully\")\n\n"
+        image: registry.access.redhat.com/ubi9/python-311:latest
+        resources:
+          accelerator:
+            count: '1'
+            resourceCount: '1'
+            resourceType: nvidia.com/gpu
+            type: nvidia.com/gpu
+          cpuRequest: 4.0
+          memoryRequest: 100.0
+          resourceCpuRequest: 4000m
+          resourceMemoryRequest: 100G
+    exec-prepare-yoda-dataset:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - prepare_yoda_dataset
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'datasets'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'kfp==2.15.2'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef prepare_yoda_dataset(\n        yoda_input_dataset: str,\n   \
+          \     yoda_train_dataset: dsl.Output[dsl.Dataset],\n        yoda_eval_dataset:\
+          \ dsl.Output[dsl.Dataset],\n        operation_map: dict[str, Any] = {\"\
+          rename_column\": {\"sentence\":\"prompt\"}},\n        train_split_ratio:\
+          \ float = 0.8,\n):\n    \"\"\"Prepare the training and evaluation datasets\
+          \ by downloading and preprocessing.\n\n    Downloads the yoda_sentences\
+          \ dataset from HuggingFace, renames columns to match\n    the expected format\
+          \ for training (prompt/completion), splits into train/eval sets,\n    and\
+          \ saves them as output artifacts.\n\n    Args:\n        yoda_input_dataset\
+          \ (str): Dataset to download from HuggingFace\n        yoda_train_dataset\
+          \ (dsl.Output[dsl.Dataset]): Output dataset for training.\n        yoda_eval_dataset\
+          \ (dsl.Output[dsl.Dataset]): Output dataset for evaluation.\n        operation_map\
+          \ (dict): Specify list of operations you want to perform on the data set\
+          \ before splitting it e.g. {\"rename_column\": {\"sentence\":\"prompt\"\
+          }, \"remove_columns\": \"translation\"}\n        train_split_ratio (float):\
+          \ Ratio of data to use for training (0.0-1.0).\n                       \
+          \           Defaults to 0.8 (80% train, 20% eval).\n    \"\"\"\n    from\
+          \ datasets import load_dataset\n\n    print(f\"Downloading and loading the\
+          \ dataset from {yoda_input_dataset}\")\n    dataset = load_dataset(yoda_input_dataset,\
+          \ split=\"train\")\n    if operation_map:\n        for operation_name, operation_value\
+          \ in operation_map.items():\n            print(f'Performing operation: \"\
+          {operation_name}\"')\n            if operation_name == 'rename_column':\n\
+          \                if type(operation_value) != dict:\n                   \
+          \ raise RuntimeError(f'Dict value is required to perform operation \"{operation_name}\"\
+          ')\n                for key, value in operation_value.items():\n       \
+          \             dataset = dataset.rename_column(key, value)\n            elif\
+          \ operation_name == \"remove_columns\":\n                if type(operation_value)\
+          \ == str:\n                    dataset = dataset.remove_columns([\"translation\"\
+          ])\n                elif type(operation_value) == list:\n              \
+          \      dataset = dataset.remove_columns(\"translation\")\n             \
+          \   else:\n                    raise RuntimeError(f'Only list and str type\
+          \ are allowed to perform \"{operation_name}\" operation')\n            else:\n\
+          \                raise InvalidValue(f'Unrecogonized operation value \"{operation_name}\"\
+          ')\n\n    # Add prefix to prompts\n    print(\"Adding Yoda speak prefix\
+          \ to prompts\")\n    def add_yoda_prefix(example):\n        example[\"prompt\"\
+          ] = (\n                \"Translate the following to Yoda speak: \" + example[\"\
+          prompt\"]\n        )\n        return example\n\n    dataset = dataset.map(add_yoda_prefix)\n\
+          \n    # Split the dataset into train and eval sets\n    print(\n       \
+          \ f\"Splitting dataset with {len(dataset)} rows into train ({train_split_ratio:.1%})\
+          \ and eval ({(1-train_split_ratio):.1%}) sets\"\n    )\n    split_dataset\
+          \ = dataset.train_test_split(test_size=1 - train_split_ratio, seed=42)\n\
+          \n    train_dataset = split_dataset[\"train\"]\n    eval_dataset = split_dataset[\"\
+          test\"]\n\n    print(f\"Train set: {len(train_dataset)} rows\")\n    print(f\"\
+          Eval set: {len(eval_dataset)} rows\")\n\n    # Save both datasets\n    print(f\"\
+          Saving train dataset to {yoda_train_dataset.path}\")\n    train_dataset.save_to_disk(yoda_train_dataset.path)\n\
+          \n    print(f\"Saving eval dataset to {yoda_eval_dataset.path}\")\n    eval_dataset.save_to_disk(yoda_eval_dataset.path)\n\
+          \n"
+        image: python:3.11
+    exec-train-model:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - train_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kubernetes'\
+          \  &&  python3 -m pip install --quiet --no-warn-script-location 'git+https://github.com/kubeflow/pipelines@master#egg=kfp&subdirectory=sdk/python'\
+          \ && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef train_model(\n        input_dataset: dsl.Input[dsl.Dataset],\n\
+          \        model_name: str,\n        run_id: str,\n        pvc_path: str,\n\
+          \        output_model: dsl.Output[dsl.Model],\n        output_metrics: dsl.Output[dsl.Metrics],\n\
+          \        # Training configuration parameters\n        epochs: int = 10,\n\
+          \        lora_rank: int = 8,\n        learning_rate: float = 3e-4,\n   \
+          \     batch_size: int = 16,\n        max_length: int = 64,\n        # Training\
+          \ control parameters\n        max_steps: Optional[int] = None,\n       \
+          \ logging_steps: int = 10,\n        save_steps: Optional[int] = None,\n\
+          \        save_strategy: str = \"epoch\",\n        # Optimizer parameters\n\
+          \        optimizer: str = \"adamw_torch\",\n        adam_beta1: float =\
+          \ 0.9,\n        adam_beta2: float = 0.999,\n        adam_epsilon: float\
+          \ = 1e-8,\n        weight_decay: float = 0.01,\n        # Performance optimization\n\
+          \        use_flash_attention: bool = False,\n        # Infrastructure parameters\n\
+          \        num_nodes: int = 2,\n        trainer_runtime: str = \"torch-distributed\"\
+          ,\n        kubernetes_config: dsl.TaskConfig = None,\n):\n    \"\"\"Train\
+          \ a large language model using distributed training with LoRA fine-tuning.\n\
+          \n    This function creates and manages a Kubernetes TrainJob for distributed\
+          \ training\n    of a large language model using LoRA (Low-Rank Adaptation)\
+          \ fine-tuning. It handles\n    the complete training workflow including\
+          \ job creation, monitoring, and artifact\n    collection.\n\n    Args:\n\
+          \        model_name (str): HuggingFace model identifier (e.g., \"meta-llama/Llama-3.2-3B-Instruct\"\
+          ).\n        run_id (str): Unique identifier for this training run. Use dsl.PIPELINE_JOB_ID_PLACEHOLDER.\n\
+          \        dataset_path (str): Path to the training dataset within the PVC.\n\
+          \        pvc_path (str): Base path within the PVC for storing outputs.\n\
+          \        output_model (dsl.Output[dsl.Model]): Kubeflow output artifact\
+          \ for the trained model.\n        output_metrics (dsl.Output[dsl.Metrics]):\
+          \ Kubeflow output artifact for training metrics.\n        epochs (int, optional):\
+          \ Number of training epochs. Defaults to 10.\n        lora_rank (int, optional):\
+          \ LoRA adapter rank (lower = fewer parameters, faster training). Defaults\
+          \ to 8.\n        learning_rate (float, optional): Learning rate for training\
+          \ optimization. Defaults to 3e-4.\n        batch_size (int, optional): Per-device\
+          \ training batch size. Defaults to 16.\n        max_length (int, optional):\
+          \ Maximum token sequence length for training. Defaults to 64.\n        max_steps\
+          \ (int, optional): Maximum number of training steps. If specified, overrides\
+          \ epochs. Defaults to None.\n        logging_steps (int, optional): Number\
+          \ of steps between logging outputs. Defaults to 10.\n        save_steps\
+          \ (int, optional): Number of steps between model checkpoints. Defaults to\
+          \ None.\n        save_strategy (str, optional): Checkpoint saving strategy\
+          \ (\"epoch\" or \"steps\"). Defaults to \"epoch\".\n        optimizer (str,\
+          \ optional): Optimizer to use (e.g., \"adamw_torch\", \"adamw_torch_fused\"\
+          ). Defaults to \"adamw_torch\".\n        adam_beta1 (float, optional): Beta1\
+          \ parameter for Adam optimizer. Defaults to 0.9.\n        adam_beta2 (float,\
+          \ optional): Beta2 parameter for Adam optimizer. Defaults to 0.999.\n  \
+          \      adam_epsilon (float, optional): Epsilon parameter for Adam optimizer.\
+          \ Defaults to 1e-8.\n        weight_decay (float, optional): Weight decay\
+          \ for regularization. Defaults to 0.01.\n        use_flash_attention (bool,\
+          \ optional): Whether to use Flash Attention 2 for improved performance.\
+          \ Defaults to False.\n        num_nodes (int, optional): Number of nodes\
+          \ for distributed training. Defaults to 2.\n        trainer_runtime (str,\
+          \ optional): Runtime to use for Kubeflow Trainer. Defaults to \"torch-distributed\"\
+          .\n    \"\"\"\n    import json\n    import os\n    import shutil\n    import\
+          \ textwrap\n    import time\n    import inspect\n\n    from kubernetes import\
+          \ client as k8s_client, config\n    from kubernetes.client.rest import ApiException\n\
+          \n    def get_target_modules(model_name: str) -> list:\n        \"\"\"Get\
+          \ appropriate LoRA target modules based on model architecture.\n\n     \
+          \   Selects optimal layers for LoRA adaptation based on research findings:\n\
+          \        - Attention layers (q_proj, k_proj, v_proj, o_proj) control attention\
+          \ patterns\n        - MLP layers (gate_proj, up_proj, down_proj) store task-specific\
+          \ knowledge\n\n        Model-specific targeting:\n        - Granite: Attention\
+          \ layers only (q,k,v,o)\n        - LLaMA/Mistral/Qwen: Full coverage (attention\
+          \ + MLP)\n        - Phi: Uses 'dense' instead of 'o_proj'\n        - Unknown:\
+          \ Conservative fallback (q,v)\n\n        Based on LoRA (arXiv:2106.09685),\
+          \ QLoRA (arXiv:2305.14314), and model-specific research.\n        \"\"\"\
+          \n        model_name_lower = model_name.lower()\n\n        if \"granite\"\
+          \ in model_name_lower:\n            return [\"q_proj\", \"v_proj\", \"k_proj\"\
+          , \"o_proj\"]\n        elif \"llama\" in model_name_lower:\n           \
+          \ return [\n                \"q_proj\",\n                \"v_proj\",\n \
+          \               \"k_proj\",\n                \"o_proj\",\n             \
+          \   \"gate_proj\",\n                \"up_proj\",\n                \"down_proj\"\
+          ,\n            ]\n        elif \"mistral\" in model_name_lower or \"mixtral\"\
+          \ in model_name_lower:\n            return [\n                \"q_proj\"\
+          ,\n                \"v_proj\",\n                \"k_proj\",\n          \
+          \      \"o_proj\",\n                \"gate_proj\",\n                \"up_proj\"\
+          ,\n                \"down_proj\",\n            ]\n        elif \"qwen\"\
+          \ in model_name_lower:\n            return [\n                \"q_proj\"\
+          ,\n                \"v_proj\",\n                \"k_proj\",\n          \
+          \      \"o_proj\",\n                \"gate_proj\",\n                \"up_proj\"\
+          ,\n                \"down_proj\",\n            ]\n        elif \"phi\" in\
+          \ model_name_lower:\n            return [\"q_proj\", \"v_proj\", \"k_proj\"\
+          , \"dense\"]\n        else:\n            print(\n                f\"Warning:\
+          \ Unknown model architecture for {model_name}, using conservative LoRA targets\"\
+          \n            )\n            return [\"q_proj\", \"v_proj\"]\n\n    def\
+          \ train_model_func(\n            lora_rank: int,\n            learning_rate:\
+          \ float,\n            batch_size: int,\n            max_length: int,\n \
+          \           model_name: str,\n            dataset_path: str,\n         \
+          \   epochs: int,\n            pvc_path: str,\n            target_modules:\
+          \ list,\n            max_steps: int,\n            logging_steps: int,\n\
+          \            save_steps: int,\n            save_strategy: str,\n       \
+          \     optimizer: str,\n            adam_beta1: float,\n            adam_beta2:\
+          \ float,\n            adam_epsilon: float,\n            weight_decay: float,\n\
+          \            use_flash_attention: bool,\n    ):\n        import os\n   \
+          \     import json\n        import torch\n        from datasets import load_from_disk\n\
+          \        from peft import get_peft_model, LoraConfig\n        from transformers\
+          \ import (\n            AutoModelForCausalLM,\n            AutoTokenizer,\n\
+          \            TrainerCallback,\n        )\n        from trl import SFTConfig,\
+          \ SFTTrainer\n\n        local_rank = int(os.environ.get(\"LOCAL_RANK\",\
+          \ 0))\n        world_rank = int(os.environ.get(\"RANK\", 0))\n        world_size\
+          \ = int(os.environ.get(\"WORLD_SIZE\", 1))\n\n        print(\n         \
+          \   f\"Worker info - Local rank: {local_rank}, World rank: {world_rank},\
+          \ World size: {world_size}\"\n        )\n\n        is_main_worker = world_rank\
+          \ == 0\n\n        class MetricsCallback(TrainerCallback):\n            def\
+          \ __init__(self, is_main_worker):\n                self.is_main_worker =\
+          \ is_main_worker\n                self.initial_loss = None\n           \
+          \     self.final_loss = None\n\n            def on_log(self, args, state,\
+          \ control, logs=None, **kwargs):\n                if logs and self.is_main_worker\
+          \ and \"loss\" in logs:\n                    if self.initial_loss is None:\n\
+          \                        self.initial_loss = logs[\"loss\"]\n          \
+          \          self.final_loss = logs[\"loss\"]\n\n        metrics_callback\
+          \ = MetricsCallback(is_main_worker)\n\n        print(\"Downloading and loading\
+          \ model\")\n        model_kwargs = {\n            \"device_map\": \"auto\"\
+          ,\n            \"torch_dtype\": torch.float16,\n            \"trust_remote_code\"\
+          : True,\n        }\n        if use_flash_attention:\n            model_kwargs[\"\
+          attn_implementation\"] = \"flash_attention_2\"\n\n        model = AutoModelForCausalLM.from_pretrained(model_name,\
+          \ **model_kwargs)\n\n        print(f\"Using LoRA target modules for {model_name}:\
+          \ {target_modules}\")\n\n        config = LoraConfig(\n            r=lora_rank,\n\
+          \            lora_alpha=lora_rank * 2,\n            bias=\"none\",\n   \
+          \         lora_dropout=0.05,\n            task_type=\"CAUSAL_LM\",\n   \
+          \         target_modules=target_modules,\n        )\n        model = get_peft_model(model,\
+          \ config)\n\n        print(\"Loading dataset\")\n        dataset = load_from_disk(dataset_path)\n\
+          \n        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)\n\
+          \n        if tokenizer.pad_token is None:\n            tokenizer.pad_token\
+          \ = tokenizer.eos_token\n        tokenizer.padding_side = \"right\"\n\n\
+          \        sft_config = SFTConfig(\n            ## Memory optimization\n \
+          \           gradient_checkpointing=True,\n            gradient_checkpointing_kwargs={\"\
+          use_reentrant\": False},\n            gradient_accumulation_steps=1,\n \
+          \           per_device_train_batch_size=batch_size,\n            auto_find_batch_size=True,\n\
+          \            ## Dataset configuration\n            max_length=max_length,\n\
+          \            packing=use_flash_attention,  # Packing works best with Flash\
+          \ Attention\n            ## Training parameters\n            num_train_epochs=epochs\
+          \ if max_steps is None else None,\n            max_steps=-1 if max_steps\
+          \ is None else max_steps,\n            learning_rate=learning_rate,\n  \
+          \          optim=optimizer,\n            ## Optimizer parameters\n     \
+          \       adam_beta1=adam_beta1,\n            adam_beta2=adam_beta2,\n   \
+          \         adam_epsilon=adam_epsilon,\n            weight_decay=weight_decay,\n\
+          \            ## Logging and saving\n            logging_steps=logging_steps,\n\
+          \            save_steps=save_steps,\n            save_strategy=save_strategy,\n\
+          \            logging_dir=\"./logs\",\n            report_to=\"none\",\n\
+          \        )\n        trainer = SFTTrainer(\n            model=model,\n  \
+          \          processing_class=tokenizer,\n            args=sft_config,\n \
+          \           train_dataset=dataset,\n            callbacks=[metrics_callback],\n\
+          \        )\n\n        train_result = trainer.train()\n\n        if torch.distributed.is_initialized():\n\
+          \            torch.distributed.barrier()\n            print(f\"Worker {world_rank}\
+          \ - Training completed and synchronized\")\n\n        if not is_main_worker:\n\
+          \            print(\n                f\"Worker {world_rank} - Skipping model\
+          \ export and metrics (not main worker)\"\n            )\n            # Clean\
+          \ up distributed process group for non-main workers\n            if torch.distributed.is_initialized():\n\
+          \                print(f\"Worker {world_rank} - Cleaning up distributed\
+          \ process group\")\n                torch.distributed.destroy_process_group()\n\
+          \                print(f\"Worker {world_rank} - Distributed process group\
+          \ destroyed\")\n            return\n\n        print(\"Main worker (rank\
+          \ 0) - Exporting model and metrics...\")\n\n        # Save LoRA adapter\n\
+          \        model_output_path = os.path.join(pvc_path, \"adapter\")\n     \
+          \   model.save_pretrained(model_output_path)\n        tokenizer.save_pretrained(model_output_path)\n\
+          \        print(\"LoRA adapter exported successfully!\")\n\n        # Clean\
+          \ up distributed process group for main worker AFTER model saving\n    \
+          \    if torch.distributed.is_initialized():\n            print(f\"Worker\
+          \ {world_rank} - Cleaning up distributed process group\")\n            torch.distributed.destroy_process_group()\n\
+          \            print(f\"Worker {world_rank} - Distributed process group destroyed\"\
+          )\n\n        print(f\"Collecting essential metrics\")\n        metrics_dict\
+          \ = {}\n\n        if hasattr(train_result, \"train_loss\"):\n          \
+          \  metrics_dict[\"final_train_loss\"] = train_result.train_loss\n      \
+          \  if hasattr(train_result, \"train_runtime\"):\n            metrics_dict[\"\
+          train_runtime_seconds\"] = train_result.train_runtime\n        if hasattr(train_result,\
+          \ \"train_samples_per_second\"):\n            metrics_dict[\"throughput_samples_per_sec\"\
+          ] = (\n                train_result.train_samples_per_second\n         \
+          \   )\n\n        total_params = sum(p.numel() for p in model.parameters())\n\
+          \        trainable_params = sum(p.numel() for p in model.parameters() if\
+          \ p.requires_grad)\n        metrics_dict[\"total_parameters_millions\"]\
+          \ = total_params / 1_000_000\n        metrics_dict[\"trainable_parameters_millions\"\
+          ] = trainable_params / 1_000_000\n        metrics_dict[\"lora_efficiency_percent\"\
+          ] = (\n                                                          trainable_params\
+          \ / total_params\n                                                  ) *\
+          \ 100\n\n        metrics_dict[\"lora_rank\"] = config.r\n        metrics_dict[\"\
+          learning_rate\"] = sft_config.learning_rate\n        metrics_dict[\"effective_batch_size\"\
+          ] = (\n                sft_config.per_device_train_batch_size * world_size\n\
+          \        )\n        metrics_dict[\"dataset_size\"] = len(dataset)\n\n  \
+          \      metrics_dict[\"num_nodes\"] = (\n            world_size // torch.cuda.device_count()\n\
+          \            if torch.cuda.is_available() and torch.cuda.device_count()\
+          \ > 0\n            else 1\n        )\n        if torch.cuda.is_available():\n\
+          \            metrics_dict[\"peak_gpu_memory_gb\"] = torch.cuda.max_memory_allocated()\
+          \ / (\n                    1024**3\n            )\n\n        if metrics_callback.initial_loss\
+          \ and metrics_callback.final_loss:\n            metrics_dict[\"initial_loss\"\
+          ] = metrics_callback.initial_loss\n            metrics_dict[\"loss_reduction\"\
+          ] = (\n                    metrics_callback.initial_loss - metrics_callback.final_loss\n\
+          \            )\n            metrics_dict[\"loss_reduction_percent\"] = (\n\
+          \                                                             (metrics_callback.initial_loss\
+          \ - metrics_callback.final_loss)\n                                     \
+          \                        / metrics_callback.initial_loss\n             \
+          \                                        ) * 100\n\n        with open(os.path.join(pvc_path,\
+          \ \"metrics.json\"), \"w\") as f:\n            json.dump(metrics_dict, f,\
+          \ indent=2)\n\n        print(\n            f\"Exported {len(metrics_dict)}\
+          \ metrics to {os.path.join(pvc_path, 'metrics.json')}\"\n        )\n   \
+          \     print(\"Model and metrics exported successfully!\")\n\n    print(\"\
+          Copying dataset to PVC...\")\n    dataset_path = os.path.join(pvc_path,\
+          \ \"dataset\", \"train\")\n    os.makedirs(dataset_path, exist_ok=True)\n\
+          \    shutil.copytree(\n        input_dataset.path,\n        dataset_path,\n\
+          \        dirs_exist_ok=True,\n    )\n    print(f\"Dataset copied successfully\
+          \ from {input_dataset.path} to {dataset_path}\")\n\n    print(\"=== Starting\
+          \ TrainJob creation process ===\")\n\n    target_modules = get_target_modules(model_name)\n\
+          \    print(f\"Selected LoRA target modules for {model_name}: {target_modules}\"\
+          )\n\n    with open(\n            \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
+          , \"r\"\n    ) as ns_file:\n        namespace = ns_file.readline()\n\n \
+          \   print(\"Generating command...\")\n\n    func_code = inspect.getsource(train_model_func)\n\
+          \    func_code = textwrap.dedent(func_code)\n\n    func_call_code = f\"\"\
+          \"\nimport os\nimport json\n\n# Parse function arguments from environment\
+          \ variable\nconfig_json = os.environ.get(\"TRAINING_CONFIG\", \"{{}}\")\n\
+          func_args = json.loads(config_json)\n\n# Call the training function with\
+          \ parsed arguments\n{train_model_func.__name__}(**func_args)\n\"\"\"\n\n\
+          \    func_code = f\"{func_code}\\n{func_call_code}\"\n\n    # Build package\
+          \ list based on configuration\n    packages = [\"transformers\", \"peft\"\
+          , \"accelerate\", \"trl\"]\n    if use_flash_attention:\n        packages.append(\"\
+          flash-attn\")\n    packages_str = \" \".join(packages)\n\n    install_script\
+          \ = f\"\"\"set -e\nset -o pipefail\n\necho \"=== Starting container setup\
+          \ ===\"\necho \"Python version: $(python --version)\"\n\nif ! [ -x \"$(command\
+          \ -v pip)\" ]; then\n    echo \"Installing pip...\"\n    python -m ensurepip\
+          \ || python -m ensurepip --user\nfi\n\necho \"Installing Python packages...\"\
+          \nPIP_DISABLE_PIP_VERSION_CHECK=1 python -m pip install --user --quiet --no-warn-script-location\
+          \ {packages_str}\n\necho \"Creating training script...\"\ncat > ephemeral_component.py\
+          \ << 'EOF'\n{func_code}\nEOF\n\necho \"Starting distributed training...\"\
+          \ntorchrun --nproc_per_node=1 ephemeral_component.py\"\"\"\n\n    command\
+          \ = [\"bash\", \"-c\", install_script]\n\n    print(f\"Generated command:\
+          \ {command}\")\n    print(f\"Command length: {len(command)}\")\n    print(f\"\
+          Command type: {type(command)}\")\n\n    print(\"Loading Kubernetes configuration...\"\
+          )\n    try:\n        config.load_incluster_config()\n        print(\"Loaded\
+          \ in-cluster Kubernetes configuration\")\n    except config.ConfigException:\n\
+          \        config.load_kube_config()\n        print(\"Loaded kubeconfig Kubernetes\
+          \ configuration\")\n\n    print(\"Creating Kubernetes API client...\")\n\
+          \    api_client = k8s_client.ApiClient()\n    custom_objects_api = k8s_client.CustomObjectsApi(api_client)\n\
+          \    print(\"Successfully created Kubernetes API client\")\n\n    print(\"\
+          Defining TrainJob resource...\")\n\n    env_vars = [\n        {\"name\"\
+          : \"HOME\", \"value\": \"/tmp\"},\n        {\n            \"name\": \"TRAINING_CONFIG\"\
+          ,\n            \"value\": json.dumps(\n                {\n             \
+          \       \"lora_rank\": lora_rank,\n                    \"learning_rate\"\
+          : learning_rate,\n                    \"batch_size\": batch_size,\n    \
+          \                \"max_length\": max_length,\n                    \"model_name\"\
+          : model_name,\n                    \"dataset_path\": dataset_path,\n   \
+          \                 \"epochs\": epochs,\n                    \"pvc_path\"\
+          : pvc_path,\n                    \"target_modules\": target_modules,\n \
+          \                   \"max_steps\": max_steps,\n                    \"logging_steps\"\
+          : logging_steps,\n                    \"save_steps\": save_steps,\n    \
+          \                \"save_strategy\": save_strategy,\n                   \
+          \ \"optimizer\": optimizer,\n                    \"adam_beta1\": adam_beta1,\n\
+          \                    \"adam_beta2\": adam_beta2,\n                    \"\
+          adam_epsilon\": adam_epsilon,\n                    \"weight_decay\": weight_decay,\n\
+          \                    \"use_flash_attention\": use_flash_attention,\n   \
+          \             }\n            ),\n        },\n        *(kubernetes_config.env\
+          \ or []),\n    ]\n\n    train_job = {\n        \"apiVersion\": \"trainer.kubeflow.org/v1alpha1\"\
+          ,\n        \"kind\": \"TrainJob\",\n        \"metadata\": {\"name\": f\"\
+          kfp-{run_id}\", \"namespace\": namespace},\n        \"spec\": {\n      \
+          \      \"runtimeRef\": {\"name\": trainer_runtime},\n            \"trainer\"\
+          : {\n                \"numNodes\": num_nodes,\n                \"resourcesPerNode\"\
+          : kubernetes_config.resources,\n                \"env\": env_vars,\n   \
+          \             \"command\": command,\n            },\n            \"podSpecOverrides\"\
+          : [\n                {\n                    \"targetJobs\": [{\"name\":\
+          \ \"node\"}],\n                    \"volumes\": kubernetes_config.volumes,\n\
+          \                    \"containers\": [\n                        {\n    \
+          \                        \"name\": \"node\",\n                         \
+          \   \"volumeMounts\": kubernetes_config.volume_mounts,\n               \
+          \         }\n                    ],\n                    \"nodeSelector\"\
+          : kubernetes_config.node_selector,\n                    \"tolerations\"\
+          : kubernetes_config.tolerations,\n                }\n            ],\n  \
+          \      },\n    }\n\n    print(f\"TrainJob definition created:\")\n    print(f\"\
+          \  - Name: kfp-{run_id}\")\n    print(f\"  - Namespace: {namespace}\")\n\
+          \n    print(f\"  - Runtime: {trainer_runtime}\")\n    print(f\"  - Nodes:\
+          \ {num_nodes}\")\n    print(f\"  - Model: {model_name}\")\n    print(f\"\
+          \  - Dataset: {dataset_path}\")\n    print(f\"  - Epochs: {epochs}\")\n\n\
+          \    print(\"Submitting TrainJob to Kubernetes...\")\n    try:\n       \
+          \ response = custom_objects_api.create_namespaced_custom_object(\n     \
+          \       group=\"trainer.kubeflow.org\",\n            version=\"v1alpha1\"\
+          ,\n            namespace=namespace,\n            plural=\"trainjobs\",\n\
+          \            body=train_job,\n        )\n        job_name = response[\"\
+          metadata\"][\"name\"]\n        print(f\"TrainJob {job_name} created successfully\"\
+          )\n        print(f\"Response metadata: {response.get('metadata', {})}\"\
+          )\n    except ApiException as e:\n        print(f\"Error creating TrainJob:\
+          \ {e}\")\n        print(f\"Error details: {e.body}\")\n        print(f\"\
+          Error status: {e.status}\")\n        raise\n\n    print(f\"Starting to monitor\
+          \ TrainJob {job_name} status...\")\n    check_count = 0\n    while True:\n\
+          \        check_count += 1\n        try:\n            print(f\"Checking job\
+          \ status (attempt {check_count})...\")\n            job_status = custom_objects_api.get_namespaced_custom_object(\n\
+          \                group=\"trainer.kubeflow.org\",\n                version=\"\
+          v1alpha1\",\n                namespace=namespace,\n                plural=\"\
+          trainjobs\",\n                name=job_name,\n            )\n\n        \
+          \    status = job_status.get(\"status\", {})\n            conditions = status.get(\"\
+          conditions\", [])\n            print(f\"Job status conditions: {conditions}\"\
+          )\n\n            completed = False\n            failed = False\n\n     \
+          \       for condition in conditions:\n                condition_type = condition.get(\"\
+          type\", \"\")\n                condition_status = condition.get(\"status\"\
+          , \"\")\n                condition_reason = condition.get(\"reason\", \"\
+          \")\n                condition_message = condition.get(\"message\", \"\"\
+          )\n\n                print(\n                    f\"Condition: type={condition_type},\
+          \ status={condition_status}, reason={condition_reason}\"\n             \
+          \   )\n\n                if condition_type == \"Complete\" and condition_status\
+          \ == \"True\":\n                    print(\n                        f\"\
+          Training job {job_name} completed successfully: {condition_message}\"\n\
+          \                    )\n                    completed = True\n         \
+          \           break\n                elif condition_type == \"Failed\" and\
+          \ condition_status == \"True\":\n                    print(f\"Training job\
+          \ {job_name} failed: {condition_message}\")\n                    failed\
+          \ = True\n                    break\n                elif condition_type\
+          \ == \"Cancelled\" and condition_status == \"True\":\n                 \
+          \   print(f\"Training job {job_name} was cancelled: {condition_message}\"\
+          )\n                    failed = True\n                    break\n\n    \
+          \        if completed:\n                break\n            elif failed:\n\
+          \                raise RuntimeError(f\"Training job {job_name} failed or\
+          \ was cancelled\")\n            else:\n                print(f\"Job is still\
+          \ running, continuing to wait...\")\n\n        except ApiException as e:\n\
+          \            print(f\"Error checking job status: {e}\")\n            print(f\"\
+          Error details: {e.body}\")\n\n        print(f\"Waiting 10 seconds before\
+          \ next check...\")\n        time.sleep(10)\n\n    print(f\"Training job\
+          \ {job_name} completed. Logs would be retrieved here.\")\n\n    print(\"\
+          Processing training results...\")\n\n    metrics_file_path = os.path.join(pvc_path,\
+          \ \"metrics.json\")\n    print(f\"Looking for metrics file at: {metrics_file_path}\"\
+          )\n    if os.path.exists(metrics_file_path):\n        print(f\"Found metrics\
+          \ file, reading from {metrics_file_path}\")\n        with open(metrics_file_path,\
+          \ \"r\") as f:\n            metrics_dict = json.load(f)\n\n        print(f\"\
+          Loaded {len(metrics_dict)} metrics from file\")\n\n        exported_count\
+          \ = 0\n        for metric_name, metric_value in metrics_dict.items():\n\
+          \            # Ignore metrics that are 0 to avoid a bug in the RHOAI UI.\n\
+          \            if isinstance(metric_value, (int, float)) and metric_value\
+          \ != 0:\n                output_metrics.log_metric(metric_name, metric_value)\n\
+          \                print(f\"Exported metric: {metric_name} = {metric_value}\"\
+          )\n                exported_count += 1\n\n        print(f\"Successfully\
+          \ exported {exported_count} metrics to Kubeflow\")\n        os.remove(metrics_file_path)\n\
+          \    else:\n        print(f\"Warning: Metrics file {metrics_file_path} not\
+          \ found\")\n\n    print(\"Copying model from PVC to Kubeflow output path...\"\
+          )\n    model_source = os.path.join(pvc_path, \"adapter\")\n    print(f\"\
+          Model source: {model_source}\")\n    print(f\"Destination: {output_model.path}\"\
+          )\n\n    if not os.path.exists(model_source):\n        raise FileNotFoundError(\n\
+          \            f\"Trained model not found at expected location: {model_source}\"\
+          \n        )\n\n    output_model.name = f\"{model_name}-adapter\"\n    shutil.copytree(model_source,\
+          \ output_model.path, dirs_exist_ok=True)\n    print(f\"Model copied successfully\
+          \ from {model_source} to {output_model.path}\")\n\n    print(\"=== TrainJob\
+          \ process completed successfully ===\")\n\n"
+        image: registry.access.redhat.com/ubi9/python-311:latest
+        resources:
+          accelerator:
+            count: '1'
+            resourceCount: '1'
+            resourceType: nvidia.com/gpu
+            type: nvidia.com/gpu
+          cpuLimit: 2.0
+          cpuRequest: 2.0
+          memoryLimit: 32.21225472
+          memoryRequest: 32.21225472
+          resourceCpuLimit: '2'
+          resourceCpuRequest: '2'
+          resourceMemoryLimit: 30Gi
+          resourceMemoryRequest: 30Gi
+pipelineInfo:
+  description: Prepare Yoda dataset, finetune a base model with LoRA, and evaluate
+    baseline vs fine-tuned
+  name: yoda-finetune
+root:
+  dag:
+    tasks:
+      evaluate-yoda-model:
+        cachingOptions: {}
+        componentRef:
+          name: comp-evaluate-yoda-model
+        dependentTasks:
+        - prepare-yoda-dataset
+        inputs:
+          artifacts:
+            custom_translation_dataset:
+              taskOutputArtifact:
+                outputArtifactKey: yoda_eval_dataset
+                producerTask: prepare-yoda-dataset
+          parameters:
+            limit:
+              componentInputParameter: eval_limit
+            model_path:
+              componentInputParameter: model_name
+        taskInfo:
+          name: evaluate-yoda-model
+      evaluate-yoda-model-2:
+        cachingOptions: {}
+        componentRef:
+          name: comp-evaluate-yoda-model-2
+        dependentTasks:
+        - prepare-yoda-dataset
+        - train-model
+        inputs:
+          artifacts:
+            custom_translation_dataset:
+              taskOutputArtifact:
+                outputArtifactKey: yoda_eval_dataset
+                producerTask: prepare-yoda-dataset
+            lora_adapter:
+              taskOutputArtifact:
+                outputArtifactKey: output_model
+                producerTask: train-model
+          parameters:
+            limit:
+              componentInputParameter: eval_limit
+            model_path:
+              componentInputParameter: model_name
+        taskInfo:
+          name: evaluate-yoda-model-2
+      prepare-yoda-dataset:
+        cachingOptions: {}
+        componentRef:
+          name: comp-prepare-yoda-dataset
+        inputs:
+          parameters:
+            operation_map:
+              runtimeValue:
+                constant:
+                  remove_columns: translation
+                  rename_column:
+                    sentence: prompt
+                  translation:
+                    translation_extra: completion
+            yoda_input_dataset:
+              runtimeValue:
+                constant: dvgodoy/yoda_sentences
+        retryPolicy:
+          backoffDuration: 0s
+          backoffFactor: 2.0
+          backoffMaxDuration: 3600s
+          maxRetryCount: 3
+        taskInfo:
+          name: prepare-yoda-dataset
+      train-model:
+        cachingOptions: {}
+        componentRef:
+          name: comp-train-model
+        dependentTasks:
+        - prepare-yoda-dataset
+        inputs:
+          artifacts:
+            input_dataset:
+              taskOutputArtifact:
+                outputArtifactKey: yoda_train_dataset
+                producerTask: prepare-yoda-dataset
+          parameters:
+            model_name:
+              componentInputParameter: model_name
+            pvc_path:
+              runtimeValue:
+                constant: '{{$.workspace_path}}'
+            run_id:
+              runtimeValue:
+                constant: '{{$.pipeline_job_uuid}}'
+        taskInfo:
+          name: train-model
+  inputDefinitions:
+    parameters:
+      eval_limit:
+        description: 'Maximum number of examples per task for evaluation.
+
+          Use None to evaluate all available examples. Defaults to None.'
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      model_name:
+        defaultValue: meta-llama/Llama-3.2-3B-Instruct
+        description: 'HuggingFace model ID for both baseline and training.
+
+          Defaults to "meta-llama/Llama-3.2-3B-Instruct".'
+        isOptional: true
+        parameterType: STRING
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.15.2
+---
+platforms:
+  kubernetes:
+    deploymentSpec:
+      executors:
+        exec-evaluate-yoda-model:
+          secretAsEnv:
+          - keyToEnv:
+            - envVar: HF_TOKEN
+              secretKey: HF_TOKEN
+            optional: false
+            secretName: hf-token
+            secretNameParameter:
+              runtimeValue:
+                constant: hf-token
+        exec-evaluate-yoda-model-2:
+          secretAsEnv:
+          - keyToEnv:
+            - envVar: HF_TOKEN
+              secretKey: HF_TOKEN
+            optional: false
+            secretName: hf-token
+            secretNameParameter:
+              runtimeValue:
+                constant: hf-token
+        exec-train-model:
+          secretAsEnv:
+          - keyToEnv:
+            - envVar: HF_TOKEN
+              secretKey: HF_TOKEN
+            optional: false
+            secretName: hf-token
+            secretNameParameter:
+              runtimeValue:
+                constant: hf-token
+    pipelineConfig:
+      workspace:
+        kubernetes:
+          pvcSpecPatch:
+            accessModes:
+            - ReadWriteMany
+            storageClassName: efs-sc
+        size: 20Gi

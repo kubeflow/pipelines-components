@@ -1,0 +1,721 @@
+# PIPELINE DEFINITION
+# Name: train-model
+# Description: Train a large language model using distributed training with LoRA fine-tuning.
+#              This function creates and manages a Kubernetes TrainJob for distributed training
+#              of a large language model using LoRA (Low-Rank Adaptation) fine-tuning. It handles
+#              the complete training workflow including job creation, monitoring, and artifact
+#              collection.
+# Inputs:
+#    adam_beta1: float [Default: 0.9]
+#    adam_beta2: float [Default: 0.999]
+#    adam_epsilon: float [Default: 1e-08]
+#    batch_size: int [Default: 16.0]
+#    epochs: int [Default: 10.0]
+#    input_dataset: system.Dataset
+#    kubernetes_config: TaskConfig
+#    learning_rate: float [Default: 0.0003]
+#    logging_steps: int [Default: 10.0]
+#    lora_rank: int [Default: 8.0]
+#    max_length: int [Default: 64.0]
+#    max_steps: int
+#    model_name: str
+#    num_nodes: int [Default: 2.0]
+#    optimizer: str [Default: 'adamw_torch']
+#    pvc_path: str
+#    run_id: str
+#    save_steps: int
+#    save_strategy: str [Default: 'epoch']
+#    trainer_runtime: str [Default: 'torch-distributed']
+#    use_flash_attention: bool [Default: False]
+#    weight_decay: float [Default: 0.01]
+# Outputs:
+#    output_metrics: system.Metrics
+#    output_model: system.Model
+components:
+  comp-train-model:
+    executorLabel: exec-train-model
+    inputDefinitions:
+      artifacts:
+        input_dataset:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        adam_beta1:
+          defaultValue: 0.9
+          description: Beta1 parameter for Adam optimizer. Defaults to 0.9.
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+        adam_beta2:
+          defaultValue: 0.999
+          description: Beta2 parameter for Adam optimizer. Defaults to 0.999.
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+        adam_epsilon:
+          defaultValue: 1.0e-08
+          description: Epsilon parameter for Adam optimizer. Defaults to 1e-8.
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+        batch_size:
+          defaultValue: 16.0
+          description: Per-device training batch size. Defaults to 16.
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        epochs:
+          defaultValue: 10.0
+          description: Number of training epochs. Defaults to 10.
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        kubernetes_config:
+          isOptional: true
+          parameterType: TASK_CONFIG
+        learning_rate:
+          defaultValue: 0.0003
+          description: Learning rate for training optimization. Defaults to 3e-4.
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+        logging_steps:
+          defaultValue: 10.0
+          description: Number of steps between logging outputs. Defaults to 10.
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        lora_rank:
+          defaultValue: 8.0
+          description: LoRA adapter rank (lower = fewer parameters, faster training).
+            Defaults to 8.
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        max_length:
+          defaultValue: 64.0
+          description: Maximum token sequence length for training. Defaults to 64.
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        max_steps:
+          description: Maximum number of training steps. If specified, overrides epochs.
+            Defaults to None.
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        model_name:
+          description: HuggingFace model identifier (e.g., "meta-llama/Llama-3.2-3B-Instruct").
+          parameterType: STRING
+        num_nodes:
+          defaultValue: 2.0
+          description: Number of nodes for distributed training. Defaults to 2.
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        optimizer:
+          defaultValue: adamw_torch
+          description: Optimizer to use (e.g., "adamw_torch", "adamw_torch_fused").
+            Defaults to "adamw_torch".
+          isOptional: true
+          parameterType: STRING
+        pvc_path:
+          description: Base path within the PVC for storing outputs.
+          parameterType: STRING
+        run_id:
+          description: Unique identifier for this training run. Use dsl.PIPELINE_JOB_ID_PLACEHOLDER.
+          parameterType: STRING
+        save_steps:
+          description: Number of steps between model checkpoints. Defaults to None.
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        save_strategy:
+          defaultValue: epoch
+          description: Checkpoint saving strategy ("epoch" or "steps"). Defaults to
+            "epoch".
+          isOptional: true
+          parameterType: STRING
+        trainer_runtime:
+          defaultValue: torch-distributed
+          description: Runtime to use for Kubeflow Trainer. Defaults to "torch-distributed".
+          isOptional: true
+          parameterType: STRING
+        use_flash_attention:
+          defaultValue: false
+          description: Whether to use Flash Attention 2 for improved performance.
+            Defaults to False.
+          isOptional: true
+          parameterType: BOOLEAN
+        weight_decay:
+          defaultValue: 0.01
+          description: Weight decay for regularization. Defaults to 0.01.
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+    outputDefinitions:
+      artifacts:
+        output_metrics:
+          artifactType:
+            schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+        output_model:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+    taskConfigPassthroughs:
+    - field: RESOURCES
+    - field: KUBERNETES_TOLERATIONS
+    - field: KUBERNETES_NODE_SELECTOR
+    - field: KUBERNETES_AFFINITY
+    - applyToTask: true
+      field: ENV
+    - applyToTask: true
+      field: KUBERNETES_VOLUMES
+deploymentSpec:
+  executors:
+    exec-train-model:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - train_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kubernetes'\
+          \  &&  python3 -m pip install --quiet --no-warn-script-location 'git+https://github.com/kubeflow/pipelines@master#egg=kfp&subdirectory=sdk/python'\
+          \ && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef train_model(\n        input_dataset: dsl.Input[dsl.Dataset],\n\
+          \        model_name: str,\n        run_id: str,\n        pvc_path: str,\n\
+          \        output_model: dsl.Output[dsl.Model],\n        output_metrics: dsl.Output[dsl.Metrics],\n\
+          \        # Training configuration parameters\n        epochs: int = 10,\n\
+          \        lora_rank: int = 8,\n        learning_rate: float = 3e-4,\n   \
+          \     batch_size: int = 16,\n        max_length: int = 64,\n        # Training\
+          \ control parameters\n        max_steps: Optional[int] = None,\n       \
+          \ logging_steps: int = 10,\n        save_steps: Optional[int] = None,\n\
+          \        save_strategy: str = \"epoch\",\n        # Optimizer parameters\n\
+          \        optimizer: str = \"adamw_torch\",\n        adam_beta1: float =\
+          \ 0.9,\n        adam_beta2: float = 0.999,\n        adam_epsilon: float\
+          \ = 1e-8,\n        weight_decay: float = 0.01,\n        # Performance optimization\n\
+          \        use_flash_attention: bool = False,\n        # Infrastructure parameters\n\
+          \        num_nodes: int = 2,\n        trainer_runtime: str = \"torch-distributed\"\
+          ,\n        kubernetes_config: dsl.TaskConfig = None,\n):\n    \"\"\"Train\
+          \ a large language model using distributed training with LoRA fine-tuning.\n\
+          \n    This function creates and manages a Kubernetes TrainJob for distributed\
+          \ training\n    of a large language model using LoRA (Low-Rank Adaptation)\
+          \ fine-tuning. It handles\n    the complete training workflow including\
+          \ job creation, monitoring, and artifact\n    collection.\n\n    Args:\n\
+          \        model_name (str): HuggingFace model identifier (e.g., \"meta-llama/Llama-3.2-3B-Instruct\"\
+          ).\n        run_id (str): Unique identifier for this training run. Use dsl.PIPELINE_JOB_ID_PLACEHOLDER.\n\
+          \        dataset_path (str): Path to the training dataset within the PVC.\n\
+          \        pvc_path (str): Base path within the PVC for storing outputs.\n\
+          \        output_model (dsl.Output[dsl.Model]): Kubeflow output artifact\
+          \ for the trained model.\n        output_metrics (dsl.Output[dsl.Metrics]):\
+          \ Kubeflow output artifact for training metrics.\n        epochs (int, optional):\
+          \ Number of training epochs. Defaults to 10.\n        lora_rank (int, optional):\
+          \ LoRA adapter rank (lower = fewer parameters, faster training). Defaults\
+          \ to 8.\n        learning_rate (float, optional): Learning rate for training\
+          \ optimization. Defaults to 3e-4.\n        batch_size (int, optional): Per-device\
+          \ training batch size. Defaults to 16.\n        max_length (int, optional):\
+          \ Maximum token sequence length for training. Defaults to 64.\n        max_steps\
+          \ (int, optional): Maximum number of training steps. If specified, overrides\
+          \ epochs. Defaults to None.\n        logging_steps (int, optional): Number\
+          \ of steps between logging outputs. Defaults to 10.\n        save_steps\
+          \ (int, optional): Number of steps between model checkpoints. Defaults to\
+          \ None.\n        save_strategy (str, optional): Checkpoint saving strategy\
+          \ (\"epoch\" or \"steps\"). Defaults to \"epoch\".\n        optimizer (str,\
+          \ optional): Optimizer to use (e.g., \"adamw_torch\", \"adamw_torch_fused\"\
+          ). Defaults to \"adamw_torch\".\n        adam_beta1 (float, optional): Beta1\
+          \ parameter for Adam optimizer. Defaults to 0.9.\n        adam_beta2 (float,\
+          \ optional): Beta2 parameter for Adam optimizer. Defaults to 0.999.\n  \
+          \      adam_epsilon (float, optional): Epsilon parameter for Adam optimizer.\
+          \ Defaults to 1e-8.\n        weight_decay (float, optional): Weight decay\
+          \ for regularization. Defaults to 0.01.\n        use_flash_attention (bool,\
+          \ optional): Whether to use Flash Attention 2 for improved performance.\
+          \ Defaults to False.\n        num_nodes (int, optional): Number of nodes\
+          \ for distributed training. Defaults to 2.\n        trainer_runtime (str,\
+          \ optional): Runtime to use for Kubeflow Trainer. Defaults to \"torch-distributed\"\
+          .\n    \"\"\"\n    import json\n    import os\n    import shutil\n    import\
+          \ textwrap\n    import time\n    import inspect\n\n    from kubernetes import\
+          \ client as k8s_client, config\n    from kubernetes.client.rest import ApiException\n\
+          \n    def get_target_modules(model_name: str) -> list:\n        \"\"\"Get\
+          \ appropriate LoRA target modules based on model architecture.\n\n     \
+          \   Selects optimal layers for LoRA adaptation based on research findings:\n\
+          \        - Attention layers (q_proj, k_proj, v_proj, o_proj) control attention\
+          \ patterns\n        - MLP layers (gate_proj, up_proj, down_proj) store task-specific\
+          \ knowledge\n\n        Model-specific targeting:\n        - Granite: Attention\
+          \ layers only (q,k,v,o)\n        - LLaMA/Mistral/Qwen: Full coverage (attention\
+          \ + MLP)\n        - Phi: Uses 'dense' instead of 'o_proj'\n        - Unknown:\
+          \ Conservative fallback (q,v)\n\n        Based on LoRA (arXiv:2106.09685),\
+          \ QLoRA (arXiv:2305.14314), and model-specific research.\n        \"\"\"\
+          \n        model_name_lower = model_name.lower()\n\n        if \"granite\"\
+          \ in model_name_lower:\n            return [\"q_proj\", \"v_proj\", \"k_proj\"\
+          , \"o_proj\"]\n        elif \"llama\" in model_name_lower:\n           \
+          \ return [\n                \"q_proj\",\n                \"v_proj\",\n \
+          \               \"k_proj\",\n                \"o_proj\",\n             \
+          \   \"gate_proj\",\n                \"up_proj\",\n                \"down_proj\"\
+          ,\n            ]\n        elif \"mistral\" in model_name_lower or \"mixtral\"\
+          \ in model_name_lower:\n            return [\n                \"q_proj\"\
+          ,\n                \"v_proj\",\n                \"k_proj\",\n          \
+          \      \"o_proj\",\n                \"gate_proj\",\n                \"up_proj\"\
+          ,\n                \"down_proj\",\n            ]\n        elif \"qwen\"\
+          \ in model_name_lower:\n            return [\n                \"q_proj\"\
+          ,\n                \"v_proj\",\n                \"k_proj\",\n          \
+          \      \"o_proj\",\n                \"gate_proj\",\n                \"up_proj\"\
+          ,\n                \"down_proj\",\n            ]\n        elif \"phi\" in\
+          \ model_name_lower:\n            return [\"q_proj\", \"v_proj\", \"k_proj\"\
+          , \"dense\"]\n        else:\n            print(\n                f\"Warning:\
+          \ Unknown model architecture for {model_name}, using conservative LoRA targets\"\
+          \n            )\n            return [\"q_proj\", \"v_proj\"]\n\n    def\
+          \ train_model_func(\n            lora_rank: int,\n            learning_rate:\
+          \ float,\n            batch_size: int,\n            max_length: int,\n \
+          \           model_name: str,\n            dataset_path: str,\n         \
+          \   epochs: int,\n            pvc_path: str,\n            target_modules:\
+          \ list,\n            max_steps: int,\n            logging_steps: int,\n\
+          \            save_steps: int,\n            save_strategy: str,\n       \
+          \     optimizer: str,\n            adam_beta1: float,\n            adam_beta2:\
+          \ float,\n            adam_epsilon: float,\n            weight_decay: float,\n\
+          \            use_flash_attention: bool,\n    ):\n        import os\n   \
+          \     import json\n        import torch\n        from datasets import load_from_disk\n\
+          \        from peft import get_peft_model, LoraConfig\n        from transformers\
+          \ import (\n            AutoModelForCausalLM,\n            AutoTokenizer,\n\
+          \            TrainerCallback,\n        )\n        from trl import SFTConfig,\
+          \ SFTTrainer\n\n        local_rank = int(os.environ.get(\"LOCAL_RANK\",\
+          \ 0))\n        world_rank = int(os.environ.get(\"RANK\", 0))\n        world_size\
+          \ = int(os.environ.get(\"WORLD_SIZE\", 1))\n\n        print(\n         \
+          \   f\"Worker info - Local rank: {local_rank}, World rank: {world_rank},\
+          \ World size: {world_size}\"\n        )\n\n        is_main_worker = world_rank\
+          \ == 0\n\n        class MetricsCallback(TrainerCallback):\n            def\
+          \ __init__(self, is_main_worker):\n                self.is_main_worker =\
+          \ is_main_worker\n                self.initial_loss = None\n           \
+          \     self.final_loss = None\n\n            def on_log(self, args, state,\
+          \ control, logs=None, **kwargs):\n                if logs and self.is_main_worker\
+          \ and \"loss\" in logs:\n                    if self.initial_loss is None:\n\
+          \                        self.initial_loss = logs[\"loss\"]\n          \
+          \          self.final_loss = logs[\"loss\"]\n\n        metrics_callback\
+          \ = MetricsCallback(is_main_worker)\n\n        print(\"Downloading and loading\
+          \ model\")\n        model_kwargs = {\n            \"device_map\": \"auto\"\
+          ,\n            \"torch_dtype\": torch.float16,\n            \"trust_remote_code\"\
+          : True,\n        }\n        if use_flash_attention:\n            model_kwargs[\"\
+          attn_implementation\"] = \"flash_attention_2\"\n\n        model = AutoModelForCausalLM.from_pretrained(model_name,\
+          \ **model_kwargs)\n\n        print(f\"Using LoRA target modules for {model_name}:\
+          \ {target_modules}\")\n\n        config = LoraConfig(\n            r=lora_rank,\n\
+          \            lora_alpha=lora_rank * 2,\n            bias=\"none\",\n   \
+          \         lora_dropout=0.05,\n            task_type=\"CAUSAL_LM\",\n   \
+          \         target_modules=target_modules,\n        )\n        model = get_peft_model(model,\
+          \ config)\n\n        print(\"Loading dataset\")\n        dataset = load_from_disk(dataset_path)\n\
+          \n        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)\n\
+          \n        if tokenizer.pad_token is None:\n            tokenizer.pad_token\
+          \ = tokenizer.eos_token\n        tokenizer.padding_side = \"right\"\n\n\
+          \        sft_config = SFTConfig(\n            ## Memory optimization\n \
+          \           gradient_checkpointing=True,\n            gradient_checkpointing_kwargs={\"\
+          use_reentrant\": False},\n            gradient_accumulation_steps=1,\n \
+          \           per_device_train_batch_size=batch_size,\n            auto_find_batch_size=True,\n\
+          \            ## Dataset configuration\n            max_length=max_length,\n\
+          \            packing=use_flash_attention,  # Packing works best with Flash\
+          \ Attention\n            ## Training parameters\n            num_train_epochs=epochs\
+          \ if max_steps is None else None,\n            max_steps=-1 if max_steps\
+          \ is None else max_steps,\n            learning_rate=learning_rate,\n  \
+          \          optim=optimizer,\n            ## Optimizer parameters\n     \
+          \       adam_beta1=adam_beta1,\n            adam_beta2=adam_beta2,\n   \
+          \         adam_epsilon=adam_epsilon,\n            weight_decay=weight_decay,\n\
+          \            ## Logging and saving\n            logging_steps=logging_steps,\n\
+          \            save_steps=save_steps,\n            save_strategy=save_strategy,\n\
+          \            logging_dir=\"./logs\",\n            report_to=\"none\",\n\
+          \        )\n        trainer = SFTTrainer(\n            model=model,\n  \
+          \          processing_class=tokenizer,\n            args=sft_config,\n \
+          \           train_dataset=dataset,\n            callbacks=[metrics_callback],\n\
+          \        )\n\n        train_result = trainer.train()\n\n        if torch.distributed.is_initialized():\n\
+          \            torch.distributed.barrier()\n            print(f\"Worker {world_rank}\
+          \ - Training completed and synchronized\")\n\n        if not is_main_worker:\n\
+          \            print(\n                f\"Worker {world_rank} - Skipping model\
+          \ export and metrics (not main worker)\"\n            )\n            # Clean\
+          \ up distributed process group for non-main workers\n            if torch.distributed.is_initialized():\n\
+          \                print(f\"Worker {world_rank} - Cleaning up distributed\
+          \ process group\")\n                torch.distributed.destroy_process_group()\n\
+          \                print(f\"Worker {world_rank} - Distributed process group\
+          \ destroyed\")\n            return\n\n        print(\"Main worker (rank\
+          \ 0) - Exporting model and metrics...\")\n\n        # Save LoRA adapter\n\
+          \        model_output_path = os.path.join(pvc_path, \"adapter\")\n     \
+          \   model.save_pretrained(model_output_path)\n        tokenizer.save_pretrained(model_output_path)\n\
+          \        print(\"LoRA adapter exported successfully!\")\n\n        # Clean\
+          \ up distributed process group for main worker AFTER model saving\n    \
+          \    if torch.distributed.is_initialized():\n            print(f\"Worker\
+          \ {world_rank} - Cleaning up distributed process group\")\n            torch.distributed.destroy_process_group()\n\
+          \            print(f\"Worker {world_rank} - Distributed process group destroyed\"\
+          )\n\n        print(f\"Collecting essential metrics\")\n        metrics_dict\
+          \ = {}\n\n        if hasattr(train_result, \"train_loss\"):\n          \
+          \  metrics_dict[\"final_train_loss\"] = train_result.train_loss\n      \
+          \  if hasattr(train_result, \"train_runtime\"):\n            metrics_dict[\"\
+          train_runtime_seconds\"] = train_result.train_runtime\n        if hasattr(train_result,\
+          \ \"train_samples_per_second\"):\n            metrics_dict[\"throughput_samples_per_sec\"\
+          ] = (\n                train_result.train_samples_per_second\n         \
+          \   )\n\n        total_params = sum(p.numel() for p in model.parameters())\n\
+          \        trainable_params = sum(p.numel() for p in model.parameters() if\
+          \ p.requires_grad)\n        metrics_dict[\"total_parameters_millions\"]\
+          \ = total_params / 1_000_000\n        metrics_dict[\"trainable_parameters_millions\"\
+          ] = trainable_params / 1_000_000\n        metrics_dict[\"lora_efficiency_percent\"\
+          ] = (\n                                                          trainable_params\
+          \ / total_params\n                                                  ) *\
+          \ 100\n\n        metrics_dict[\"lora_rank\"] = config.r\n        metrics_dict[\"\
+          learning_rate\"] = sft_config.learning_rate\n        metrics_dict[\"effective_batch_size\"\
+          ] = (\n                sft_config.per_device_train_batch_size * world_size\n\
+          \        )\n        metrics_dict[\"dataset_size\"] = len(dataset)\n\n  \
+          \      metrics_dict[\"num_nodes\"] = (\n            world_size // torch.cuda.device_count()\n\
+          \            if torch.cuda.is_available() and torch.cuda.device_count()\
+          \ > 0\n            else 1\n        )\n        if torch.cuda.is_available():\n\
+          \            metrics_dict[\"peak_gpu_memory_gb\"] = torch.cuda.max_memory_allocated()\
+          \ / (\n                    1024**3\n            )\n\n        if metrics_callback.initial_loss\
+          \ and metrics_callback.final_loss:\n            metrics_dict[\"initial_loss\"\
+          ] = metrics_callback.initial_loss\n            metrics_dict[\"loss_reduction\"\
+          ] = (\n                    metrics_callback.initial_loss - metrics_callback.final_loss\n\
+          \            )\n            metrics_dict[\"loss_reduction_percent\"] = (\n\
+          \                                                             (metrics_callback.initial_loss\
+          \ - metrics_callback.final_loss)\n                                     \
+          \                        / metrics_callback.initial_loss\n             \
+          \                                        ) * 100\n\n        with open(os.path.join(pvc_path,\
+          \ \"metrics.json\"), \"w\") as f:\n            json.dump(metrics_dict, f,\
+          \ indent=2)\n\n        print(\n            f\"Exported {len(metrics_dict)}\
+          \ metrics to {os.path.join(pvc_path, 'metrics.json')}\"\n        )\n   \
+          \     print(\"Model and metrics exported successfully!\")\n\n    print(\"\
+          Copying dataset to PVC...\")\n    dataset_path = os.path.join(pvc_path,\
+          \ \"dataset\", \"train\")\n    os.makedirs(dataset_path, exist_ok=True)\n\
+          \    shutil.copytree(\n        input_dataset.path,\n        dataset_path,\n\
+          \        dirs_exist_ok=True,\n    )\n    print(f\"Dataset copied successfully\
+          \ from {input_dataset.path} to {dataset_path}\")\n\n    print(\"=== Starting\
+          \ TrainJob creation process ===\")\n\n    target_modules = get_target_modules(model_name)\n\
+          \    print(f\"Selected LoRA target modules for {model_name}: {target_modules}\"\
+          )\n\n    with open(\n            \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
+          , \"r\"\n    ) as ns_file:\n        namespace = ns_file.readline()\n\n \
+          \   print(\"Generating command...\")\n\n    func_code = inspect.getsource(train_model_func)\n\
+          \    func_code = textwrap.dedent(func_code)\n\n    func_call_code = f\"\"\
+          \"\nimport os\nimport json\n\n# Parse function arguments from environment\
+          \ variable\nconfig_json = os.environ.get(\"TRAINING_CONFIG\", \"{{}}\")\n\
+          func_args = json.loads(config_json)\n\n# Call the training function with\
+          \ parsed arguments\n{train_model_func.__name__}(**func_args)\n\"\"\"\n\n\
+          \    func_code = f\"{func_code}\\n{func_call_code}\"\n\n    # Build package\
+          \ list based on configuration\n    packages = [\"transformers\", \"peft\"\
+          , \"accelerate\", \"trl\"]\n    if use_flash_attention:\n        packages.append(\"\
+          flash-attn\")\n    packages_str = \" \".join(packages)\n\n    install_script\
+          \ = f\"\"\"set -e\nset -o pipefail\n\necho \"=== Starting container setup\
+          \ ===\"\necho \"Python version: $(python --version)\"\n\nif ! [ -x \"$(command\
+          \ -v pip)\" ]; then\n    echo \"Installing pip...\"\n    python -m ensurepip\
+          \ || python -m ensurepip --user\nfi\n\necho \"Installing Python packages...\"\
+          \nPIP_DISABLE_PIP_VERSION_CHECK=1 python -m pip install --user --quiet --no-warn-script-location\
+          \ {packages_str}\n\necho \"Creating training script...\"\ncat > ephemeral_component.py\
+          \ << 'EOF'\n{func_code}\nEOF\n\necho \"Starting distributed training...\"\
+          \ntorchrun --nproc_per_node=1 ephemeral_component.py\"\"\"\n\n    command\
+          \ = [\"bash\", \"-c\", install_script]\n\n    print(f\"Generated command:\
+          \ {command}\")\n    print(f\"Command length: {len(command)}\")\n    print(f\"\
+          Command type: {type(command)}\")\n\n    print(\"Loading Kubernetes configuration...\"\
+          )\n    try:\n        config.load_incluster_config()\n        print(\"Loaded\
+          \ in-cluster Kubernetes configuration\")\n    except config.ConfigException:\n\
+          \        config.load_kube_config()\n        print(\"Loaded kubeconfig Kubernetes\
+          \ configuration\")\n\n    print(\"Creating Kubernetes API client...\")\n\
+          \    api_client = k8s_client.ApiClient()\n    custom_objects_api = k8s_client.CustomObjectsApi(api_client)\n\
+          \    print(\"Successfully created Kubernetes API client\")\n\n    print(\"\
+          Defining TrainJob resource...\")\n\n    env_vars = [\n        {\"name\"\
+          : \"HOME\", \"value\": \"/tmp\"},\n        {\n            \"name\": \"TRAINING_CONFIG\"\
+          ,\n            \"value\": json.dumps(\n                {\n             \
+          \       \"lora_rank\": lora_rank,\n                    \"learning_rate\"\
+          : learning_rate,\n                    \"batch_size\": batch_size,\n    \
+          \                \"max_length\": max_length,\n                    \"model_name\"\
+          : model_name,\n                    \"dataset_path\": dataset_path,\n   \
+          \                 \"epochs\": epochs,\n                    \"pvc_path\"\
+          : pvc_path,\n                    \"target_modules\": target_modules,\n \
+          \                   \"max_steps\": max_steps,\n                    \"logging_steps\"\
+          : logging_steps,\n                    \"save_steps\": save_steps,\n    \
+          \                \"save_strategy\": save_strategy,\n                   \
+          \ \"optimizer\": optimizer,\n                    \"adam_beta1\": adam_beta1,\n\
+          \                    \"adam_beta2\": adam_beta2,\n                    \"\
+          adam_epsilon\": adam_epsilon,\n                    \"weight_decay\": weight_decay,\n\
+          \                    \"use_flash_attention\": use_flash_attention,\n   \
+          \             }\n            ),\n        },\n        *(kubernetes_config.env\
+          \ or []),\n    ]\n\n    train_job = {\n        \"apiVersion\": \"trainer.kubeflow.org/v1alpha1\"\
+          ,\n        \"kind\": \"TrainJob\",\n        \"metadata\": {\"name\": f\"\
+          kfp-{run_id}\", \"namespace\": namespace},\n        \"spec\": {\n      \
+          \      \"runtimeRef\": {\"name\": trainer_runtime},\n            \"trainer\"\
+          : {\n                \"numNodes\": num_nodes,\n                \"resourcesPerNode\"\
+          : kubernetes_config.resources,\n                \"env\": env_vars,\n   \
+          \             \"command\": command,\n            },\n            \"podSpecOverrides\"\
+          : [\n                {\n                    \"targetJobs\": [{\"name\":\
+          \ \"node\"}],\n                    \"volumes\": kubernetes_config.volumes,\n\
+          \                    \"containers\": [\n                        {\n    \
+          \                        \"name\": \"node\",\n                         \
+          \   \"volumeMounts\": kubernetes_config.volume_mounts,\n               \
+          \         }\n                    ],\n                    \"nodeSelector\"\
+          : kubernetes_config.node_selector,\n                    \"tolerations\"\
+          : kubernetes_config.tolerations,\n                }\n            ],\n  \
+          \      },\n    }\n\n    print(f\"TrainJob definition created:\")\n    print(f\"\
+          \  - Name: kfp-{run_id}\")\n    print(f\"  - Namespace: {namespace}\")\n\
+          \n    print(f\"  - Runtime: {trainer_runtime}\")\n    print(f\"  - Nodes:\
+          \ {num_nodes}\")\n    print(f\"  - Model: {model_name}\")\n    print(f\"\
+          \  - Dataset: {dataset_path}\")\n    print(f\"  - Epochs: {epochs}\")\n\n\
+          \    print(\"Submitting TrainJob to Kubernetes...\")\n    try:\n       \
+          \ response = custom_objects_api.create_namespaced_custom_object(\n     \
+          \       group=\"trainer.kubeflow.org\",\n            version=\"v1alpha1\"\
+          ,\n            namespace=namespace,\n            plural=\"trainjobs\",\n\
+          \            body=train_job,\n        )\n        job_name = response[\"\
+          metadata\"][\"name\"]\n        print(f\"TrainJob {job_name} created successfully\"\
+          )\n        print(f\"Response metadata: {response.get('metadata', {})}\"\
+          )\n    except ApiException as e:\n        print(f\"Error creating TrainJob:\
+          \ {e}\")\n        print(f\"Error details: {e.body}\")\n        print(f\"\
+          Error status: {e.status}\")\n        raise\n\n    print(f\"Starting to monitor\
+          \ TrainJob {job_name} status...\")\n    check_count = 0\n    while True:\n\
+          \        check_count += 1\n        try:\n            print(f\"Checking job\
+          \ status (attempt {check_count})...\")\n            job_status = custom_objects_api.get_namespaced_custom_object(\n\
+          \                group=\"trainer.kubeflow.org\",\n                version=\"\
+          v1alpha1\",\n                namespace=namespace,\n                plural=\"\
+          trainjobs\",\n                name=job_name,\n            )\n\n        \
+          \    status = job_status.get(\"status\", {})\n            conditions = status.get(\"\
+          conditions\", [])\n            print(f\"Job status conditions: {conditions}\"\
+          )\n\n            completed = False\n            failed = False\n\n     \
+          \       for condition in conditions:\n                condition_type = condition.get(\"\
+          type\", \"\")\n                condition_status = condition.get(\"status\"\
+          , \"\")\n                condition_reason = condition.get(\"reason\", \"\
+          \")\n                condition_message = condition.get(\"message\", \"\"\
+          )\n\n                print(\n                    f\"Condition: type={condition_type},\
+          \ status={condition_status}, reason={condition_reason}\"\n             \
+          \   )\n\n                if condition_type == \"Complete\" and condition_status\
+          \ == \"True\":\n                    print(\n                        f\"\
+          Training job {job_name} completed successfully: {condition_message}\"\n\
+          \                    )\n                    completed = True\n         \
+          \           break\n                elif condition_type == \"Failed\" and\
+          \ condition_status == \"True\":\n                    print(f\"Training job\
+          \ {job_name} failed: {condition_message}\")\n                    failed\
+          \ = True\n                    break\n                elif condition_type\
+          \ == \"Cancelled\" and condition_status == \"True\":\n                 \
+          \   print(f\"Training job {job_name} was cancelled: {condition_message}\"\
+          )\n                    failed = True\n                    break\n\n    \
+          \        if completed:\n                break\n            elif failed:\n\
+          \                raise RuntimeError(f\"Training job {job_name} failed or\
+          \ was cancelled\")\n            else:\n                print(f\"Job is still\
+          \ running, continuing to wait...\")\n\n        except ApiException as e:\n\
+          \            print(f\"Error checking job status: {e}\")\n            print(f\"\
+          Error details: {e.body}\")\n\n        print(f\"Waiting 10 seconds before\
+          \ next check...\")\n        time.sleep(10)\n\n    print(f\"Training job\
+          \ {job_name} completed. Logs would be retrieved here.\")\n\n    print(\"\
+          Processing training results...\")\n\n    metrics_file_path = os.path.join(pvc_path,\
+          \ \"metrics.json\")\n    print(f\"Looking for metrics file at: {metrics_file_path}\"\
+          )\n    if os.path.exists(metrics_file_path):\n        print(f\"Found metrics\
+          \ file, reading from {metrics_file_path}\")\n        with open(metrics_file_path,\
+          \ \"r\") as f:\n            metrics_dict = json.load(f)\n\n        print(f\"\
+          Loaded {len(metrics_dict)} metrics from file\")\n\n        exported_count\
+          \ = 0\n        for metric_name, metric_value in metrics_dict.items():\n\
+          \            # Ignore metrics that are 0 to avoid a bug in the RHOAI UI.\n\
+          \            if isinstance(metric_value, (int, float)) and metric_value\
+          \ != 0:\n                output_metrics.log_metric(metric_name, metric_value)\n\
+          \                print(f\"Exported metric: {metric_name} = {metric_value}\"\
+          )\n                exported_count += 1\n\n        print(f\"Successfully\
+          \ exported {exported_count} metrics to Kubeflow\")\n        os.remove(metrics_file_path)\n\
+          \    else:\n        print(f\"Warning: Metrics file {metrics_file_path} not\
+          \ found\")\n\n    print(\"Copying model from PVC to Kubeflow output path...\"\
+          )\n    model_source = os.path.join(pvc_path, \"adapter\")\n    print(f\"\
+          Model source: {model_source}\")\n    print(f\"Destination: {output_model.path}\"\
+          )\n\n    if not os.path.exists(model_source):\n        raise FileNotFoundError(\n\
+          \            f\"Trained model not found at expected location: {model_source}\"\
+          \n        )\n\n    output_model.name = f\"{model_name}-adapter\"\n    shutil.copytree(model_source,\
+          \ output_model.path, dirs_exist_ok=True)\n    print(f\"Model copied successfully\
+          \ from {model_source} to {output_model.path}\")\n\n    print(\"=== TrainJob\
+          \ process completed successfully ===\")\n\n"
+        image: registry.access.redhat.com/ubi9/python-311:latest
+pipelineInfo:
+  name: train-model
+root:
+  dag:
+    outputs:
+      artifacts:
+        output_metrics:
+          artifactSelectors:
+          - outputArtifactKey: output_metrics
+            producerSubtask: train-model
+        output_model:
+          artifactSelectors:
+          - outputArtifactKey: output_model
+            producerSubtask: train-model
+    tasks:
+      train-model:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-train-model
+        inputs:
+          artifacts:
+            input_dataset:
+              componentInputArtifact: input_dataset
+          parameters:
+            adam_beta1:
+              componentInputParameter: adam_beta1
+            adam_beta2:
+              componentInputParameter: adam_beta2
+            adam_epsilon:
+              componentInputParameter: adam_epsilon
+            batch_size:
+              componentInputParameter: batch_size
+            epochs:
+              componentInputParameter: epochs
+            kubernetes_config:
+              componentInputParameter: kubernetes_config
+            learning_rate:
+              componentInputParameter: learning_rate
+            logging_steps:
+              componentInputParameter: logging_steps
+            lora_rank:
+              componentInputParameter: lora_rank
+            max_length:
+              componentInputParameter: max_length
+            max_steps:
+              componentInputParameter: max_steps
+            model_name:
+              componentInputParameter: model_name
+            num_nodes:
+              componentInputParameter: num_nodes
+            optimizer:
+              componentInputParameter: optimizer
+            pvc_path:
+              componentInputParameter: pvc_path
+            run_id:
+              componentInputParameter: run_id
+            save_steps:
+              componentInputParameter: save_steps
+            save_strategy:
+              componentInputParameter: save_strategy
+            trainer_runtime:
+              componentInputParameter: trainer_runtime
+            use_flash_attention:
+              componentInputParameter: use_flash_attention
+            weight_decay:
+              componentInputParameter: weight_decay
+        taskInfo:
+          name: train-model
+  inputDefinitions:
+    artifacts:
+      input_dataset:
+        artifactType:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+    parameters:
+      adam_beta1:
+        defaultValue: 0.9
+        description: Beta1 parameter for Adam optimizer. Defaults to 0.9.
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      adam_beta2:
+        defaultValue: 0.999
+        description: Beta2 parameter for Adam optimizer. Defaults to 0.999.
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      adam_epsilon:
+        defaultValue: 1.0e-08
+        description: Epsilon parameter for Adam optimizer. Defaults to 1e-8.
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      batch_size:
+        defaultValue: 16.0
+        description: Per-device training batch size. Defaults to 16.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      epochs:
+        defaultValue: 10.0
+        description: Number of training epochs. Defaults to 10.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      kubernetes_config:
+        isOptional: true
+        parameterType: TASK_CONFIG
+      learning_rate:
+        defaultValue: 0.0003
+        description: Learning rate for training optimization. Defaults to 3e-4.
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      logging_steps:
+        defaultValue: 10.0
+        description: Number of steps between logging outputs. Defaults to 10.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      lora_rank:
+        defaultValue: 8.0
+        description: LoRA adapter rank (lower = fewer parameters, faster training).
+          Defaults to 8.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      max_length:
+        defaultValue: 64.0
+        description: Maximum token sequence length for training. Defaults to 64.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      max_steps:
+        description: Maximum number of training steps. If specified, overrides epochs.
+          Defaults to None.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      model_name:
+        description: HuggingFace model identifier (e.g., "meta-llama/Llama-3.2-3B-Instruct").
+        parameterType: STRING
+      num_nodes:
+        defaultValue: 2.0
+        description: Number of nodes for distributed training. Defaults to 2.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      optimizer:
+        defaultValue: adamw_torch
+        description: Optimizer to use (e.g., "adamw_torch", "adamw_torch_fused").
+          Defaults to "adamw_torch".
+        isOptional: true
+        parameterType: STRING
+      pvc_path:
+        description: Base path within the PVC for storing outputs.
+        parameterType: STRING
+      run_id:
+        description: Unique identifier for this training run. Use dsl.PIPELINE_JOB_ID_PLACEHOLDER.
+        parameterType: STRING
+      save_steps:
+        description: Number of steps between model checkpoints. Defaults to None.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      save_strategy:
+        defaultValue: epoch
+        description: Checkpoint saving strategy ("epoch" or "steps"). Defaults to
+          "epoch".
+        isOptional: true
+        parameterType: STRING
+      trainer_runtime:
+        defaultValue: torch-distributed
+        description: Runtime to use for Kubeflow Trainer. Defaults to "torch-distributed".
+        isOptional: true
+        parameterType: STRING
+      use_flash_attention:
+        defaultValue: false
+        description: Whether to use Flash Attention 2 for improved performance. Defaults
+          to False.
+        isOptional: true
+        parameterType: BOOLEAN
+      weight_decay:
+        defaultValue: 0.01
+        description: Weight decay for regularization. Defaults to 0.01.
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+  outputDefinitions:
+    artifacts:
+      output_metrics:
+        artifactType:
+          schemaTitle: system.Metrics
+          schemaVersion: 0.0.1
+      output_model:
+        artifactType:
+          schemaTitle: system.Model
+          schemaVersion: 0.0.1
+  taskConfigPassthroughs:
+  - field: RESOURCES
+  - field: KUBERNETES_TOLERATIONS
+  - field: KUBERNETES_NODE_SELECTOR
+  - field: KUBERNETES_AFFINITY
+  - applyToTask: true
+    field: ENV
+  - applyToTask: true
+    field: KUBERNETES_VOLUMES
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.15.2
