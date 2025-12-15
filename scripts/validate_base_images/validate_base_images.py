@@ -729,6 +729,15 @@ Examples:
             "'pipelines/<category>/<name>' or a direct '.../pipeline.py' path. Repeatable."
         ),
     )
+    parser.add_argument(
+        "--allow-list",
+        default=None,
+        metavar="PATH",
+        help=(
+            "Path to a base-image allowlist YAML file. Defaults to "
+            "'scripts/validate_base_images/base_image_allowlist.yaml'."
+        ),
+    )
 
     return parser.parse_args(argv)
 
@@ -736,6 +745,8 @@ Examples:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     config = ValidationConfig()
+    if args.allow_list:
+        config.allowlist_path = Path(args.allow_list)
     config.allowlist = load_base_image_allowlist(config.allowlist_path)
     set_config(config)
 
