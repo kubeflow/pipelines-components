@@ -10,6 +10,19 @@ From the repo root:
 uv run python scripts/validate_base_images/validate_base_images.py
 ```
 
+## Allowlist
+
+The validator accepts:
+
+- `ghcr.io/kubeflow/*` images
+- unset/empty images
+- images matching the allowlist file: `scripts/validate_base_images/base_image_allowlist.yaml`
+
+To update the allowlist, edit `scripts/validate_base_images/base_image_allowlist.yaml` and add either:
+
+- `allowed_images`: exact image strings
+- `allowed_image_patterns`: regex patterns matched against the full image string
+
 ## Validate specific assets only
 
 Validate a single component (directory or `component.py`):

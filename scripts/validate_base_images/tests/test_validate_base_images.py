@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from validate_base_images import (
     ALLOWED_BASE_IMAGE_PREFIX,
+    load_base_image_allowlist,
     ValidationConfig,
     _collect_violations,
     _print_summary,
@@ -25,7 +26,6 @@ from validate_base_images import (
     get_config,
     get_repo_root,
     is_custom_kubeflow_image,
-    is_python_image,
     is_valid_base_image,
     load_module_from_path,
     main,
@@ -59,22 +59,57 @@ class TestValidationConfig:
 
 
 class TestIsPythonImage:
-    """Tests for is_python_image function."""
+    """Tests for allowlist-driven image validation."""
 
-    def test_valid_python_images(self):
-        """Test that standard Python images are recognized."""
-        assert is_python_image("python:3.11")
-        assert is_python_image("python:3.11-slim")
-        assert is_python_image("python:3.10-alpine")
-        assert is_python_image("python:3.9-bullseye")
+    def test_python_images_allowed_by_allowlist(self, tmp_path: Path):
+        allowlist_file = tmp_path / "allowlist.yaml"
+        allowlist_file.write_text(
+            "\n".join(
+                [
+                    "allowed_images: []",
+                    "allowed_image_patterns:",
+                    "  - '^python:\\d+\\.\\d+.*$'",
+                    "",
+                ]
+            )
+        )
+        config = ValidationConfig()
+        config.allowlist_path = allowlist_file
+        config.allowlist = load_base_image_allowlist(allowlist_file)
 
-    def test_invalid_python_images(self):
-        """Test that non-Python images are not recognized."""
-        assert not is_python_image("python:latest")
-        assert not is_python_image("docker.io/python:3.11")
-        assert not is_python_image("ghcr.io/kubeflow/python:3.11")
-        assert not is_python_image("ubuntu:22.04")
-        assert not is_python_image("")
+        assert is_valid_base_image("python:3.11", config)
+        assert is_valid_base_image("python:3.11-slim", config)
+        assert is_valid_base_image("python:3.10-alpine", config)
+        assert is_valid_base_image("python:3.9-bullseye", config)
+
+        assert not is_valid_base_image("python:latest", config)
+        assert not is_valid_base_image("docker.io/python:3.11", config)
+        assert is_valid_base_image("ghcr.io/kubeflow/python:3.11", config)
+        assert not is_valid_base_image("ubuntu:22.04", config)
+
+    def test_python_images_rejected_without_allowlist_entry(self, tmp_path: Path):
+        allowlist_file = tmp_path / "allowlist.yaml"
+        allowlist_file.write_text("allowed_images: []\nallowed_image_patterns: []\n")
+        config = ValidationConfig()
+        config.allowlist_path = allowlist_file
+        config.allowlist = load_base_image_allowlist(allowlist_file)
+
+        assert not is_valid_base_image("python:3.11", config)
+
+    def test_allowlist_invalid_regex_fails_fast(self, tmp_path: Path):
+        allowlist_file = tmp_path / "allowlist.yaml"
+        allowlist_file.write_text(
+            "\n".join(
+                [
+                    "allowed_images: []",
+                    "allowed_image_patterns:",
+                    "  - '^(python:$'",
+                    "",
+                ]
+            )
+        )
+        with pytest.raises(ValueError):
+            load_base_image_allowlist(allowlist_file)
 
 
 class TestParseArgs:

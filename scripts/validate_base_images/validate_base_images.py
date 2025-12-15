@@ -26,14 +26,46 @@ from kfp import compiler
 
 
 ALLOWED_BASE_IMAGE_PREFIX = "ghcr.io/kubeflow/"
-PYTHON_IMAGE_PATTERN = re.compile(r"^python:\d+\.\d+.*$")
 COMPONENT_FILENAME = "component.py"
 PIPELINE_FILENAME = "pipeline.py"
 
 
-def is_python_image(image: str) -> bool:
-    """Check if an image is a standard Python image (python:<tag>)."""
-    return bool(PYTHON_IMAGE_PATTERN.match(image))
+@dataclass(frozen=True)
+class BaseImageAllowlist:
+    allowed_images: frozenset[str]
+    allowed_image_patterns: tuple[re.Pattern[str], ...]
+
+
+def load_base_image_allowlist(path: Path) -> BaseImageAllowlist:
+    data = yaml.safe_load(path.read_text())
+    if data is None:
+        data = {}
+    if not isinstance(data, dict):
+        raise ValueError(f"Allowlist must be a YAML mapping: {path}")
+
+    allowed_images_raw = data.get("allowed_images", [])
+    allowed_patterns_raw = data.get("allowed_image_patterns", [])
+
+    if not isinstance(allowed_images_raw, list) or not all(isinstance(x, str) for x in allowed_images_raw):
+        raise ValueError(f"'allowed_images' must be a list of strings: {path}")
+    if not isinstance(allowed_patterns_raw, list) or not all(isinstance(x, str) for x in allowed_patterns_raw):
+        raise ValueError(f"'allowed_image_patterns' must be a list of regex strings: {path}")
+
+    try:
+        patterns = tuple(re.compile(p) for p in allowed_patterns_raw)
+    except re.error as e:
+        raise ValueError(f"Invalid regex in allowlist {path}: {e}") from e
+
+    return BaseImageAllowlist(
+        allowed_images=frozenset(allowed_images_raw),
+        allowed_image_patterns=patterns,
+    )
+
+
+def is_allowlisted_image(image: str, allowlist: BaseImageAllowlist) -> bool:
+    if image in allowlist.allowed_images:
+        return True
+    return any(p.match(image) for p in allowlist.allowed_image_patterns)
 
 
 @dataclass
@@ -41,6 +73,8 @@ class ValidationConfig:
     """Configuration for base image validation."""
 
     allowed_prefix: str = ALLOWED_BASE_IMAGE_PREFIX
+    allowlist_path: Path = Path(__file__).parent / "base_image_allowlist.yaml"
+    allowlist: BaseImageAllowlist | None = None
 
 
 _config: ValidationConfig | None = None
@@ -50,7 +84,9 @@ def get_config() -> ValidationConfig:
     """Get the current validation configuration."""
     global _config
     if _config is None:
-        _config = ValidationConfig()
+        config = ValidationConfig()
+        config.allowlist = load_base_image_allowlist(config.allowlist_path)
+        _config = config
     return _config
 
 
@@ -281,7 +317,7 @@ def is_valid_base_image(image: str, config: ValidationConfig | None = None) -> b
     Valid base images either:
     - Start with the configured allowed_prefix (default: 'ghcr.io/kubeflow/')
     - Are empty/unset (represented as empty string or None)
-    - Are standard Python images (python:<tag>)
+    - Match the configured allowlist file
 
     Args:
         image: The base image string to validate
@@ -295,9 +331,11 @@ def is_valid_base_image(image: str, config: ValidationConfig | None = None) -> b
 
     if not image:
         return True
-    if is_python_image(image):
+    if image.startswith(config.allowed_prefix):
         return True
-    return image.startswith(config.allowed_prefix)
+    if config.allowlist is None:
+        config.allowlist = load_base_image_allowlist(config.allowlist_path)
+    return is_allowlisted_image(image, config.allowlist)
 
 
 def validate_base_images(images: set[str], config: ValidationConfig | None = None) -> list[str]:
@@ -318,7 +356,7 @@ def validate_base_images(images: set[str], config: ValidationConfig | None = Non
 
 def is_custom_kubeflow_image(image: str, config: ValidationConfig | None = None) -> bool:
     """
-    Check if an image is a custom Kubeflow image (not a standard Python image).
+    Check if an image is a custom Kubeflow image.
 
     Args:
         image: The base image string to check
@@ -331,8 +369,6 @@ def is_custom_kubeflow_image(image: str, config: ValidationConfig | None = None)
         config = get_config()
 
     if not image:
-        return False
-    if is_python_image(image):
         return False
     return image.startswith(config.allowed_prefix)
 
@@ -518,11 +554,13 @@ def _print_violations(violations: list[dict[str, Any]], config: ValidationConfig
 
     if invalid_image_violations:
         print(f"Invalid base images ({len(invalid_image_violations)}):")
-        print(f"  Base images must start with '{config.allowed_prefix}' or be unset.")
+        print(f"  Base images must start with '{config.allowed_prefix}', be unset, or match the allowlist.")
+        print(f"  Allowlist: {config.allowlist_path}")
         print()
         print("  To fix this issue, either:")
         print(f"    1. Use an approved base image (e.g., '{config.allowed_prefix}pipelines-components-<name>:<tag>')")
         print("    2. Leave base_image unset to use the KFP SDK default image")
+        print(f"    3. Add an allowlist entry in {config.allowlist_path}")
         print()
 
         for violation in invalid_image_violations:
@@ -594,7 +632,8 @@ def _print_final_status(total_assets: int, failed_assets: int, violations: list[
         print(f"FAILED: {len(violations)} violation(s) found.")
         if invalid_count:
             print(f"  - {invalid_count} invalid base image(s): must use '{config.allowed_prefix}' registry")
-            print(f"    (e.g., '{config.allowed_prefix}pipelines-components-<name>:<tag>') or leave unset.")
+            print(f"    (e.g., '{config.allowed_prefix}pipelines-components-<name>:<tag>'), leave unset, or match the allowlist.")
+            print(f"    Allowlist: {config.allowlist_path}")
         if missing_count:
             print(f"  - {missing_count} missing Containerfile(s): required for custom Kubeflow images.")
         return 1
@@ -656,8 +695,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Valid base images are:
-  - python:<tag> (standard Python images)
   - ghcr.io/kubeflow/* (Kubeflow registry images)
+  - images matching scripts/validate_base_images/base_image_allowlist.yaml
 
 Examples:
   # Run with default settings
@@ -697,6 +736,7 @@ Examples:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     config = ValidationConfig()
+    config.allowlist = load_base_image_allowlist(config.allowlist_path)
     set_config(config)
 
     repo_root = get_repo_root()
@@ -706,7 +746,7 @@ def main(argv: list[str] | None = None) -> int:
     print("=" * 70)
     print()
     print(f"Allowed prefix: {config.allowed_prefix}")
-    print("Also allowed: python:<tag> images")
+    print(f"Allowlist: {config.allowlist_path}")
     print()
 
     selected_components = bool(args.component)

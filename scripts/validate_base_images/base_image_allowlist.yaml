@@ -1,0 +1,15 @@
+# Base image allowlist for scripts/validate_base_images/validate_base_images.py
+#
+# This file defines non-ghcr.io/kubeflow base images that are permitted when
+# validating components/pipelines. If an image does not start with
+# "ghcr.io/kubeflow/" and does not match this allowlist, validation will fail.
+#
+# Keep patterns anchored (use ^ and $) where possible to avoid overly-broad
+# matches.
+#
+# Schema:
+# - allowed_images: exact image strings
+# - allowed_image_patterns: list of regex patterns matched against the full image
+allowed_images: []
+allowed_image_patterns:
+  - '^python:\d+\.\d+.*$'
