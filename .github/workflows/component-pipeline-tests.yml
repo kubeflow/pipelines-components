@@ -1,0 +1,60 @@
+---
+name: Run Tests and Validate Example Pipelines for Updated Components
+
+on:
+  pull_request:
+    paths:
+      - "components/**"
+      - "pipelines/**"
+      - "scripts/tests/**"
+      - "scripts/validate_examples/**"
+      - ".github/workflows/component-pipeline-tests.yml"
+  push:
+    branches:
+      - main
+      - release-*
+    paths:
+      - "components/**"
+      - "pipelines/**"
+      - "scripts/tests/**"
+      - "scripts/validate_examples/**"
+      - ".github/workflows/component-pipeline-tests.yml"
+
+jobs:
+  targeted-tests:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python CI
+        uses: ./.github/actions/setup-python-ci
+        with:
+          python-version: "3.11"
+
+      - name: Detect changed files
+        id: changes
+        uses: ./.github/actions/detect-changed-assets
+
+      - name: Run targeted pytest suites
+        if: ${{ steps.changes.outputs.has-changes == 'true' }}
+        run: |
+          echo "Running pytest for the following paths:"
+          PATHS="${{ steps.changes.outputs.changed-components }} ${{ steps.changes.outputs.changed-pipelines }}"
+          echo "$PATHS"
+          uv run python -m scripts.tests.run_component_tests $PATHS
+
+      - name: Validate example pipelines
+        if: ${{ steps.changes.outputs.has-changes == 'true' }}
+        run: |
+          echo "Validating example pipelines for:"
+          PATHS="${{ steps.changes.outputs.changed-components }} ${{ steps.changes.outputs.changed-pipelines }}"
+          echo "$PATHS"
+          uv run python -m scripts.validate_examples $PATHS
+
+      - name: No component changes detected
+        if: ${{ steps.changes.outputs.has-changes != 'true' }}
+        run: echo "No components or pipelines changed. Skipping targeted tests."
