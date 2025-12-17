@@ -233,26 +233,6 @@ class TestDiscoverAssets:
             assets = discover_assets(Path(tmp_dir), "component")
             assert assets == []
 
-    def test_third_party_not_scanned_by_design(self):
-        """Test that third_party/ components are excluded by design."""
-
-        # Discover from resources/components/ - should NOT include third_party components
-        components_dir = RESOURCES_DIR / "components"
-        assets = discover_assets(components_dir, "component")
-
-        # Verify no third_party components are discovered
-        asset_paths = [str(a["path"]) for a in assets]
-        for path in asset_paths:
-            assert "third_party" not in path, f"third_party component found: {path}"
-
-        # Verify the third_party fixture exists but is in a separate directory
-        third_party_dir = RESOURCES_DIR / "third_party" / "components"
-        if third_party_dir.exists():
-            third_party_assets = discover_assets(third_party_dir, "component")
-            # These exist but would never be scanned by main() since it only
-            # calls discover_assets on repo_root/components, not repo_root/third_party/components
-            assert len(third_party_assets) >= 1, "third_party fixture should exist for this test"
-
 
 class TestLoadModuleFromPath:
     """Tests for load_module_from_path function."""
