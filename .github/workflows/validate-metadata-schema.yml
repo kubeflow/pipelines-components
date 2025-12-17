@@ -1,3 +1,4 @@
+---
 name: validate-metadata-schema
 env:
   PYTHON_VERSION: 3.11
@@ -33,7 +34,7 @@ jobs:
         if: ${{ steps.changed-assets.outputs.has-changed-components == 'true' }}
         run: |
           CHANGED_DIRS="${{ steps.changed-assets.outputs.changed-components }}"
-          
+
           for item in $CHANGED_DIRS; do
             FILE_PATH="$GITHUB_WORKSPACE/$item"
             echo "Processing item: $item"

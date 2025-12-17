@@ -1,3 +1,4 @@
+---
 approvers:
-- sample-approver
-- sample-approver-2
+- mprahl
+- HumairAK

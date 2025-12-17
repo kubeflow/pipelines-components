@@ -1,5 +1,6 @@
+---
 approvers:
-- sample-approver
+- mprahl
 
 reviewers:
-- sample-reviewer
+- gmfrasca
