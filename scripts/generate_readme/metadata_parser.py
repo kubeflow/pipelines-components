@@ -26,7 +26,7 @@ class MetadataParser:
 
         Args:
             file_path: Path to the Python file containing the function.
-            function_type: Type of function to parse ('component' or 'pipeline').
+            function_type: Type of function to parse (e.g., "component", "pipeline").
         """
         self.file_path = file_path
         self._source: Optional[str] = None
@@ -74,7 +74,11 @@ class MetadataParser:
         # Extract returns description
         returns_description = parsed.returns.description if parsed.returns else ""
 
-        return {"overview": overview, "args": args, "returns_description": returns_description}
+        return {
+            "overview": overview,
+            "args": args,
+            "returns_description": returns_description,
+        }
 
     def _annotation_to_string(self, node: Optional[ast.AST]) -> str:
         """Convert an AST type annotation to string.
@@ -197,11 +201,19 @@ class MetadataParser:
             # Parse docstring for Args and Returns sections
             docstring_info = self._parse_google_docstring(docstring)
 
-            if docstring_info.get('overview') is None:
-                raise ValueError(f"Function docstring for {function_name} in {self.file_path.name} does not contain a required overview summary")
+            if docstring_info.get("overview") is None:
+                raise ValueError(
+                    f"Function docstring for {function_name} in {self.file_path.name}"
+                    " does not contain a required overview summary."
+                )
 
             # Extract basic function information
-            metadata = {"name": component_name, "docstring": docstring, "parameters": {}, "returns": {}}
+            metadata = {
+                "name": component_name,
+                "docstring": docstring,
+                "parameters": {},
+                "returns": {},
+            }
             metadata.update(docstring_info)
 
             # Extract parameter information from AST

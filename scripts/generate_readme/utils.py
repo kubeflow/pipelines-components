@@ -13,10 +13,10 @@ def format_title(title: str) -> str:
         Formatted title in Title Case with spaces.
     """
     # First, handle camelCase by inserting spaces before capitals
-    title = re.sub(r'([a-z])([A-Z])', r'\1 \2', title)
+    title = re.sub(r"([a-z])([A-Z])", r"\1 \2", title)
 
     # Replace underscores and hyphens with spaces
-    title = title.replace('_', ' ').replace('-', ' ')
+    title = title.replace("_", " ").replace("-", " ")
 
     # Split into words and capitalize each
     words = title.split()
@@ -24,10 +24,9 @@ def format_title(title: str) -> str:
 
     for word in words:
         # Keep known acronyms in uppercase
-        if word.upper() in ['KFP', 'API', 'URL', 'ID', 'UI', 'CI', 'CD']:
+        if word.upper() in ["KFP", "API", "URL", "ID", "UI", "CI", "CD"]:
             formatted_words.append(word.upper())
         else:
             formatted_words.append(word.capitalize())
 
-    return ' '.join(formatted_words)
-
+    return " ".join(formatted_words)
