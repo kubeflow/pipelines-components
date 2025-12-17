@@ -19,25 +19,24 @@ dependencies = [
 
 [project.optional-dependencies]
 lint = [
-  "ruff==0.8.4",
-  "yamllint==1.35.1",
+  "ruff",
+  "yamllint",
 ]
 test = [
-  "pytest>=8.0.0",
-  "pytest-cov>=4.1.0",
+  "pytest",
+  "pytest-cov",
 ]
 ci = [
     "pytest",
     "docstring-parser",
     "jinja2",
-    "semver>=3.0.4",
+    "semver",
 ]
 # Local development (extends ci with additional tools)
 dev = [
     "kfp-components[ci]",
     "kfp-components[lint]",
     "kfp-components[test]",
-    "ci>=0.1.1",
 ]
 
 [project.urls]
