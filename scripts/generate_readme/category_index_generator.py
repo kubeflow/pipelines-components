@@ -7,9 +7,9 @@ from typing import Dict, List, Optional
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
-from .constants import CATEGORY_README_TEMPLATE
-from .metadata_parser import MetadataParser
-from .utils import format_title
+from scripts.generate_readme.constants import CATEGORY_README_TEMPLATE
+from scripts.generate_readme.metadata_parser import MetadataParser
+from scripts.generate_readme.utils import format_title
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ class CategoryIndexGenerator:
                     return yaml_data["name"]
         except Exception as e:
             logger.debug(f"Could not load name from {metadata_file.name}: {e}")
-            raise e
+            raise
         raise ValueError(f"Required `name` field not found in {metadata_file.name}")
 
     def _extract_item_info(self, item_dir: Path) -> Optional[Dict[str, str]]:

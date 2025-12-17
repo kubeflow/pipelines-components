@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from generate_readme.metadata_parser import MetadataParser
-from generate_readme.writer import ReadmeWriter
+from scripts.generate_readme.metadata_parser import MetadataParser
+from scripts.generate_readme.writer import ReadmeWriter
 
 
 class TestMissingDocstring:

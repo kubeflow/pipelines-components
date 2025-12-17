@@ -5,10 +5,10 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from .category_index_generator import CategoryIndexGenerator
-from .constants import CUSTOM_CONTENT_MARKER
-from .content_generator import ReadmeContentGenerator
-from .metadata_parser import MetadataParser
+from scripts.generate_readme.category_index_generator import CategoryIndexGenerator
+from scripts.generate_readme.constants import CUSTOM_CONTENT_MARKER
+from scripts.generate_readme.content_generator import ReadmeContentGenerator
+from scripts.generate_readme.metadata_parser import MetadataParser
 
 logger = logging.getLogger(__name__)
 

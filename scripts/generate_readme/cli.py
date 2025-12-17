@@ -4,7 +4,7 @@ import argparse
 import logging
 from pathlib import Path
 
-from .writer import ReadmeWriter
+from scripts.generate_readme.writer import ReadmeWriter
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from ..cli import (
+from scripts.generate_readme.cli import (
     parse_arguments,
     validate_component_directory,
     validate_pipeline_directory,

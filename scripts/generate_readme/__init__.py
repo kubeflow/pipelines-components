@@ -4,8 +4,8 @@ This package introspects Python functions decorated with @dsl.component or @dsl.
 to extract function metadata and generate comprehensive README documentation
 """
 
-from .metadata_parser import MetadataParser
-from .writer import ReadmeWriter
+from scripts.generate_readme.metadata_parser import MetadataParser
+from scripts.generate_readme.writer import ReadmeWriter
 
 __all__ = [
     "ReadmeWriter",

@@ -5,7 +5,7 @@ Usage:
     python -m generate_readme --pipeline pipelines/some_category/my_pipeline
 """
 
-from .cli import main
+from scripts.generate_readme.cli import main
 
 if __name__ == "__main__":
     main()
