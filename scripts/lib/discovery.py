@@ -88,6 +88,50 @@ def discover_assets(base_dir: Path, asset_type: str) -> list[dict[str, Any]]:
     return assets
 
 
+def get_all_assets() -> list[dict[str, Any]]:
+    """Get all assets from the repository."""
+    return discover_assets(get_repo_root() / "components", "component") + discover_assets(
+        get_repo_root() / "pipelines", "pipeline"
+    )
+
+
+def find_assets_with_metadata(asset_type: str, base_path: Path | None = None) -> list[str]:
+    """Find all asset directories that have metadata.yaml.
+
+    Args:
+        asset_type: Either 'components' or 'pipelines'
+        base_path: Optional base path, defaults to current directory
+
+    Returns:
+        List of asset paths like 'components/training/my_component'
+    """
+    assets = []
+    if base_path is None:
+        base_path = Path(".")
+    root = base_path / asset_type
+
+    if not root.exists():
+        return assets
+
+    for category in root.iterdir():
+        if not category.is_dir() or category.name.startswith((".", "_")):
+            continue
+
+        for asset in category.iterdir():
+            if not asset.is_dir() or asset.name.startswith((".", "_")):
+                continue
+
+            if (asset / "metadata.yaml").exists():
+                assets.append(f"{asset_type}/{category.name}/{asset.name}")
+
+    return assets
+
+
+def get_all_assets_with_metadata(base_path: Path | None = None) -> list[str]:
+    """Get all assets with metadata from the repository."""
+    return find_assets_with_metadata("components", base_path) + find_assets_with_metadata("pipelines", base_path)
+
+
 def resolve_component_path(repo_root: Path, raw: str) -> Path:
     """Resolve and validate a component file path.
 
