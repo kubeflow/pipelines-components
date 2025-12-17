@@ -1,7 +1,7 @@
+---
 name: Optional Parameters Component
 description: Component demonstrating optional parameters with default values
 documentation: https://example.com/optional-params
 tags:
   - testing
   - parameters
-

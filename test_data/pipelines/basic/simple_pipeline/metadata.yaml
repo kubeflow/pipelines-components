@@ -1,7 +1,7 @@
+---
 name: Simple Pipeline
 description: A basic pipeline for testing README generation
 documentation: https://example.com/simple-pipeline
 tags:
   - testing
   - pipeline
-

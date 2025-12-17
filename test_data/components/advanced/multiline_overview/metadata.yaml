@@ -1,3 +1,4 @@
+---
 name: Multiline Overview Component
 description: Component with a detailed multiline overview in docstring
 documentation: https://example.com/multiline-overview
@@ -5,4 +6,3 @@ tags:
   - testing
   - advanced
   - documentation
-

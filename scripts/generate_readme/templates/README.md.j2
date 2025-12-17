@@ -20,8 +20,8 @@
 | Name | Type | Description |
 |------|------|-------------|
 | Output | `{{ returns.type }}` | {{ returns.description }} |
-{% endif %}
 
+{% endif %}
 {% if example_code %}
 ## Usage Examples 🧪
 
@@ -44,5 +44,5 @@
 {% for link_name, link_url in links.items() %}
 - **{{ link_name | replace('_', ' ') | title }}**: [{{ link_url }}]({{ link_url }})
 {% endfor %}
-{% endif %}
 
+{% endif %}

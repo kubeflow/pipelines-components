@@ -1,16 +1,15 @@
 """Tests for simple_pipeline."""
+
 import pytest
 from kfp import compiler
+
 from ..pipeline import simple_pipeline
 
 
 def test_pipeline_compiles():
     """Test that the pipeline compiles successfully."""
     try:
-        compiler.Compiler().compile(
-            pipeline_func=simple_pipeline,
-            package_path='/tmp/test_pipeline.yaml'
-        )
+        compiler.Compiler().compile(pipeline_func=simple_pipeline, package_path="/tmp/test_pipeline.yaml")
     except Exception as e:
         pytest.fail(f"Pipeline compilation failed: {e}")
 
@@ -31,4 +30,3 @@ def test_pipeline_custom_params():
         simple_pipeline(input_text="custom", iterations=5)
     except Exception as e:
         pytest.fail(f"Pipeline execution with custom params failed: {e}")
-

@@ -14,18 +14,15 @@ testing the README generator.
 | `input_text` | `str` | `None` | The input text to process. |
 | `iterations` | `int` | `3` | Number of iterations to run. |
 
-
-
 ## Metadata 🗂️
 
 - **Name**: Simple Pipeline
 - **Description**: A basic pipeline for testing README generation
 - **Documentation**: https://example.com/simple-pipeline
-- **Tags**: 
+- **Tags**:
   - testing
   - pipeline
-- **Owners**: 
+- **Owners**:
   - Approvers:
     - HumairAK
     - mprahl
-

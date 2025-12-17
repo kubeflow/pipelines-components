@@ -182,7 +182,12 @@ class ReadmeContentGenerator:
             Complete README.md content as a string.
         """
         context = self._prepare_template_context()
-        return self.template.render(**context)
+        raw = self.template.render(**context)
+
+        # Do some basic markdown linting
+        linted = [line.rstrip() for line in raw.splitlines()]
+        cleaned = "\n".join(linted)
+        return cleaned
 
     def _prepare_template_context(self) -> Dict[str, Any]:
         """Prepare the context data for the Jinja2 template.

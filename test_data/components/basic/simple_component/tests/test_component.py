@@ -1,5 +1,5 @@
 """Tests for simple_component."""
-import pytest
+
 from ..component import simple_component
 
 
@@ -19,4 +19,3 @@ def test_simple_component_zero():
     """Test with count of 0."""
     result = simple_component.python_func(input_text="test", count=0)
     assert result == ""
-
