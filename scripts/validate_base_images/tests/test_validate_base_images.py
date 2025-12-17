@@ -16,13 +16,11 @@ from validate_base_images import (
     _process_assets,
     build_component_asset,
     build_pipeline_asset,
-    check_containerfile_exists,
     compile_and_get_yaml,
     discover_assets,
     extract_base_images,
     find_decorated_functions,
     get_repo_root,
-    is_custom_kubeflow_image,
     is_valid_base_image,
     load_base_image_allowlist,
     load_module_from_path,
@@ -537,140 +535,6 @@ class TestValidateBaseImages:
         assert invalid == []
 
 
-class TestIsCustomKubeflowImage:
-    """Tests for is_custom_kubeflow_image function."""
-
-    def test_custom_kubeflow_image(self):
-        """Test that ghcr.io/kubeflow images are detected as custom."""
-        assert is_custom_kubeflow_image("ghcr.io/kubeflow/pipelines-components-example:v1.0.0")
-        assert is_custom_kubeflow_image("ghcr.io/kubeflow/ml-training:latest")
-
-    def test_python_image_not_custom(self):
-        """Test that standard Python images are not considered custom."""
-        assert not is_custom_kubeflow_image("python:3.11")
-        assert not is_custom_kubeflow_image("python:3.11-slim")
-
-    def test_empty_image_not_custom(self):
-        """Test that empty/unset images are not considered custom."""
-        assert not is_custom_kubeflow_image("")
-
-    def test_external_image_not_custom(self):
-        """Test that external images are not considered custom Kubeflow."""
-        assert not is_custom_kubeflow_image("docker.io/custom:latest")
-        assert not is_custom_kubeflow_image("gcr.io/project/image:v1.0")
-        assert not is_custom_kubeflow_image("quay.io/some/image:tag")
-
-
-class TestCheckContainerfileExists:
-    """Tests for check_containerfile_exists function."""
-
-    def test_containerfile_exists(self):
-        """Test detection of Containerfile."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            tmp_path = Path(tmp_dir)
-            component_file = tmp_path / "component.py"
-            containerfile = tmp_path / "Containerfile"
-            component_file.touch()
-            containerfile.touch()
-
-            assert check_containerfile_exists(component_file) is True
-
-    def test_legacy_dockerfile_supported(self):
-        """Test that legacy Dockerfile naming is still supported for compatibility."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            tmp_path = Path(tmp_dir)
-            component_file = tmp_path / "component.py"
-            legacy_file = tmp_path / "Dockerfile"
-            component_file.touch()
-            legacy_file.touch()
-
-            assert check_containerfile_exists(component_file) is True
-
-    def test_no_containerfile(self):
-        """Test when no Containerfile exists."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            tmp_path = Path(tmp_dir)
-            component_file = tmp_path / "component.py"
-            component_file.touch()
-
-            assert check_containerfile_exists(component_file) is False
-
-
-class TestMissingContainerfileValidation:
-    """Tests for missing Containerfile validation in process_asset."""
-
-    def test_kubeflow_image_without_containerfile_flagged(self):
-        """Test that custom Kubeflow images without Containerfile are flagged."""
-        asset = {
-            "path": RESOURCES_DIR / "components/validation/valid_kubeflow_image/component.py",
-            "category": "validation",
-            "name": "valid_kubeflow_image",
-            "module_path": str(RESOURCES_DIR / "components/validation/valid_kubeflow_image/component.py"),
-        }
-
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            result = process_asset(asset, "component", tmp_dir)
-
-            assert result["compiled"] is True
-            assert "ghcr.io/kubeflow/pipelines-components-example:v1.0.0" in result["base_images"]
-            # No Containerfile in fixture, so should be flagged
-            assert result["missing_containerfile"] is True
-
-    def test_default_image_no_containerfile_needed(self):
-        """Test that default images don't require Containerfile."""
-        asset = {
-            "path": RESOURCES_DIR / "components/data_processing/default_image_component/component.py",
-            "category": "data_processing",
-            "name": "default_image_component",
-            "module_path": str(RESOURCES_DIR / "components/data_processing/default_image_component/component.py"),
-        }
-
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            result = process_asset(asset, "component", tmp_dir)
-
-            assert result["compiled"] is True
-            assert result["missing_containerfile"] is False
-
-    def test_invalid_image_no_containerfile_check(self):
-        """Test that invalid images don't trigger Containerfile check."""
-        asset = {
-            "path": RESOURCES_DIR / "components/validation/invalid_dockerhub_image/component.py",
-            "category": "validation",
-            "name": "invalid_dockerhub_image",
-            "module_path": str(RESOURCES_DIR / "components/validation/invalid_dockerhub_image/component.py"),
-        }
-
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            result = process_asset(asset, "component", tmp_dir)
-
-            assert result["compiled"] is True
-            assert "docker.io/custom:latest" in result["invalid_base_images"]
-            # Invalid images don't require Containerfile check
-            assert result["missing_containerfile"] is False
-
-    def test_pipeline_with_kubeflow_image_no_containerfile_required(self):
-        """Test that pipelines don't require Containerfile even with custom Kubeflow images.
-
-        Pipelines reference components that have their own Containerfiles.
-        The Containerfile requirement only applies to components per KEP-913.
-        """
-        asset = {
-            "path": RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py",
-            "category": "training",
-            "name": "multi_image_pipeline",
-            "module_path": str(RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py"),
-        }
-
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            result = process_asset(asset, "pipeline", tmp_dir)
-
-            assert result["compiled"] is True
-            # Pipeline uses custom Kubeflow image
-            assert "ghcr.io/kubeflow/evaluation:v2.0.0" in result["base_images"]
-            # But pipelines don't require Containerfile
-            assert result["missing_containerfile"] is False
-
-
 class TestBaseImageValidationIntegration:
     """Integration tests for base image validation with real components."""
 
@@ -770,8 +634,8 @@ class TestEdgeCases:
 class TestCollectViolations:
     """Tests for _collect_violations function."""
 
-    def test_collect_all_violation_types(self):
-        """Test collecting both invalid image and missing containerfile violations."""
+    def test_collect_invalid_image_violations(self):
+        """Test collecting invalid image violations."""
         results = [
             {
                 "path": "/path/to/comp1.py",
@@ -779,7 +643,6 @@ class TestCollectViolations:
                 "name": "comp1",
                 "type": "component",
                 "invalid_base_images": ["docker.io/bad1:latest", "gcr.io/bad2:v1"],
-                "missing_containerfile": True,
             },
             {
                 "path": "/path/to/comp2.py",
@@ -787,16 +650,12 @@ class TestCollectViolations:
                 "name": "comp2",
                 "type": "component",
                 "invalid_base_images": [],
-                "missing_containerfile": False,
             },
         ]
         violations = _collect_violations(results)
-        assert len(violations) == 3  # 2 invalid images + 1 missing containerfile
-
-        invalid_violations = [v for v in violations if v["violation_type"] == "invalid_image"]
-        containerfile_violations = [v for v in violations if v["violation_type"] == "missing_containerfile"]
-        assert len(invalid_violations) == 2
-        assert len(containerfile_violations) == 1
+        assert len(violations) == 2
+        assert violations[0]["image"] == "docker.io/bad1:latest"
+        assert violations[1]["image"] == "gcr.io/bad2:v1"
 
 
 class TestPrintSummary:
@@ -811,7 +670,6 @@ class TestPrintSummary:
                 "errors": [],
                 "base_images": {"ghcr.io/kubeflow/valid:v1"},
                 "invalid_base_images": [],
-                "missing_containerfile": False,
             }
         ]
         exit_code = _print_summary(results, {"ghcr.io/kubeflow/valid:v1"}, config)
@@ -832,7 +690,6 @@ class TestPrintSummary:
                 "errors": [],
                 "base_images": {"docker.io/invalid:latest"},
                 "invalid_base_images": ["docker.io/invalid:latest"],
-                "missing_containerfile": False,
             }
         ]
         exit_code = _print_summary(results, {"docker.io/invalid:latest"}, config)
@@ -862,7 +719,6 @@ class TestPrintSummary:
                 "errors": ["Failed to load module: Some error"],
                 "base_images": set(),
                 "invalid_base_images": [],
-                "missing_containerfile": False,
             }
         ]
         exit_code = _print_summary(results, set(), config)
@@ -881,7 +737,6 @@ class TestPrintSummary:
                 "errors": [],
                 "base_images": set(),
                 "invalid_base_images": [],
-                "missing_containerfile": False,
             }
         ]
         exit_code = _print_summary(results, set(), config)
@@ -952,7 +807,8 @@ class TestMainFunction:
             captured = capsys.readouterr()
             assert "Selected 1 component(s)" in captured.out
             assert "Selected 0 pipeline(s)" in captured.out
-            assert exit_code == 1
+            # Valid kubeflow image, no violations
+            assert exit_code == 0
 
     def test_main_empty_directory(self, capsys):
         """Test main function with empty directory."""

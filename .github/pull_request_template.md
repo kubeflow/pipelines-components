@@ -19,13 +19,14 @@
 - [ ] README provides clear documentation with usage examples
 - [ ] Component follows `snake_case` naming convention
 - [ ] No security vulnerabilities in dependencies
+- [ ] Containerfile included if using a custom base image
 
 <!--
    PR titles examples:
     * `fix(pipelines): fixes pipeline `my-pipeline` issue due to xyz. Fixes #1234`
        Use `fix` to indicate that this PR fixes a bug.
     * `feat(components): Add new component `my_component`. Fixes #1234, fixes #1235`
-       Use `feat` to indicate that this PR adds a new feature. 
+       Use `feat` to indicate that this PR adds a new feature.
     * `chore: set up changelog generation tools`
        Use `chore` to indicate that this PR makes some changes that users don't need to know.
     * `test: fix CI failure. Part of #1234`

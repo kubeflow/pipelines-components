@@ -410,38 +410,6 @@ def validate_base_images(images: set[str], config: ValidationConfig | None = Non
     return [img for img in images if not is_valid_base_image(img, config)]
 
 
-def is_custom_kubeflow_image(image: str, config: ValidationConfig | None = None) -> bool:
-    """Check if an image is a custom Kubeflow image.
-
-    Args:
-        image: The base image string to check
-        config: Optional ValidationConfig; uses global config if not provided
-
-    Returns:
-        True if the image is a custom ghcr.io/kubeflow/ image
-    """
-    if config is None:
-        config = get_config()
-
-    if not image:
-        return False
-    return image.startswith(config.allowed_prefix)
-
-
-def check_containerfile_exists(asset_path: Path) -> bool:
-    """Check if a Containerfile exists in the asset directory.
-
-    Args:
-        asset_path: Path to the asset file (component.py or pipeline.py)
-
-    Returns:
-        True if a Containerfile exists in the asset directory
-    """
-    asset_dir = asset_path.parent
-    # Also check for Dockerfile for legacy compatibility
-    return (asset_dir / "Containerfile").exists() or (asset_dir / "Dockerfile").exists()
-
-
 def _find_any_decorated_functions(module: Any) -> list[tuple[str, Any]]:
     """Fallback to find any KFP decorated functions in a module."""
     functions = []
@@ -465,7 +433,6 @@ def _create_result(asset: dict[str, Any], asset_type: str) -> dict[str, Any]:
         "path": str(asset["path"]),
         "base_images": set(),
         "invalid_base_images": [],
-        "missing_containerfile": False,
         "errors": [],
         "compiled": False,
     }
@@ -510,13 +477,6 @@ def process_asset(
 
     result["invalid_base_images"] = validate_base_images(result["base_images"], config)
 
-    # Check for Containerfile only for components (not pipelines) with custom Kubeflow images
-    # Pipelines reference components that have their own Containerfiles
-    if asset_type == "component":
-        has_custom_kubeflow_image = any(is_custom_kubeflow_image(img, config) for img in result["base_images"])
-        if has_custom_kubeflow_image and not check_containerfile_exists(asset["path"]):
-            result["missing_containerfile"] = True
-
     return result
 
 
@@ -530,8 +490,6 @@ def _print_result(result: dict[str, Any]) -> None:
             is_invalid = image in result["invalid_base_images"]
             status = " [INVALID]" if is_invalid else ""
             print(f"    Base image: {image}{status}")
-        if result["missing_containerfile"]:
-            print("    Warning: Missing Containerfile for custom Kubeflow image")
     elif result["compiled"]:
         print("    No custom base image (using default)")
 
@@ -578,28 +536,13 @@ def _collect_violations(all_results: list[dict[str, Any]]) -> list[dict[str, Any
                         "name": result["name"],
                         "type": result["type"],
                         "image": image,
-                        "violation_type": "invalid_image",
                     }
                 )
-        if result["missing_containerfile"]:
-            violations.append(
-                {
-                    "path": result["path"],
-                    "category": result["category"],
-                    "name": result["name"],
-                    "type": result["type"],
-                    "image": None,
-                    "violation_type": "missing_containerfile",
-                }
-            )
     return violations
 
 
 def _print_violations(violations: list[dict[str, Any]], config: ValidationConfig) -> None:
     """Print base image violations."""
-    invalid_image_violations = [v for v in violations if v["violation_type"] == "invalid_image"]
-    missing_containerfile_violations = [v for v in violations if v["violation_type"] == "missing_containerfile"]
-
     print("=" * 70)
     print("BASE IMAGE VIOLATIONS")
     print("=" * 70)
@@ -607,51 +550,35 @@ def _print_violations(violations: list[dict[str, Any]], config: ValidationConfig
     print(f"Found {len(violations)} violation(s).")
     print()
 
-    if invalid_image_violations:
-        print(f"Invalid base images ({len(invalid_image_violations)}):")
-        print(f"  Base images must start with '{config.allowed_prefix}', be unset, or match the allowlist.")
-        print(f"  Allowlist: {config.allowlist_path}")
-        print()
-        print("  To fix this issue, either:")
-        print(f"    1. Use an approved base image (e.g., '{config.allowed_prefix}pipelines-components-<name>:<tag>')")
-        print("    2. Leave base_image unset to use the KFP SDK default image")
-        print(f"    3. Add an allowlist entry in {config.allowlist_path}")
-        print()
+    print(f"Invalid base images ({len(violations)}):")
+    print(f"  Base images must start with '{config.allowed_prefix}', be unset, or match the allowlist.")
+    print(f"  Allowlist: {config.allowlist_path}")
+    print()
+    print("  To fix this issue, either:")
+    print(f"    1. Use an approved base image (e.g., '{config.allowed_prefix}pipelines-components-<name>:<tag>')")
+    print("    2. Leave base_image unset to use the KFP SDK default image")
+    print(f"    3. Add an allowlist entry in {config.allowlist_path}")
+    print()
 
-        for violation in invalid_image_violations:
-            print(f"  {violation['type'].title()}: {violation['category']}/{violation['name']}")
-            print(f"    Path: {violation['path']}")
-            print(f"    Invalid image: {violation['image']}")
-            print()
-
-    if missing_containerfile_violations:
-        print(f"Missing Containerfile ({len(missing_containerfile_violations)}):")
-        print("  Components using custom ghcr.io/kubeflow/ images must include a Containerfile.")
-        print()
-        print("  To fix this issue:")
-        print("    Add a Containerfile to the component directory.")
+    for violation in violations:
+        print(f"  {violation['type'].title()}: {violation['category']}/{violation['name']}")
+        print(f"    Path: {violation['path']}")
+        print(f"    Invalid image: {violation['image']}")
         print()
 
-        for violation in missing_containerfile_violations:
-            print(f"  {violation['type'].title()}: {violation['category']}/{violation['name']}")
-            print(f"    Path: {violation['path']}")
-            print()
 
-
-def _compute_summary_counts(all_results: list[dict[str, Any]]) -> tuple[int, int, int, int, int, int]:
+def _compute_summary_counts(all_results: list[dict[str, Any]]) -> tuple[int, int, int, int, int]:
     total_assets = len(all_results)
     compiled_assets = sum(1 for r in all_results if r["compiled"])
     failed_assets = sum(1 for r in all_results if r["errors"])
     assets_with_images = sum(1 for r in all_results if r["base_images"])
     assets_with_invalid_images = sum(1 for r in all_results if r["invalid_base_images"])
-    assets_missing_containerfile = sum(1 for r in all_results if r["missing_containerfile"])
     return (
         total_assets,
         compiled_assets,
         failed_assets,
         assets_with_images,
         assets_with_invalid_images,
-        assets_missing_containerfile,
     )
 
 
@@ -686,18 +613,13 @@ def _print_final_status(
         return 0
 
     if violations:
-        invalid_count = sum(1 for v in violations if v["violation_type"] == "invalid_image")
-        missing_count = sum(1 for v in violations if v["violation_type"] == "missing_containerfile")
         print(f"FAILED: {len(violations)} violation(s) found.")
-        if invalid_count:
-            print(f"  - {invalid_count} invalid base image(s): must use '{config.allowed_prefix}' registry")
-            print(
-                f"    (e.g., '{config.allowed_prefix}pipelines-components-<name>:<tag>'), "
-                f"leave unset, or match the allowlist."
-            )
-            print(f"    Allowlist: {config.allowlist_path}")
-        if missing_count:
-            print(f"  - {missing_count} missing Containerfile(s): required for custom Kubeflow images.")
+        print(f"  - {len(violations)} invalid base image(s): must use '{config.allowed_prefix}' registry")
+        print(
+            f"    (e.g., '{config.allowed_prefix}pipelines-components-<name>:<tag>'), "
+            f"leave unset, or match the allowlist."
+        )
+        print(f"    Allowlist: {config.allowlist_path}")
         return 1
 
     if failed_assets > 0:
@@ -729,7 +651,6 @@ def _print_summary(
         failed_assets,
         assets_with_images,
         assets_with_invalid_images,
-        assets_missing_containerfile,
     ) = _compute_summary_counts(all_results)
 
     print(f"Total assets discovered: {total_assets}")
@@ -737,7 +658,6 @@ def _print_summary(
     print(f"Failed to process: {failed_assets}")
     print(f"Assets with custom base images: {assets_with_images}")
     print(f"Assets with invalid base images: {assets_with_invalid_images}")
-    print(f"Assets missing Containerfile: {assets_missing_containerfile}")
     print()
 
     _print_base_images_section(total_assets, failed_assets, all_base_images, violations)
