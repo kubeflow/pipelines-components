@@ -1,6 +1,5 @@
 ---
 name: missing-ci-dependency-probe
-tier: core
 stability: alpha
 dependencies:
   kubeflow:

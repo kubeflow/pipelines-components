@@ -1,6 +1,5 @@
 ---
 name: invalid-verified-date
-tier: core
 stability: beta
 dependencies:
   kubeflow:

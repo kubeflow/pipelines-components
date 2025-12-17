@@ -11,41 +11,35 @@ pipelines=()
 generator_changed=false
 
 # Helper function to find all component directories
-# Scans both components/ and third_party/components/
 find_all_components() {
-    for base_dir in "components" "third_party/components"; do
-        if [ -d "$base_dir" ]; then
-            for category_dir in "$base_dir"/*/; do
-                if [ -d "$category_dir" ]; then
-                    for comp_dir in "$category_dir"*/; do
-                        if [ -d "$comp_dir" ] && [ -f "${comp_dir}component.py" ]; then
-                            comp_path="${comp_dir%/}"
-                            components+=("$comp_path")
-                        fi
-                    done
-                fi
-            done
-        fi
-    done
+    if [ -d "components" ]; then
+        for category_dir in "components"/*/; do
+            if [ -d "$category_dir" ]; then
+                for comp_dir in "$category_dir"*/; do
+                    if [ -d "$comp_dir" ] && [ -f "${comp_dir}component.py" ]; then
+                        comp_path="${comp_dir%/}"
+                        components+=("$comp_path")
+                    fi
+                done
+            fi
+        done
+    fi
 }
 
 # Helper function to find all pipeline directories
-# Scans both pipelines/ and third_party/pipelines/
 find_all_pipelines() {
-    for base_dir in "pipelines" "third_party/pipelines"; do
-        if [ -d "$base_dir" ]; then
-            for category_dir in "$base_dir"/*/; do
-                if [ -d "$category_dir" ]; then
-                    for pipe_dir in "$category_dir"*/; do
-                        if [ -d "$pipe_dir" ] && [ -f "${pipe_dir}pipeline.py" ]; then
-                            pipe_path="${pipe_dir%/}"
-                            pipelines+=("$pipe_path")
-                        fi
-                    done
-                fi
-            done
-        fi
-    done
+    if [ -d "pipelines" ]; then
+        for category_dir in "pipelines"/*/; do
+            if [ -d "$category_dir" ]; then
+                for pipe_dir in "$category_dir"*/; do
+                    if [ -d "$pipe_dir" ] && [ -f "${pipe_dir}pipeline.py" ]; then
+                        pipe_path="${pipe_dir%/}"
+                        pipelines+=("$pipe_path")
+                    fi
+                done
+            fi
+        done
+    fi
 }
 
 # Helper function to extract directory from file path and add to array
@@ -61,12 +55,6 @@ extract_dir_from_file() {
         components+=("$dir")
     elif [[ "$file" == pipelines/*/*/* ]]; then
         dir=$(echo "$file" | cut -d'/' -f1-3)  # pipelines/<category>/<pipeline>
-        pipelines+=("$dir")
-    elif [[ "$file" == third_party/components/*/*/* ]]; then
-        dir=$(echo "$file" | cut -d'/' -f1-4)  # third_party/components/<category>/<component>
-        components+=("$dir")
-    elif [[ "$file" == third_party/pipelines/*/*/* ]]; then
-        dir=$(echo "$file" | cut -d'/' -f1-4)  # third_party/pipelines/<category>/<pipeline>
         pipelines+=("$dir")
     fi
 }

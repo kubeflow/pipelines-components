@@ -1,6 +1,5 @@
 ---
 name: invalid-tag-type
-tier: core
 stability: stable
 dependencies:
   kubeflow:

@@ -1,5 +1,4 @@
 ---
-tier: core
 stability: stable
 dependencies:
   kubeflow:

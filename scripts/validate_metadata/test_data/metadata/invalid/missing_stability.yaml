@@ -1,6 +1,5 @@
 ---
 name: missing-stability
-tier: third_party
 dependencies:
   kubeflow:
     - name: Pipelines

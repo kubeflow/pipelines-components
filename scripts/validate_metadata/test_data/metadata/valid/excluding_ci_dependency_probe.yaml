@@ -1,6 +1,5 @@
 ---
 name: excluding-ci-dependency-probe
-tier: third_party
 stability: alpha
 dependencies:
   kubeflow:

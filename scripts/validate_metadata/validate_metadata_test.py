@@ -122,21 +122,6 @@ def test_validate_metadata_yaml_success(test_data):
             ),
         ),
         ValidateMetadataTestFile(
-            file_name="missing_tier.yaml",
-            expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "Missing required field(s) in metadata.yaml for 'missing-tier': {'tier'}."
-            ),
-        ),
-        ValidateMetadataTestFile(
-            file_name="invalid_tier.yaml",
-            expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "Invalid 'tier' value in metadata.yaml for 'invalid-tier': 'invalid_tier'. "
-                "Expected a scalar string from the following options: ['core', 'third_party']."
-            ),
-        ),
-        ValidateMetadataTestFile(
             file_name="missing_stability.yaml",
             expected_exception=ValidationError,
             expected_exception_msg=re.escape(

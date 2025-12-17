@@ -1,6 +1,5 @@
 ---
 name: missing-dependencies
-tier: third_party
 stability: stable
 tags:
   - training

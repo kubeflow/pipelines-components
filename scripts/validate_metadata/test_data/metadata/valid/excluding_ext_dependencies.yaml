@@ -1,6 +1,5 @@
 ---
 name: test_component
-tier: core
 stability: beta
 dependencies:
   kubeflow:
