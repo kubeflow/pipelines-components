@@ -22,39 +22,28 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      # TODO(gfrasca): Centralize this and following step with the detect-changed-assets action.
-      - name: Get changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v47
+      - name: Determine changed YAML files
+        id: changed-assets
+        uses: ./.github/actions/detect-changed-assets
         with:
-          files: |
-            components/**
-            pipelines/**
-            third_party/components/**
-            third_party/pipelines/**
-            scripts/validate_metadata/**
-            .github/scripts/**
-          files_ignore: |
-            **/*.md
+          filter: '(?!.*\.md$).*$'
+          # skip-deleted-files: true  # TODO(gmfrasca): uncomment once param is available
 
-      - name: Retrieve changed components and/or pipelines
-        id: get-changed-items
+      - name: Validate changed components
+        if: ${{ steps.changed-assets.outputs.has-changed-components == 'true' }}
         run: |
-          echo "Changed files:"
-          echo "${{ steps.changed-files.outputs.all_changed_files }}" 
-    
-          # Extract unique component/pipeline directories from changed files
-          targets=$(./.github/scripts/utils/find-changed-components-and-pipelines.sh ${{ steps.changed-files.outputs.all_changed_files }})
-    
-          echo "targets=$targets" >> $GITHUB_OUTPUT
-          echo "Targets to check: $targets"
-
-
-      - name: Validate changed core/third-party components and/or pipelines 
-        if: ${{ steps.get-changed-items.outputs.targets != '' }}
-        run: |
-          CHANGED_DIRS="${{ steps.get-changed-items.outputs.targets }}"
+          CHANGED_DIRS="${{ steps.changed-assets.outputs.changed-components }}"
           
+          for item in $CHANGED_DIRS; do
+            FILE_PATH="$GITHUB_WORKSPACE/$item"
+            echo "Processing item: $item"
+            uv run "${{ env.VALIDATION_SCRIPT_PATH }}" --dir "$FILE_PATH"
+          done
+
+      - name: Validate changed pipelines
+        if: ${{ steps.changed-assets.outputs.has-changed-pipelines == 'true' }}
+        run: |
+          CHANGED_DIRS="${{ steps.changed-assets.outputs.changed-pipelines }}"
           for item in $CHANGED_DIRS; do
             FILE_PATH="$GITHUB_WORKSPACE/$item"
             echo "Processing item: $item"
