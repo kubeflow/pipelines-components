@@ -34,7 +34,7 @@
 ## Metadata 🗂️
 
 {% for key, value in formatted_metadata.items() %}
-- **{{ key }}**: {{ value }}
+- **{{ key }}**:{% if value.startswith('\n') %}{{ value }}{% else %} {{ value }}{% endif %}
 {% endfor %}
 {% endif %}
 
