@@ -9,7 +9,7 @@ repos:
         types: [python]
       - id: ruff-check
         name: ruff check
-        entry: uv run ruff check
+        entry: uv run ruff check --fix
         language: system
         types: [python]
       - id: yamllint
@@ -27,6 +27,6 @@ repos:
         files: ^(components|pipelines)/
       - id: markdownlint
         name: markdownlint
-        entry: npx markdownlint-cli@0.39.0 -c .markdownlint.json
+        entry: npx markdownlint-cli@0.39.0 --fix -c .markdownlint.json
         language: system
         types: [markdown]
