@@ -19,4 +19,3 @@ def component_with_partial_wrapper(input_path: str) -> str:
     """Component with base_image set via functools.partial wrapper."""
     print(f"Processing {input_path}")
     return f"{input_path}/output"
-

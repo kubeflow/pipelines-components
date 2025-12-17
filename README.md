@@ -3,20 +3,26 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python Version](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
 
-Welcome to the official Kubeflow Pipelines Components repository! This is the centralized hub for reusable components and pipelines within the Kubeflow ecosystem, providing a structured collection of AI workflow building blocks for Kubernetes.
+Welcome to the official Kubeflow Pipelines Components repository! This is the centralized hub for reusable
+components and pipelines within the Kubeflow ecosystem, providing a structured collection of AI workflow building
+blocks for Kubernetes.
 
 ## 🎯 Purpose
 
 The Kubeflow Pipelines Components repository serves as:
 
-- **Centralized Asset Library**: A dedicated space for hosting reusable components and pipelines, promoting consistency and ease of access across the Kubeflow ecosystem
-- **Standardized Documentation Hub**: Ensuring each component and pipeline includes comprehensive documentation and metadata for better discoverability and usability
-- **Community Collaboration Platform**: Providing clear guidelines and governance to encourage contributions from the community
-- **Automated Quality Assurance**: Implementing automated testing and maintenance processes to ensure reliability and up-to-date status of all assets
+- **Centralized Asset Library**: A dedicated space for hosting reusable components and pipelines, promoting
+  consistency and ease of access across the Kubeflow ecosystem
+- **Standardized Documentation Hub**: Ensuring each component and pipeline includes comprehensive documentation and
+  metadata for better discoverability and usability
+- **Community Collaboration Platform**: Providing clear guidelines and governance to encourage contributions from the
+  community
+- **Automated Quality Assurance**: Implementing automated testing and maintenance processes to ensure reliability and
+  up-to-date status of all assets
 
 ## 📦 Repository Structure
 
-```
+```text
 ├── components/ # Core reusable components
 │   ├── <component category>/
 │   ├── <component category>/
@@ -40,7 +46,8 @@ The Kubeflow Pipelines Components repository serves as:
 
 ## 🚀 Installation
 
-> ⚠️ **Work in Progress**: This repository is currently under development. The packages described below are not yet available on PyPI. This section outlines the planned installation process for when the packages are released.
+> ⚠️ **Work in Progress**: This repository is currently under development. The packages described below are not yet
+> available on PyPI. This section outlines the planned installation process for when the packages are released.
 
 ### Prerequisites
 
@@ -114,9 +121,12 @@ Each component includes standardized metadata:
 
 ### Core Documentation
 
-- [Component Specification](https://www.kubeflow.org/docs/components/pipelines/concepts/component/): Detailed information on component structure and definition
-- [Creating Components](https://www.kubeflow.org/docs/components/pipelines/user-guides/components/): Guidelines for authoring new components
-- [Pipeline Concepts](https://www.kubeflow.org/docs/components/pipelines/concepts/pipeline/): Overview of pipelines in Kubeflow
+- [Component Specification](https://www.kubeflow.org/docs/components/pipelines/concepts/component/): Detailed
+  information on component structure and definition
+- [Creating Components](https://www.kubeflow.org/docs/components/pipelines/user-guides/components/): Guidelines for
+  authoring new components
+- [Pipeline Concepts](https://www.kubeflow.org/docs/components/pipelines/concepts/pipeline/): Overview of pipelines in
+  Kubeflow
 
 ### Repository Documentation
 
@@ -143,6 +153,7 @@ We welcome contributions from the community! To contribute:
 ### Quality Standards
 
 All contributions must:
+
 - Pass linting and formatting checks (Black, pydocstyle)
 - Include comprehensive docstrings
 - Compile successfully with `kfp.compiler`
@@ -163,6 +174,7 @@ The repository includes automated maintenance processes:
 ### Component Ownership
 
 Each component has designated owners listed in its `OWNERS` file who:
+
 - Review and approve changes
 - Update metadata and verification status
 - Manage component lifecycle
@@ -192,4 +204,6 @@ Thank you to all contributors and the Kubeflow community for making this reposit
 
 ---
 
-*For questions, issues, or suggestions, please open an issue in our [GitHub repository](https://github.com/kubeflow/pipelines-components/issues) or reach out on the [Kubeflow Slack](https://kubeflow.slack.com/).*
+*For questions, issues, or suggestions, please open an issue in our
+[GitHub repository](https://github.com/kubeflow/pipelines-components/issues) or reach out on the
+[Kubeflow Slack](https://kubeflow.slack.com/).*

@@ -26,6 +26,7 @@ class MetadataParser:
 
         Args:
             file_path: Path to the Python file containing the function.
+            function_type: Type of function to parse ('component' or 'pipeline').
         """
         self.file_path = file_path
         self._source: Optional[str] = None
@@ -39,7 +40,7 @@ class MetadataParser:
             The parsed AST tree.
         """
         if self._tree is None:
-            with open(self.file_path, 'r', encoding='utf-8') as f:
+            with open(self.file_path, "r", encoding="utf-8") as f:
                 self._source = f.read()
             self._tree = ast.parse(self._source)
         return self._tree
@@ -54,7 +55,7 @@ class MetadataParser:
             Dictionary containing parsed docstring information.
         """
         if not docstring:
-            return {'overview': '', 'args': {}, 'returns_description': ''}
+            return {"overview": "", "args": {}, "returns_description": ""}
 
         # Parse docstring using docstring-parser library
         parsed = parse_docstring(docstring)
@@ -65,19 +66,15 @@ class MetadataParser:
             overview_parts.append(parsed.short_description)
         if parsed.long_description:
             overview_parts.append(parsed.long_description)
-        overview = '\n\n'.join(overview_parts)
+        overview = "\n\n".join(overview_parts)
 
         # Extract arguments
         args = {param.arg_name: param.description for param in parsed.params}
 
         # Extract returns description
-        returns_description = parsed.returns.description if parsed.returns else ''
+        returns_description = parsed.returns.description if parsed.returns else ""
 
-        return {
-            'overview': overview,
-            'args': args,
-            'returns_description': returns_description
-        }
+        return {"overview": overview, "args": args, "returns_description": returns_description}
 
     def _annotation_to_string(self, node: Optional[ast.AST]) -> str:
         """Convert an AST type annotation to string.
@@ -89,7 +86,7 @@ class MetadataParser:
             String representation of the type, or 'Any' if None.
         """
         if node is None:
-            return 'Any'
+            return "Any"
         return ast.unparse(node)
 
     def _default_to_value(self, node: Optional[ast.AST]) -> Any:
@@ -125,7 +122,7 @@ class MetadataParser:
         if isinstance(decorator, ast.Call):
             # Look for name parameter in keyword arguments
             for keyword in decorator.keywords:
-                if keyword.arg == 'name':
+                if keyword.arg == "name":
                     # Extract the string value
                     if isinstance(keyword.value, ast.Constant):
                         return keyword.value.value
@@ -195,18 +192,13 @@ class MetadataParser:
             component_name = decorator_name if decorator_name else function_name
 
             # Extract docstring using ast.get_docstring
-            docstring = ast.get_docstring(func_node) or ''
+            docstring = ast.get_docstring(func_node) or ""
 
             # Parse docstring for Args and Returns sections
             docstring_info = self._parse_google_docstring(docstring)
 
             # Extract basic function information
-            metadata = {
-                'name': component_name,
-                'docstring': docstring,
-                'parameters': {},
-                'returns': {}
-            }
+            metadata = {"name": component_name, "docstring": docstring, "parameters": {}, "returns": {}}
             metadata.update(docstring_info)
 
             # Extract parameter information from AST
@@ -223,27 +215,27 @@ class MetadataParser:
                     default_idx = i - (num_args - num_defaults)
                     default_node = args_node.defaults[default_idx]
 
-                metadata['parameters'][arg.arg] = {
-                    'name': arg.arg,
-                    'type': self._annotation_to_string(arg.annotation),
-                    'default': self._default_to_value(default_node),
-                    'description': metadata.get('args', {}).get(arg.arg, '')
+                metadata["parameters"][arg.arg] = {
+                    "name": arg.arg,
+                    "type": self._annotation_to_string(arg.annotation),
+                    "default": self._default_to_value(default_node),
+                    "description": metadata.get("args", {}).get(arg.arg, ""),
                 }
 
             # Process keyword-only arguments
             for arg, default_node in zip(args_node.kwonlyargs, args_node.kw_defaults):
-                metadata['parameters'][arg.arg] = {
-                    'name': arg.arg,
-                    'type': self._annotation_to_string(arg.annotation),
-                    'default': self._default_to_value(default_node),
-                    'description': metadata.get('args', {}).get(arg.arg, '')
+                metadata["parameters"][arg.arg] = {
+                    "name": arg.arg,
+                    "type": self._annotation_to_string(arg.annotation),
+                    "default": self._default_to_value(default_node),
+                    "description": metadata.get("args", {}).get(arg.arg, ""),
                 }
 
             # Extract return type information
             if func_node.returns is not None:
-                metadata['returns'] = {
-                    'type': self._annotation_to_string(func_node.returns),
-                    'description': metadata.get('returns_description', '')
+                metadata["returns"] = {
+                    "type": self._annotation_to_string(func_node.returns),
+                    "description": metadata.get("returns_description", ""),
                 }
 
             return metadata
@@ -271,13 +263,15 @@ class MetadataParser:
             # Handle attribute-based decorators
             if decorator.attr == self.function_type:
                 # Check for @dsl.<function_type>
-                if isinstance(decorator.value, ast.Name) and decorator.value.id == 'dsl':
+                if isinstance(decorator.value, ast.Name) and decorator.value.id == "dsl":
                     return True
                 # Check for @kfp.dsl.<function_type>
-                if (isinstance(decorator.value, ast.Attribute) and
-                    decorator.value.attr == 'dsl' and
-                    isinstance(decorator.value.value, ast.Name) and
-                    decorator.value.value.id == 'kfp'):
+                if (
+                    isinstance(decorator.value, ast.Attribute)
+                    and decorator.value.attr == "dsl"
+                    and isinstance(decorator.value.value, ast.Name)
+                    and decorator.value.value.id == "kfp"
+                ):
                     return True
             return False
         elif isinstance(decorator, ast.Call):

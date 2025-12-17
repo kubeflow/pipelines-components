@@ -5,6 +5,7 @@
 ## Coming Soon
 
 This document serves as a comprehensive context source for AI agents to understand:
+
 - Repository structure and organization
 - Component development patterns and standards
 - Contribution workflows and processes
@@ -14,6 +15,7 @@ This document serves as a comprehensive context source for AI agents to understa
 ---
 
 For immediate guidance, see:
+
 - [Contributing Guide](CONTRIBUTING.md)
 - [Governance Guide](GOVERNANCE.md)
 - [Best Practices Guide](BESTPRACTICES.md)

@@ -20,4 +20,3 @@ links:
 ci:
   skip_dependency_probe: false
   pytest: optional
-

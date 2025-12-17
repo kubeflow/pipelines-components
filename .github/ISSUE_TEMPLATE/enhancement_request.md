@@ -30,9 +30,9 @@ assignees: []
 
 ## Use Cases
 <!-- Describe specific use cases or scenarios where this feature would be valuable -->
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ## Alternatives Considered
 <!-- A clear and concise description of any alternative solutions or features you've considered. -->
@@ -45,7 +45,7 @@ assignees: []
 
 ## Related Issues/PRs
 <!-- Link to any related issues or pull requests -->
-- 
+-
 
 ## Willing to Contribute
 <!-- Are you willing to contribute this enhancement? -->

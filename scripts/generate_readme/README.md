@@ -22,11 +22,13 @@ uv run python -m scripts.generate_readme --component components/some_category/my
 
 ## Features
 
-- **Automatic metadata extraction**: Parses Python functions decorated with `@dsl.component` or `@dsl.pipeline`, and augments with metadata from `metadata.yaml`
+- **Automatic metadata extraction**: Parses Python functions decorated with `@dsl.component` or `@dsl.pipeline`, and
+  augments with metadata from `metadata.yaml`
 - **Google-style docstring parsing**: Extracts parameter descriptions and return values
 - **Custom content preservation**: Preserves user-added content after the `<!-- custom-content -->` marker
 - **Type annotation support**: Handles complex type annotations including Optional, Union, and generics
-- **Component-specific usage examples**: Includes/Updates an example usage for the given pipeline or component, if provided via `example_pipelines.py`
+- **Component-specific usage examples**: Includes/Updates an example usage for the given pipeline or component, if
+  provided via `example_pipelines.py`
 
 ## Custom Content
 
@@ -48,4 +50,3 @@ Example:
 
 Custom examples that won't be overwritten...
 ```
-

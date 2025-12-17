@@ -8,4 +8,3 @@ def example_component(input_path: str) -> str:
     """Example component with valid Kubeflow base image."""
     print(f"Processing {input_path}")
     return f"{input_path}/output"
-

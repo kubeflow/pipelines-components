@@ -17,6 +17,7 @@ PIPELINE_PATTERN = re.compile(r"^pipelines/([^/]+)/([^/]+)/")
 @dataclass
 class DetectionResult:
     """Result of detecting changed components and pipelines."""
+
     components: list[str] = field(default_factory=list)
     pipelines: list[str] = field(default_factory=list)
     all_changed_files: list[str] = field(default_factory=list)
@@ -24,14 +25,17 @@ class DetectionResult:
 
     @property
     def has_changed_components(self) -> bool:
+        """Check if any components have changed."""
         return len(self.components) > 0
 
     @property
     def has_changed_pipelines(self) -> bool:
+        """Check if any pipelines have changed."""
         return len(self.pipelines) > 0
 
     @property
     def has_changes(self) -> bool:
+        """Check if any components or pipelines have changed."""
         return self.has_changed_components or self.has_changed_pipelines
 
 
@@ -238,10 +242,12 @@ class OutputWriter:
         for component in self.result.components:
             lines.append(f"- {component}")
 
-        lines.extend([
-            "",
-            f"**Pipelines:** {len(self.result.pipelines)}",
-        ])
+        lines.extend(
+            [
+                "",
+                f"**Pipelines:** {len(self.result.pipelines)}",
+            ]
+        )
 
         for pipeline in self.result.pipelines:
             lines.append(f"- {pipeline}")

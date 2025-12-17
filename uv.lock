@@ -423,6 +423,7 @@ ci = [
     { name = "docstring-parser" },
     { name = "jinja2" },
     { name = "pytest" },
+    { name = "semver" },
 ]
 dev = [
     { name = "ci" },
@@ -457,7 +458,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.1.0" },
     { name = "pyyaml" },
     { name = "ruff", marker = "extra == 'lint'", specifier = "==0.8.4" },
-    { name = "semver", marker = "extra == 'dev'", specifier = ">=3.0.4" },
+    { name = "semver", marker = "extra == 'ci'", specifier = ">=3.0.4" },
     { name = "yamllint", marker = "extra == 'lint'", specifier = "==1.35.1" },
 ]
 provides-extras = ["lint", "test", "ci", "dev"]

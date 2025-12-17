@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Validate base images used in Kubeflow Pipelines components and pipelines.
+"""Validate base images used in Kubeflow Pipelines components and pipelines.
 
 This script discovers all components and pipelines in the components/ and pipelines/
 directories, compiles them using kfp.compiler to generate IR YAML, and extracts
@@ -13,17 +12,15 @@ Usage:
 import argparse
 import importlib.util
 import os
+import re
 import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import re
-
 import yaml
 from kfp import compiler
-
 
 ALLOWED_BASE_IMAGE_PREFIX = "ghcr.io/kubeflow/"
 COMPONENT_FILENAME = "component.py"
@@ -32,11 +29,24 @@ PIPELINE_FILENAME = "pipeline.py"
 
 @dataclass(frozen=True)
 class BaseImageAllowlist:
+    """Allowlist configuration for base images."""
+
     allowed_images: frozenset[str]
     allowed_image_patterns: tuple[re.Pattern[str], ...]
 
 
 def load_base_image_allowlist(path: Path) -> BaseImageAllowlist:
+    """Load and parse base image allowlist from YAML file.
+
+    Args:
+        path: Path to the allowlist YAML file.
+
+    Returns:
+        Parsed allowlist configuration.
+
+    Raises:
+        ValueError: If the allowlist file is malformed or contains invalid patterns.
+    """
     data = yaml.safe_load(path.read_text())
     if data is None:
         data = {}
@@ -63,6 +73,15 @@ def load_base_image_allowlist(path: Path) -> BaseImageAllowlist:
 
 
 def is_allowlisted_image(image: str, allowlist: BaseImageAllowlist) -> bool:
+    """Check if an image matches the allowlist.
+
+    Args:
+        image: Image name to check.
+        allowlist: Allowlist configuration.
+
+    Returns:
+        True if the image is in the allowlist or matches a pattern.
+    """
     if image in allowlist.allowed_images:
         return True
     return any(p.match(image) for p in allowlist.allowed_image_patterns)
@@ -102,6 +121,18 @@ def get_repo_root() -> Path:
 
 
 def resolve_component_path(repo_root: Path, raw: str) -> Path:
+    """Resolve and validate a component file path.
+
+    Args:
+        repo_root: Repository root directory.
+        raw: Component path (directory or file path, relative or absolute).
+
+    Returns:
+        Resolved path to the component.py file.
+
+    Raises:
+        ValueError: If the path is invalid or outside the components directory.
+    """
     path = Path(raw)
     if not path.is_absolute():
         path = repo_root / path
@@ -124,6 +155,18 @@ def resolve_component_path(repo_root: Path, raw: str) -> Path:
 
 
 def resolve_pipeline_path(repo_root: Path, raw: str) -> Path:
+    """Resolve and validate a pipeline file path.
+
+    Args:
+        repo_root: Repository root directory.
+        raw: Pipeline path (directory or file path, relative or absolute).
+
+    Returns:
+        Resolved path to the pipeline.py file.
+
+    Raises:
+        ValueError: If the path is invalid or outside the pipelines directory.
+    """
     path = Path(raw)
     if not path.is_absolute():
         path = repo_root / path
@@ -145,7 +188,9 @@ def resolve_pipeline_path(repo_root: Path, raw: str) -> Path:
     return path
 
 
-def _build_asset_dict_from_repo_path(repo_root: Path, asset_root: str, asset_file: Path, expected_filename: str) -> dict[str, Any]:
+def _build_asset_dict_from_repo_path(
+    repo_root: Path, asset_root: str, asset_file: Path, expected_filename: str
+) -> dict[str, Any]:
     root = (repo_root / asset_root).resolve()
     resolved = asset_file.resolve()
     if resolved.name != expected_filename:
@@ -158,16 +203,33 @@ def _build_asset_dict_from_repo_path(repo_root: Path, asset_root: str, asset_fil
 
 
 def build_component_asset(repo_root: Path, component_file: Path) -> dict[str, Any]:
+    """Build asset metadata dictionary for a component.
+
+    Args:
+        repo_root: Repository root directory.
+        component_file: Path to the component.py file.
+
+    Returns:
+        Dictionary containing path, category, name, and module_path.
+    """
     return _build_asset_dict_from_repo_path(repo_root, "components", component_file, COMPONENT_FILENAME)
 
 
 def build_pipeline_asset(repo_root: Path, pipeline_file: Path) -> dict[str, Any]:
+    """Build asset metadata dictionary for a pipeline.
+
+    Args:
+        repo_root: Repository root directory.
+        pipeline_file: Path to the pipeline.py file.
+
+    Returns:
+        Dictionary containing path, category, name, and module_path.
+    """
     return _build_asset_dict_from_repo_path(repo_root, "pipelines", pipeline_file, PIPELINE_FILENAME)
 
 
 def discover_assets(base_dir: Path, asset_type: str) -> list[dict[str, Any]]:
-    """
-    Discover all components or pipelines in a directory.
+    """Discover all components or pipelines in a directory.
 
     Args:
         base_dir: Base directory to search (components/ or pipelines/)
@@ -192,12 +254,14 @@ def discover_assets(base_dir: Path, asset_type: str) -> list[dict[str, Any]]:
 
             asset_file = asset_dir / filename
             if asset_file.exists():
-                assets.append({
-                    "path": asset_file,
-                    "category": category_dir.name,
-                    "name": asset_dir.name,
-                    "module_path": str(asset_file),
-                })
+                assets.append(
+                    {
+                        "path": asset_file,
+                        "category": category_dir.name,
+                        "name": asset_dir.name,
+                        "module_path": str(asset_file),
+                    }
+                )
 
     return assets
 
@@ -215,8 +279,7 @@ def load_module_from_path(module_path: str, module_name: str) -> Any:
 
 
 def find_decorated_functions(module: Any, decorator_type: str) -> list[tuple[str, Any]]:
-    """
-    Find all functions decorated with @dsl.component or @dsl.pipeline.
+    """Find all functions decorated with @dsl.component or @dsl.pipeline.
 
     Args:
         module: The loaded Python module
@@ -242,10 +305,7 @@ def find_decorated_functions(module: Any, decorator_type: str) -> list[tuple[str
         )
         is_pipeline = hasattr(attr, "pipeline_spec") or getattr(attr, "_pipeline_func", None) is not None
 
-        is_match = (
-            (decorator_type == "component" and is_component)
-            or (decorator_type == "pipeline" and is_pipeline)
-        )
+        is_match = (decorator_type == "component" and is_component) or (decorator_type == "pipeline" and is_pipeline)
         if is_match:
             functions.append((attr_name, attr))
 
@@ -253,8 +313,7 @@ def find_decorated_functions(module: Any, decorator_type: str) -> list[tuple[str
 
 
 def compile_and_get_yaml(func: Any, output_path: str) -> dict[str, Any] | None:
-    """
-    Compile a component or pipeline function and return the parsed YAML.
+    """Compile a component or pipeline function and return the parsed YAML.
 
     Returns None if compilation fails.
     """
@@ -268,8 +327,7 @@ def compile_and_get_yaml(func: Any, output_path: str) -> dict[str, Any] | None:
 
 
 def extract_base_images(ir_yaml: dict[str, Any]) -> set[str]:
-    """
-    Extract base_image values from a compiled KFP IR YAML.
+    """Extract base_image values from a compiled KFP IR YAML.
 
     The KFP IR YAML structure typically has:
     - deploymentSpec.executors.<executor_name>.container.image
@@ -311,8 +369,7 @@ def extract_base_images(ir_yaml: dict[str, Any]) -> set[str]:
 
 
 def is_valid_base_image(image: str, config: ValidationConfig | None = None) -> bool:
-    """
-    Check if a base image is valid according to configuration.
+    """Check if a base image is valid according to configuration.
 
     Valid base images either:
     - Start with the configured allowed_prefix (default: 'ghcr.io/kubeflow/')
@@ -339,8 +396,7 @@ def is_valid_base_image(image: str, config: ValidationConfig | None = None) -> b
 
 
 def validate_base_images(images: set[str], config: ValidationConfig | None = None) -> list[str]:
-    """
-    Validate a set of base images and return invalid ones.
+    """Validate a set of base images and return invalid ones.
 
     Args:
         images: Set of base image strings to validate
@@ -355,8 +411,7 @@ def validate_base_images(images: set[str], config: ValidationConfig | None = Non
 
 
 def is_custom_kubeflow_image(image: str, config: ValidationConfig | None = None) -> bool:
-    """
-    Check if an image is a custom Kubeflow image.
+    """Check if an image is a custom Kubeflow image.
 
     Args:
         image: The base image string to check
@@ -374,8 +429,7 @@ def is_custom_kubeflow_image(image: str, config: ValidationConfig | None = None)
 
 
 def check_containerfile_exists(asset_path: Path) -> bool:
-    """
-    Check if a Containerfile exists in the asset directory.
+    """Check if a Containerfile exists in the asset directory.
 
     Args:
         asset_path: Path to the asset file (component.py or pipeline.py)
@@ -423,8 +477,7 @@ def process_asset(
     temp_dir: str,
     config: ValidationConfig | None = None,
 ) -> dict[str, Any]:
-    """
-    Process a single component or pipeline asset.
+    """Process a single component or pipeline asset.
 
     Returns a dict with asset info and extracted base images.
     """
@@ -460,9 +513,7 @@ def process_asset(
     # Check for Containerfile only for components (not pipelines) with custom Kubeflow images
     # Pipelines reference components that have their own Containerfiles
     if asset_type == "component":
-        has_custom_kubeflow_image = any(
-            is_custom_kubeflow_image(img, config) for img in result["base_images"]
-        )
+        has_custom_kubeflow_image = any(is_custom_kubeflow_image(img, config) for img in result["base_images"])
         if has_custom_kubeflow_image and not check_containerfile_exists(asset["path"]):
             result["missing_containerfile"] = True
 
@@ -520,23 +571,27 @@ def _collect_violations(all_results: list[dict[str, Any]]) -> list[dict[str, Any
     for result in all_results:
         if result["invalid_base_images"]:
             for image in result["invalid_base_images"]:
-                violations.append({
+                violations.append(
+                    {
+                        "path": result["path"],
+                        "category": result["category"],
+                        "name": result["name"],
+                        "type": result["type"],
+                        "image": image,
+                        "violation_type": "invalid_image",
+                    }
+                )
+        if result["missing_containerfile"]:
+            violations.append(
+                {
                     "path": result["path"],
                     "category": result["category"],
                     "name": result["name"],
                     "type": result["type"],
-                    "image": image,
-                    "violation_type": "invalid_image",
-                })
-        if result["missing_containerfile"]:
-            violations.append({
-                "path": result["path"],
-                "category": result["category"],
-                "name": result["name"],
-                "type": result["type"],
-                "image": None,
-                "violation_type": "missing_containerfile",
-            })
+                    "image": None,
+                    "violation_type": "missing_containerfile",
+                }
+            )
     return violations
 
 
@@ -600,7 +655,9 @@ def _compute_summary_counts(all_results: list[dict[str, Any]]) -> tuple[int, int
     )
 
 
-def _print_base_images_section(total_assets: int, failed_assets: int, all_base_images: set[str], violations: list[dict[str, Any]]) -> None:
+def _print_base_images_section(
+    total_assets: int, failed_assets: int, all_base_images: set[str], violations: list[dict[str, Any]]
+) -> None:
     if all_base_images:
         all_invalid = {v["image"] for v in violations}
         print("All unique base images found:")
@@ -619,7 +676,9 @@ def _print_base_images_section(total_assets: int, failed_assets: int, all_base_i
     print("No custom base images found (all using defaults)")
 
 
-def _print_final_status(total_assets: int, failed_assets: int, violations: list[dict[str, Any]], config: ValidationConfig) -> int:
+def _print_final_status(
+    total_assets: int, failed_assets: int, violations: list[dict[str, Any]], config: ValidationConfig
+) -> int:
     if total_assets == 0:
         print("No components or pipelines were discovered.")
         print("Components should be at: components/<category>/<name>/component.py")
@@ -632,7 +691,8 @@ def _print_final_status(total_assets: int, failed_assets: int, violations: list[
         print(f"FAILED: {len(violations)} violation(s) found.")
         if invalid_count:
             print(f"  - {invalid_count} invalid base image(s): must use '{config.allowed_prefix}' registry")
-            print(f"    (e.g., '{config.allowed_prefix}pipelines-components-<name>:<tag>'), leave unset, or match the allowlist.")
+            example = f"{config.allowed_prefix}pipelines-components-<name>:<tag>"
+            print(f"    (e.g., '{example}'), leave unset, or match the allowlist.")
             print(f"    Allowlist: {config.allowlist_path}")
         if missing_count:
             print(f"  - {missing_count} missing Containerfile(s): required for custom Kubeflow images.")
@@ -743,6 +803,14 @@ Examples:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Main entry point for base image validation.
+
+    Args:
+        argv: Command line arguments (defaults to sys.argv).
+
+    Returns:
+        Exit code (0 for success, 1 for validation failures).
+    """
     args = parse_args(argv)
     config = ValidationConfig()
     if args.allow_list:

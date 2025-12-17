@@ -14,4 +14,3 @@ def component_with_variable_image(input_path: str) -> str:
     """Component with base_image set via variable."""
     print(f"Processing {input_path}")
     return f"{input_path}/output"
-

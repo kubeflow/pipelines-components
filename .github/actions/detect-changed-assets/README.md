@@ -38,19 +38,19 @@ jobs:
 
 ## Outputs
 
-| Output | Description | Example |
-|--------|-------------|---------|
-| `has-changes` | Boolean - any changes? | `"true"` |
-| `has-changed-components` | Boolean - components changed? | `"true"` |
-| `has-changed-pipelines` | Boolean - pipelines changed? | `"false"` |
-| `changed-components` | Space-separated list | `"components/training/trainer"` |
-| `changed-components-json` | JSON array for matrix | `["components/training/trainer"]` |
-| `changed-components-count` | Count | `"1"` |
-| `changed-pipelines` | Space-separated list | `"pipelines/training/pipeline"` |
-| `changed-pipelines-json` | JSON array for matrix | `["pipelines/training/pipeline"]` |
-| `changed-pipelines-count` | Count | `"1"` |
-| `all-changed-files` | All changed files | `"components/training/trainer/component.yaml pipelines/training/pipeline/pipeline.py"` |
-| `filtered-changed-files` | Changed files matching any filter pattern | `"components/training/trainer/component.yaml"` |
+| Output                     | Description                   | Example                                            |
+|----------------------------|-------------------------------|----------------------------------------------------|
+| `has-changes`              | Boolean - any changes?        | `"true"`                                           |
+| `has-changed-components`   | Boolean - components changed? | `"true"`                                           |
+| `has-changed-pipelines`    | Boolean - pipelines changed?  | `"false"`                                          |
+| `changed-components`       | Space-separated list          | `"components/training/trainer"`                    |
+| `changed-components-json`  | JSON array for matrix         | `["components/training/trainer"]`                  |
+| `changed-components-count` | Count                         | `"1"`                                              |
+| `changed-pipelines`        | Space-separated list          | `"pipelines/training/pipeline"`                    |
+| `changed-pipelines-json`   | JSON array for matrix         | `["pipelines/training/pipeline"]`                  |
+| `changed-pipelines-count`  | Count                         | `"1"`                                              |
+| `all-changed-files`        | All changed files             | `"components/training/trainer/component.yaml ..."` |
+| `filtered-changed-files`   | Changed files matching filter | `"components/training/trainer/component.yaml"`     |
 
 ## Common Patterns
 

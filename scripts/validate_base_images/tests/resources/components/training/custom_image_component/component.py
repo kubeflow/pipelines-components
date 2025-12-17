@@ -11,4 +11,3 @@ def train_model(
     """Train a model with custom base image."""
     print(f"Training on {dataset_path} for {epochs} epochs")
     return "/output/model.pt"
-

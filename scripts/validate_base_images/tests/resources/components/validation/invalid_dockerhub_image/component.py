@@ -8,4 +8,3 @@ def invalid_dockerhub_component(input_path: str) -> str:
     """Component with invalid Docker Hub base image."""
     print(f"Processing {input_path}")
     return f"{input_path}/output"
-

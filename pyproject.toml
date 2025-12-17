@@ -30,6 +30,7 @@ ci = [
     "pytest",
     "docstring-parser",
     "jinja2",
+    "semver>=3.0.4",
 ]
 # Local development (extends ci with additional tools)
 dev = [
@@ -37,7 +38,6 @@ dev = [
     "kfp-components[lint]",
     "kfp-components[test]",
     "ci>=0.1.1",
-    "semver>=3.0.4",
 ]
 
 [project.urls]

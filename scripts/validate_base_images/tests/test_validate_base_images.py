@@ -10,8 +10,6 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from validate_base_images import (
-    ALLOWED_BASE_IMAGE_PREFIX,
-    load_base_image_allowlist,
     ValidationConfig,
     _collect_violations,
     _print_summary,
@@ -23,10 +21,10 @@ from validate_base_images import (
     discover_assets,
     extract_base_images,
     find_decorated_functions,
-    get_config,
     get_repo_root,
     is_custom_kubeflow_image,
     is_valid_base_image,
+    load_base_image_allowlist,
     load_module_from_path,
     main,
     parse_args,
@@ -36,7 +34,6 @@ from validate_base_images import (
     set_config,
     validate_base_images,
 )
-
 
 RESOURCES_DIR = Path(__file__).parent / "resources"
 
@@ -62,6 +59,7 @@ class TestIsPythonImage:
     """Tests for allowlist-driven image validation."""
 
     def test_python_images_allowed_by_allowlist(self, tmp_path: Path):
+        """Test that Python images matching allowlist patterns are allowed."""
         allowlist_file = tmp_path / "allowlist.yaml"
         allowlist_file.write_text(
             "\n".join(
@@ -88,6 +86,7 @@ class TestIsPythonImage:
         assert not is_valid_base_image("ubuntu:22.04", config)
 
     def test_python_images_rejected_without_allowlist_entry(self, tmp_path: Path):
+        """Test that Python images are rejected when not in allowlist."""
         allowlist_file = tmp_path / "allowlist.yaml"
         allowlist_file.write_text("allowed_images: []\nallowed_image_patterns: []\n")
         config = ValidationConfig()
@@ -97,6 +96,7 @@ class TestIsPythonImage:
         assert not is_valid_base_image("python:3.11", config)
 
     def test_allowlist_invalid_regex_fails_fast(self, tmp_path: Path):
+        """Test that invalid regex patterns in allowlist raise ValueError."""
         allowlist_file = tmp_path / "allowlist.yaml"
         allowlist_file.write_text(
             "\n".join(
@@ -122,56 +122,58 @@ class TestParseArgs:
         assert args.pipeline == []
 
     def test_component_repeatable(self):
-        args = parse_args(
-            ["--component", "components/training/a", "--component", "components/training/b"]
-        )
+        """Test that --component flag can be repeated multiple times."""
+        args = parse_args(["--component", "components/training/a", "--component", "components/training/b"])
         assert args.component == ["components/training/a", "components/training/b"]
 
     def test_pipeline_repeatable(self):
-        args = parse_args(
-            ["--pipeline", "pipelines/training/a", "--pipeline", "pipelines/training/b"]
-        )
+        """Test that --pipeline flag can be repeated multiple times."""
+        args = parse_args(["--pipeline", "pipelines/training/a", "--pipeline", "pipelines/training/b"])
         assert args.pipeline == ["pipelines/training/a", "pipelines/training/b"]
 
 
 class TestTargetResolution:
+    """Tests for resolving component and pipeline paths."""
+
     def test_resolve_component_dir(self):
+        """Test resolving a component directory path."""
         repo_root = RESOURCES_DIR
         p = resolve_component_path(repo_root, "components/training/custom_image_component")
         assert p.exists()
         assert p.name == "component.py"
 
     def test_resolve_pipeline_dir(self):
+        """Test resolving a pipeline directory path."""
         repo_root = RESOURCES_DIR
         p = resolve_pipeline_path(repo_root, "pipelines/training/multi_image_pipeline")
         assert p.exists()
         assert p.name == "pipeline.py"
 
     def test_reject_path_outside_components(self):
+        """Test that pipeline paths are rejected when resolving components."""
         repo_root = RESOURCES_DIR
         with pytest.raises(ValueError):
             resolve_component_path(repo_root, "pipelines/training/multi_image_pipeline")
 
     def test_reject_path_outside_pipelines(self):
+        """Test that component paths are rejected when resolving pipelines."""
         repo_root = RESOURCES_DIR
         with pytest.raises(ValueError):
             resolve_pipeline_path(repo_root, "components/training/custom_image_component")
 
     def test_build_component_asset(self):
+        """Test building asset metadata from a component file."""
         repo_root = RESOURCES_DIR
-        component_file = resolve_component_path(
-            repo_root, "components/training/custom_image_component"
-        )
+        component_file = resolve_component_path(repo_root, "components/training/custom_image_component")
         asset = build_component_asset(repo_root, component_file)
         assert asset["category"] == "training"
         assert asset["name"] == "custom_image_component"
         assert asset["module_path"].endswith("component.py")
 
     def test_build_pipeline_asset(self):
+        """Test building asset metadata from a pipeline file."""
         repo_root = RESOURCES_DIR
-        pipeline_file = resolve_pipeline_path(
-            repo_root, "pipelines/training/multi_image_pipeline"
-        )
+        pipeline_file = resolve_pipeline_path(repo_root, "pipelines/training/multi_image_pipeline")
         asset = build_pipeline_asset(repo_root, pipeline_file)
         assert asset["category"] == "training"
         assert asset["name"] == "multi_image_pipeline"
@@ -235,7 +237,6 @@ class TestDiscoverAssets:
 
     def test_third_party_not_scanned_by_design(self):
         """Test that third_party/ components are excluded by design."""
-
         # Discover from resources/components/ - should NOT include third_party components
         components_dir = RESOURCES_DIR / "components"
         assets = discover_assets(components_dir, "component")
@@ -259,9 +260,7 @@ class TestLoadModuleFromPath:
 
     def test_load_component_module(self):
         """Test loading a component module."""
-        module_path = str(
-            RESOURCES_DIR / "components/training/custom_image_component/component.py"
-        )
+        module_path = str(RESOURCES_DIR / "components/training/custom_image_component/component.py")
         module = load_module_from_path(module_path, "test_component_module")
 
         assert hasattr(module, "train_model")
@@ -269,9 +268,7 @@ class TestLoadModuleFromPath:
 
     def test_load_pipeline_module(self):
         """Test loading a pipeline module."""
-        module_path = str(
-            RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py"
-        )
+        module_path = str(RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py")
         module = load_module_from_path(module_path, "test_pipeline_module")
 
         assert hasattr(module, "training_pipeline")
@@ -288,9 +285,7 @@ class TestFindDecoratedFunctions:
 
     def test_find_component_functions(self):
         """Test finding @dsl.component decorated functions."""
-        module_path = str(
-            RESOURCES_DIR / "components/training/custom_image_component/component.py"
-        )
+        module_path = str(RESOURCES_DIR / "components/training/custom_image_component/component.py")
         module = load_module_from_path(module_path, "test_find_component")
 
         functions = find_decorated_functions(module, "component")
@@ -300,9 +295,7 @@ class TestFindDecoratedFunctions:
 
     def test_find_pipeline_functions(self):
         """Test finding @dsl.pipeline decorated functions."""
-        module_path = str(
-            RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py"
-        )
+        module_path = str(RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py")
         module = load_module_from_path(module_path, "test_find_pipeline")
 
         functions = find_decorated_functions(module, "pipeline")
@@ -316,9 +309,7 @@ class TestCompileAndGetYaml:
 
     def test_compile_component(self):
         """Test compiling a component to YAML."""
-        module_path = str(
-            RESOURCES_DIR / "components/training/custom_image_component/component.py"
-        )
+        module_path = str(RESOURCES_DIR / "components/training/custom_image_component/component.py")
         module = load_module_from_path(module_path, "test_compile_component")
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -330,9 +321,7 @@ class TestCompileAndGetYaml:
 
     def test_compile_pipeline(self):
         """Test compiling a pipeline to YAML."""
-        module_path = str(
-            RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py"
-        )
+        module_path = str(RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py")
         module = load_module_from_path(module_path, "test_compile_pipeline")
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -349,9 +338,7 @@ class TestExtractBaseImages:
 
     def test_extract_custom_base_image(self):
         """Test extracting custom base image from component."""
-        module_path = str(
-            RESOURCES_DIR / "components/training/custom_image_component/component.py"
-        )
+        module_path = str(RESOURCES_DIR / "components/training/custom_image_component/component.py")
         module = load_module_from_path(module_path, "test_extract_custom")
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -363,10 +350,7 @@ class TestExtractBaseImages:
 
     def test_extract_default_base_image(self):
         """Test extracting default base image from component."""
-        module_path = str(
-            RESOURCES_DIR
-            / "components/data_processing/default_image_component/component.py"
-        )
+        module_path = str(RESOURCES_DIR / "components/data_processing/default_image_component/component.py")
         module = load_module_from_path(module_path, "test_extract_default")
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -379,9 +363,7 @@ class TestExtractBaseImages:
 
     def test_extract_multiple_base_images_from_pipeline(self):
         """Test extracting multiple base images from pipeline."""
-        module_path = str(
-            RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py"
-        )
+        module_path = str(RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py")
         module = load_module_from_path(module_path, "test_extract_multi")
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -398,20 +380,17 @@ class TestExtractBaseImages:
         images = extract_base_images({})
         assert images == set()
 
+
 class TestProcessAsset:
     """Tests for process_asset function."""
 
     def test_process_component_with_custom_image(self):
         """Test processing a component with custom base image."""
         asset = {
-            "path": RESOURCES_DIR
-            / "components/training/custom_image_component/component.py",
+            "path": RESOURCES_DIR / "components/training/custom_image_component/component.py",
             "category": "training",
             "name": "custom_image_component",
-            "module_path": str(
-                RESOURCES_DIR
-                / "components/training/custom_image_component/component.py"
-            ),
+            "module_path": str(RESOURCES_DIR / "components/training/custom_image_component/component.py"),
         }
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -424,14 +403,10 @@ class TestProcessAsset:
     def test_process_component_with_default_image(self):
         """Test processing a component with default base image."""
         asset = {
-            "path": RESOURCES_DIR
-            / "components/data_processing/default_image_component/component.py",
+            "path": RESOURCES_DIR / "components/data_processing/default_image_component/component.py",
             "category": "data_processing",
             "name": "default_image_component",
-            "module_path": str(
-                RESOURCES_DIR
-                / "components/data_processing/default_image_component/component.py"
-            ),
+            "module_path": str(RESOURCES_DIR / "components/data_processing/default_image_component/component.py"),
         }
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -444,13 +419,10 @@ class TestProcessAsset:
     def test_process_pipeline_with_multiple_images(self):
         """Test processing a pipeline with multiple base images."""
         asset = {
-            "path": RESOURCES_DIR
-            / "pipelines/training/multi_image_pipeline/pipeline.py",
+            "path": RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py",
             "category": "training",
             "name": "multi_image_pipeline",
-            "module_path": str(
-                RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py"
-            ),
+            "module_path": str(RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py"),
         }
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -624,21 +596,16 @@ class TestCheckContainerfileExists:
             assert check_containerfile_exists(component_file) is False
 
 
-
 class TestMissingContainerfileValidation:
     """Tests for missing Containerfile validation in process_asset."""
 
     def test_kubeflow_image_without_containerfile_flagged(self):
         """Test that custom Kubeflow images without Containerfile are flagged."""
         asset = {
-            "path": RESOURCES_DIR
-            / "components/validation/valid_kubeflow_image/component.py",
+            "path": RESOURCES_DIR / "components/validation/valid_kubeflow_image/component.py",
             "category": "validation",
             "name": "valid_kubeflow_image",
-            "module_path": str(
-                RESOURCES_DIR
-                / "components/validation/valid_kubeflow_image/component.py"
-            ),
+            "module_path": str(RESOURCES_DIR / "components/validation/valid_kubeflow_image/component.py"),
         }
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -652,14 +619,10 @@ class TestMissingContainerfileValidation:
     def test_default_image_no_containerfile_needed(self):
         """Test that default images don't require Containerfile."""
         asset = {
-            "path": RESOURCES_DIR
-            / "components/data_processing/default_image_component/component.py",
+            "path": RESOURCES_DIR / "components/data_processing/default_image_component/component.py",
             "category": "data_processing",
             "name": "default_image_component",
-            "module_path": str(
-                RESOURCES_DIR
-                / "components/data_processing/default_image_component/component.py"
-            ),
+            "module_path": str(RESOURCES_DIR / "components/data_processing/default_image_component/component.py"),
         }
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -671,14 +634,10 @@ class TestMissingContainerfileValidation:
     def test_invalid_image_no_containerfile_check(self):
         """Test that invalid images don't trigger Containerfile check."""
         asset = {
-            "path": RESOURCES_DIR
-            / "components/validation/invalid_dockerhub_image/component.py",
+            "path": RESOURCES_DIR / "components/validation/invalid_dockerhub_image/component.py",
             "category": "validation",
             "name": "invalid_dockerhub_image",
-            "module_path": str(
-                RESOURCES_DIR
-                / "components/validation/invalid_dockerhub_image/component.py"
-            ),
+            "module_path": str(RESOURCES_DIR / "components/validation/invalid_dockerhub_image/component.py"),
         }
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -696,13 +655,10 @@ class TestMissingContainerfileValidation:
         The Containerfile requirement only applies to components per KEP-913.
         """
         asset = {
-            "path": RESOURCES_DIR
-            / "pipelines/training/multi_image_pipeline/pipeline.py",
+            "path": RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py",
             "category": "training",
             "name": "multi_image_pipeline",
-            "module_path": str(
-                RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py"
-            ),
+            "module_path": str(RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py"),
         }
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -756,14 +712,10 @@ class TestEdgeCases:
         Compilation resolves this correctly.
         """
         asset = {
-            "path": RESOURCES_DIR
-            / "components/edge_cases/variable_base_image/component.py",
+            "path": RESOURCES_DIR / "components/edge_cases/variable_base_image/component.py",
             "category": "edge_cases",
             "name": "variable_base_image",
-            "module_path": str(
-                RESOURCES_DIR
-                / "components/edge_cases/variable_base_image/component.py"
-            ),
+            "module_path": str(RESOURCES_DIR / "components/edge_cases/variable_base_image/component.py"),
         }
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -782,14 +734,10 @@ class TestEdgeCases:
         Compilation resolves the actual image correctly.
         """
         asset = {
-            "path": RESOURCES_DIR
-            / "components/edge_cases/functools_partial_image/component.py",
+            "path": RESOURCES_DIR / "components/edge_cases/functools_partial_image/component.py",
             "category": "edge_cases",
             "name": "functools_partial_image",
-            "module_path": str(
-                RESOURCES_DIR
-                / "components/edge_cases/functools_partial_image/component.py"
-            ),
+            "module_path": str(RESOURCES_DIR / "components/edge_cases/functools_partial_image/component.py"),
         }
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -844,7 +792,7 @@ class TestCollectViolations:
         ]
         violations = _collect_violations(results)
         assert len(violations) == 3  # 2 invalid images + 1 missing containerfile
-        
+
         invalid_violations = [v for v in violations if v["violation_type"] == "invalid_image"]
         containerfile_violations = [v for v in violations if v["violation_type"] == "missing_containerfile"]
         assert len(invalid_violations) == 2
@@ -995,6 +943,7 @@ class TestMainFunction:
             assert exit_code == 1  # Resources contain invalid images
 
     def test_main_with_selected_component_only(self, capsys):
+        """Test main function with a specific component selected via CLI."""
         with patch("validate_base_images.get_repo_root") as mock_root:
             mock_root.return_value = RESOURCES_DIR
 
@@ -1023,6 +972,7 @@ class TestCompilationFailure:
 
     def test_compile_invalid_function(self, capsys):
         """Test compile_and_get_yaml with invalid function."""
+
         def invalid_func():
             """Not a valid KFP component - will fail compilation."""
 
@@ -1033,5 +983,3 @@ class TestCompilationFailure:
             assert result is None
             captured = capsys.readouterr()
             assert "Warning: Failed to compile" in captured.out
-
-

@@ -4,9 +4,9 @@ import argparse
 import logging
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
-
 from .writer import ReadmeWriter
+
+logger = logging.getLogger(__name__)
 
 
 def validate_component_directory(dir_path: str) -> Path:
@@ -29,11 +29,11 @@ def validate_component_directory(dir_path: str) -> Path:
     if not path.is_dir():
         raise argparse.ArgumentTypeError(f"'{dir_path}' is not a directory")
 
-    component_file = path / 'component.py'
+    component_file = path / "component.py"
     if not component_file.exists():
         raise argparse.ArgumentTypeError(f"'{dir_path}' does not contain a component.py file")
 
-    metadata_file = path / 'metadata.yaml'
+    metadata_file = path / "metadata.yaml"
     if not metadata_file.exists():
         raise argparse.ArgumentTypeError(f"'{dir_path}' does not contain a metadata.yaml file")
 
@@ -60,11 +60,11 @@ def validate_pipeline_directory(dir_path: str) -> Path:
     if not path.is_dir():
         raise argparse.ArgumentTypeError(f"'{dir_path}' is not a directory")
 
-    pipeline_file = path / 'pipeline.py'
+    pipeline_file = path / "pipeline.py"
     if not pipeline_file.exists():
         raise argparse.ArgumentTypeError(f"'{dir_path}' does not contain a pipeline.py file")
 
-    metadata_file = path / 'metadata.yaml'
+    metadata_file = path / "metadata.yaml"
     if not metadata_file.exists():
         raise argparse.ArgumentTypeError(f"'{dir_path}' does not contain a metadata.yaml file")
 
@@ -90,38 +90,31 @@ Examples:
 
   # Or with uv:
   uv run python -m scripts.generate_readme --component components/some_category/my_component
-        """
+        """,
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
-        '--component',
+        "--component",
         type=validate_component_directory,
-        help='Path to the component directory (must contain component.py and metadata.yaml)'
+        help="Path to the component directory (must contain component.py and metadata.yaml)",
     )
 
     group.add_argument(
-        '--pipeline',
+        "--pipeline",
         type=validate_pipeline_directory,
-        help='Path to the pipeline directory (must contain pipeline.py and metadata.yaml)'
+        help="Path to the pipeline directory (must contain pipeline.py and metadata.yaml)",
     )
 
     parser.add_argument(
-        '-o', '--output',
+        "-o",
+        "--output",
         type=Path,
-        help='Output path for the generated README.md (default: README.md in component/pipeline directory)'
+        help="Output path for the generated README.md (default: README.md in component/pipeline directory)",
     )
 
-    parser.add_argument(
-        '-v', '--verbose',
-        action='store_true',
-        help='Enable verbose output'
-    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
 
-    parser.add_argument(
-        '--overwrite',
-        action='store_true',
-        help='Overwrite existing README.md without prompting'
-    )
+    parser.add_argument("--overwrite", action="store_true", help="Overwrite existing README.md without prompting")
 
     return parser.parse_args()
 
@@ -133,16 +126,10 @@ def main():
 
     # Configure logging at application entry point
     log_level = logging.DEBUG if args.verbose else logging.INFO
-    logging.basicConfig(
-        level=log_level,
-        format='%(levelname)s: %(message)s'
-    )
+    logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
 
     # Create and run the README writer
     writer = ReadmeWriter(
-        component_dir=args.component,
-        pipeline_dir=args.pipeline,
-        output_file=args.output,
-        overwrite=args.overwrite
+        component_dir=args.component, pipeline_dir=args.pipeline, output_file=args.output, overwrite=args.overwrite
     )
     writer.generate()

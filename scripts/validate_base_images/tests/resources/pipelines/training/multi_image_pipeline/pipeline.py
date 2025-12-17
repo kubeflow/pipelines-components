@@ -12,7 +12,7 @@ def preprocess_data(data_path: str) -> str:
 @dsl.component(base_image="python:3.11-slim")
 def train_step(data_path: str) -> str:
     """Train model with custom base image."""
-    return f"/models/trained"
+    return "/models/trained"
 
 
 @dsl.component(base_image="ghcr.io/kubeflow/evaluation:v2.0.0")
@@ -28,4 +28,3 @@ def training_pipeline(input_data: str = "gs://bucket/data") -> float:
     train_task = train_step(data_path=preprocess_task.output)
     eval_task = evaluate_model(model_path=train_task.output)
     return eval_task.output
-

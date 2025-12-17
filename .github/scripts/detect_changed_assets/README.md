@@ -53,6 +53,7 @@ pipelines/<category>/<name>/
 ## Outputs
 
 When run in GitHub Actions, writes to `$GITHUB_OUTPUT`:
+
 - `changed-components`: Space-separated list
 - `changed-pipelines`: Space-separated list
 - `changed-components-json`: JSON array (compact)

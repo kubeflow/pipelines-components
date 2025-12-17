@@ -19,10 +19,10 @@ assignees: []
 
 ## Steps to Reproduce
 <!-- Steps to reproduce the behavior: -->
-1. 
-2. 
-3. 
-4. 
+1.
+2.
+3.
+4.
 
 ## Expected Behavior
 <!-- A clear and concise description of what you expected to happen. -->
@@ -32,11 +32,12 @@ assignees: []
 
 ## Error Messages/Logs
 <!-- If applicable, add error messages or relevant logs -->
-```
+```text
 [Paste error messages or logs here]
 ```
 
 ## Environment
+
 - **Kubeflow Pipelines Version:** <!-- e.g., 2.5.0 -->
 - **Kubeflow SDK Version:** <!-- e.g., 2.5.0 -->
 - **Kubernetes Version:** <!-- e.g., 1.28 -->

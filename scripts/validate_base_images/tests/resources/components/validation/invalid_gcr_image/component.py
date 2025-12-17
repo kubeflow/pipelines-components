@@ -8,4 +8,3 @@ def invalid_gcr_component(input_path: str) -> str:
     """Component with invalid GCR base image."""
     print(f"Processing {input_path}")
     return f"{input_path}/output"
-

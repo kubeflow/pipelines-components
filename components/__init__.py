@@ -7,7 +7,6 @@ This module auto-imports all components for clean usage:
     from kfp_components.components import deployment
 """
 
-from . import training
-from . import evaluation
-from . import data_processing
-from . import deployment
+from . import data_processing, deployment, evaluation, training
+
+__all__ = ["data_processing", "deployment", "evaluation", "training"]

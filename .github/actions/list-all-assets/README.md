@@ -26,5 +26,5 @@ The action provides the following outputs:
 
 ## Related Actions
 
-- [detect-changed-assets](../detect-changed-assets/README.md): Detects which components and pipelines have changed between git references
-
+- [detect-changed-assets](../detect-changed-assets/README.md): Detects which components and pipelines have changed
+  between git references
