@@ -2,7 +2,14 @@
 name: Python Lint
 
 on:
-  pull_request: {}
+  pull_request:
+    paths:
+      - '**/*.py'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/python-lint.yml'
+      - '.github/actions/setup-python-ci/**'
+      - '.github/scripts/check_imports/**'
   push:
     branches:
       - main

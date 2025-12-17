@@ -1,3 +1,4 @@
+---
 name: Base Image Validation
 
 on:
@@ -15,6 +16,9 @@ on:
       - 'scripts/validate_base_images/**'
       - '.github/scripts/utils/**'
       - '.github/workflows/base-image-check.yml'
+      - '.github/actions/setup-python-ci/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
 
 # Cancel in-progress runs when a new commit is pushed to the same PR
 concurrency:

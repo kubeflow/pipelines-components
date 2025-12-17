@@ -9,6 +9,10 @@ on:
       - 'components/**'
       - 'pipelines/**'
       - 'scripts/**'
+      - '.github/workflows/validate-metadata-schema.yml'
+      - '.github/actions/setup-python-ci/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
 
 jobs:
   validate-metadata-schema:

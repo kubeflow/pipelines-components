@@ -1,3 +1,4 @@
+---
 name: Scripts Unit Tests
 
 on:
@@ -15,6 +16,7 @@ on:
       - '.github/workflows/scripts-tests.yml'
       - '.github/actions/setup-python-ci/**'
       - 'pyproject.toml'
+      - 'uv.lock'
 
 jobs:
   test-scripts:

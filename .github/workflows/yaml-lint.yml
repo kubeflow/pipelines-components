@@ -2,7 +2,15 @@
 name: YAML Lint
 
 on:
-  pull_request: {}
+  pull_request:
+    paths:
+      - '**/*.yml'
+      - '**/*.yaml'
+      - '.yamllint.yml'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/yaml-lint.yml'
+      - '.github/actions/setup-python-ci/**'
   push:
     branches:
       - main

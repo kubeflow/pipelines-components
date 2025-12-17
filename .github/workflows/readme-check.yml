@@ -8,7 +8,10 @@ on:
       - 'pipelines/**'
       - 'scripts/generate_readme/**'
       - '.github/workflows/readme-check.yml'
+      - '.github/actions/setup-python-ci/**'
       - '.github/scripts/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
 
 jobs:
   check-readme-sync:
@@ -45,11 +48,8 @@ jobs:
           echo "${{ steps.changed-files.outputs.all_changed_files }}"
 
           # Extract unique component/pipeline directories from changed files
-          targets=$(
-            ./.github/scripts/utils/find-changed-components-and-pipelines.sh \
-              ${{ steps.changed-files.outputs.all_changed_files }}
-          )
-
+          targets=$(./.github/scripts/utils/find-changed-components-and-pipelines.sh \
+            ${{ steps.changed-files.outputs.all_changed_files }})
           echo "targets=$targets" >> $GITHUB_OUTPUT
           echo "Targets to check: $targets"
 
