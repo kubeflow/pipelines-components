@@ -15,6 +15,10 @@ inputs:
     description: 'Optional grep pattern to filter changed files (e.g., "\.py$" for Python files only)'
     required: false
     default: ''
+  skip-deleted-files:
+    description: 'Whether to skip deleted files (true/false)'
+    required: false
+    default: 'false'
 
 outputs:
   changed-components:
@@ -62,7 +66,8 @@ runs:
         python3 .github/scripts/detect_changed_assets/detect.py \
           --base-ref "${{ inputs.base-ref }}" \
           --head-ref "${{ inputs.head-ref }}" \
-          --filter "${{ inputs.filter }}"
+          --filter "${{ inputs.filter }}" \
+          ${{ inputs.skip-deleted-files == 'true' && '--skip-deleted-files' || '' }}
 
 branding:
   icon: 'file-text'

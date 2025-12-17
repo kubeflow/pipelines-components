@@ -33,6 +33,7 @@ jobs:
         uses: ./.github/actions/detect-changed-assets
         with:
           filter: '\.(yml|yaml)$'
+          skip-deleted-files: true
 
       - name: Run yamllint (changed files)
         if: steps.changed-yaml.outputs.filtered-changed-files != ''

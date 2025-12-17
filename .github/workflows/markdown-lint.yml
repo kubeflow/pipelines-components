@@ -35,6 +35,7 @@ jobs:
         uses: ./.github/actions/detect-changed-assets
         with:
           filter: '\.md$'
+          skip-deleted-files: true
 
       - name: Run markdownlint (changed files)
         if: steps.changed-markdown.outputs.filtered-changed-files != ''

@@ -12,8 +12,8 @@
 {% for param_name, param_info in parameters.items() %}
 | `{{ param_name }}` | `{{ param_info.type }}` | {{ param_info.default_str }} | {{ param_info.description }} |
 {% endfor %}
-{% endif %}
 
+{% endif %}
 {% if returns %}
 ## Outputs 📤
 
@@ -28,16 +28,16 @@
 ```python
 {{ example_code }}
 ```
-{% endif %}
 
+{% endif %}
 {% if formatted_metadata %}
 ## Metadata 🗂️
 
 {% for key, value in formatted_metadata.items() %}
 - **{{ key }}**: {{ value }}
 {% endfor %}
-{% endif %}
 
+{% endif %}
 {% if links %}
 ## Additional Resources 📚
 

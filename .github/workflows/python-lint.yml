@@ -33,6 +33,7 @@ jobs:
         uses: ./.github/actions/detect-changed-assets
         with:
           filter: '\.py$'
+          skip-deleted-files: true
 
       - name: Run ruff format check (changed files)
         if: steps.changed-python.outputs.filtered-changed-files != ''
