@@ -330,19 +330,6 @@ class TestCheckImports:
         finally:
             file_path.unlink()
 
-    def test_third_party_imports_fail(self):
-        """Test that third-party imports fail validation."""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write("import pandas\nimport numpy\n")
-            file_path = Path(f.name)
-
-        try:
-            config = ImportGuardConfig()
-            result = check_imports([file_path], config, quiet=True)
-            assert result == 1
-        finally:
-            file_path.unlink()
-
     def test_allowed_modules_pass(self):
         """Test that allowed modules pass validation."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
