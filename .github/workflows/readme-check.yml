@@ -1,3 +1,4 @@
+---
 name: README Validation
 
 on:
@@ -44,8 +45,10 @@ jobs:
           echo "${{ steps.changed-files.outputs.all_changed_files }}"
 
           # Extract unique component/pipeline directories from changed files
-          targets=$(./.github/scripts/utils/find-changed-components-and-pipelines.sh \
-            ${{ steps.changed-files.outputs.all_changed_files }})
+          targets=$(
+            ./.github/scripts/utils/find-changed-components-and-pipelines.sh \
+              ${{ steps.changed-files.outputs.all_changed_files }}
+          )
 
           echo "targets=$targets" >> $GITHUB_OUTPUT
           echo "Targets to check: $targets"

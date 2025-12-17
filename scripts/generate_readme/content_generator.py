@@ -31,7 +31,7 @@ class ReadmeContentGenerator:
         self.feature_metadata = self._load_feature_metadata()
 
         # Set up Jinja2 environment
-        template_dir = Path(__file__).parent / 'templates'
+        template_dir = Path(__file__).parent / "templates"
         self.env = Environment(
             loader=FileSystemLoader(template_dir),
             trim_blocks=True,
@@ -56,7 +56,7 @@ class ReadmeContentGenerator:
             if yaml_data is None:
                 raise ValueError(f"Required metadata.yaml file is empty: {self.metadata_file}")
 
-            if 'name' not in yaml_data:
+            if "name" not in yaml_data:
                 raise ValueError(f"Required `name` field not found in {self.metadata_file.name}")
 
             # Remove 'ci' field if present
@@ -173,10 +173,7 @@ class ReadmeContentGenerator:
         Returns:
             Dictionary with formatted keys and values.
         """
-        return {
-            format_title(key): self._format_value(value)
-            for key, value in self.feature_metadata.items()
-        }
+        return {format_title(key): self._format_value(value) for key, value in self.feature_metadata.items()}
 
     def generate_readme(self) -> str:
         """Dynamically generate complete README.md content from component or pipeline metadata
@@ -194,7 +191,7 @@ class ReadmeContentGenerator:
             Dictionary containing all variables needed by the template.
         """
         # Prefer name from metadata.yaml over function name
-        component_name = self.feature_metadata.get('name')
+        component_name = self.feature_metadata.get("name")
 
         # Prepare title
         title = format_title(component_name)

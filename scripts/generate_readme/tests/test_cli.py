@@ -138,7 +138,10 @@ class TestParseArguments:
     def test_parse_output_argument(self, component_dir, temp_dir, monkeypatch):
         """Test parsing --output argument."""
         output_file = temp_dir / "custom_readme.md"
-        monkeypatch.setattr("sys.argv", ["prog", "--component", str(component_dir), "--output", str(output_file)])
+        monkeypatch.setattr(
+            "sys.argv",
+            ["prog", "--component", str(component_dir), "--output", str(output_file)],
+        )
 
         args = parse_arguments()
 
@@ -147,7 +150,10 @@ class TestParseArguments:
     def test_parse_short_flags(self, component_dir, temp_dir, monkeypatch):
         """Test parsing short flag versions."""
         output_file = temp_dir / "readme.md"
-        monkeypatch.setattr("sys.argv", ["prog", "--component", str(component_dir), "-v", "-o", str(output_file)])
+        monkeypatch.setattr(
+            "sys.argv",
+            ["prog", "--component", str(component_dir), "-v", "-o", str(output_file)],
+        )
 
         args = parse_arguments()
 

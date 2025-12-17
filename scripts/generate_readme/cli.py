@@ -114,7 +114,11 @@ Examples:
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
 
-    parser.add_argument("--overwrite", action="store_true", help="Overwrite existing README.md without prompting")
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite existing README.md without prompting",
+    )
 
     return parser.parse_args()
 
@@ -130,6 +134,9 @@ def main():
 
     # Create and run the README writer
     writer = ReadmeWriter(
-        component_dir=args.component, pipeline_dir=args.pipeline, output_file=args.output, overwrite=args.overwrite
+        component_dir=args.component,
+        pipeline_dir=args.pipeline,
+        output_file=args.output,
+        overwrite=args.overwrite,
     )
     writer.generate()

@@ -37,11 +37,11 @@ class TestMetadataParser:
 
     def test_parse_google_docstring_empty(self):
         """Test parsing an empty docstring raises ValueError (docstring is required)."""
-        parser = MetadataParser(Path("dummy.py"), 'component')
-        
+        parser = MetadataParser(Path("dummy.py"), "component")
+
         with pytest.raises(ValueError, match="missing required docstring"):
             parser._parse_google_docstring("")
-    
+
     def test_parse_google_docstring_multiline_arg_description(self):
         """Test parsing arguments with multi-line descriptions."""
         parser = MetadataParser(Path("dummy.py"), "component")
@@ -337,11 +337,11 @@ def my_component(param: str) -> str:
     return param
 """)
 
-        parser = MetadataParser(component_file, 'component')
+        parser = MetadataParser(component_file, "component")
 
         # Should raise ValueError since docstring is required
         with pytest.raises(ValueError, match="missing required docstring"):
-            parser.extract_metadata('my_component')
+            parser.extract_metadata("my_component")
 
     def test_extract_metadata_optional_types(self, temp_dir):
         """Test extracting metadata with Optional types."""
@@ -696,8 +696,8 @@ def my_pipeline(param: str):
 """)
         # Should raise ValueError if docstring is missing
         with pytest.raises(ValueError):
-            parser = MetadataParser(pipeline_file, 'pipeline')
-            parser.extract_metadata('my_pipeline')
+            parser = MetadataParser(pipeline_file, "pipeline")
+            parser.extract_metadata("my_pipeline")
 
     def test_extract_metadata_optional_types(self, temp_dir):
         """Test extracting metadata with Optional types."""
