@@ -1,0 +1,52 @@
+---
+name: validate-metadata-schema
+env:
+  PYTHON_VERSION: 3.11
+  VALIDATION_SCRIPT_PATH: $GITHUB_WORKSPACE/scripts/validate_metadata/validate_metadata.py
+on:
+  pull_request:
+    paths:
+      - 'components/**'
+      - 'pipelines/**'
+      - 'scripts/**'
+
+jobs:
+  validate-metadata-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python CI
+        uses: ./.github/actions/setup-python-ci
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Determine changed YAML files
+        id: changed-assets
+        uses: ./.github/actions/detect-changed-assets
+        with:
+          filter: '(?!.*\.md$).*$'
+          # skip-deleted-files: true  # TODO(gmfrasca): uncomment once param is available
+
+      - name: Validate changed components
+        if: ${{ steps.changed-assets.outputs.has-changed-components == 'true' }}
+        run: |
+          CHANGED_DIRS="${{ steps.changed-assets.outputs.changed-components }}"
+
+          for item in $CHANGED_DIRS; do
+            FILE_PATH="$GITHUB_WORKSPACE/$item"
+            echo "Processing item: $item"
+            uv run "${{ env.VALIDATION_SCRIPT_PATH }}" --dir "$FILE_PATH"
+          done
+
+      - name: Validate changed pipelines
+        if: ${{ steps.changed-assets.outputs.has-changed-pipelines == 'true' }}
+        run: |
+          CHANGED_DIRS="${{ steps.changed-assets.outputs.changed-pipelines }}"
+          for item in $CHANGED_DIRS; do
+            FILE_PATH="$GITHUB_WORKSPACE/$item"
+            echo "Processing item: $item"
+            uv run "${{ env.VALIDATION_SCRIPT_PATH }}" --dir "$FILE_PATH"
+          done

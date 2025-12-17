@@ -36,6 +36,8 @@ dev = [
     "kfp-components[ci]",
     "kfp-components[lint]",
     "kfp-components[test]",
+    "ci>=0.1.1",
+    "semver>=3.0.4",
 ]
 
 [project.urls]

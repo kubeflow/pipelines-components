@@ -1,0 +1,17 @@
+---
+name: test_component
+tier: third_party
+stability: beta
+dependencies:
+  kubeflow:
+    - name: Pipelines
+      version: '2.5.0'
+    - name: Trainer
+      version: '2.0.0'
+  external_services:
+    - name: Argo Workflows
+      version: "3.6.0"
+lastVerified: 2025-03-15T00:00:00Z
+links:
+  documentation: https://kubeflow.org/components/happy-path-component
+  issue_tracker: https://github.com/kubeflow/kfp-components/issues

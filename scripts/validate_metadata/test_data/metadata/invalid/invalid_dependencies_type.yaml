@@ -1,0 +1,14 @@
+---
+name: invalid-dependencies-type
+tier: third_party
+stability: alpha
+dependencies: "invalid-dependencies-type"
+tags:
+  - training
+  - evaluation
+lastVerified: 2025-03-15T00:00:00Z
+ci:
+  skip_dependency_probe: false
+links:
+  documentation: https://kubeflow.org/components/happy-path-component
+  issue_tracker: https://github.com/kubeflow/kfp-components/issues
