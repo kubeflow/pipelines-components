@@ -1,4 +1,5 @@
 name: invalid-dependency-semantic-versioning
+tier: core
 stability: stable
 dependencies:
   kubeflow:

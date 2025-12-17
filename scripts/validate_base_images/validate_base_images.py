@@ -691,8 +691,10 @@ def _print_final_status(
         print(f"FAILED: {len(violations)} violation(s) found.")
         if invalid_count:
             print(f"  - {invalid_count} invalid base image(s): must use '{config.allowed_prefix}' registry")
-            example = f"{config.allowed_prefix}pipelines-components-<name>:<tag>"
-            print(f"    (e.g., '{example}'), leave unset, or match the allowlist.")
+            print(
+                f"    (e.g., '{config.allowed_prefix}pipelines-components-<name>:<tag>'), "
+                f"leave unset, or match the allowlist."
+            )
             print(f"    Allowlist: {config.allowlist_path}")
         if missing_count:
             print(f"  - {missing_count} missing Containerfile(s): required for custom Kubeflow images.")
