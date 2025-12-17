@@ -1,6 +1,5 @@
 ---
 name: component_valid
-tier: third_party
 stability: alpha
 dependencies:
   kubeflow:

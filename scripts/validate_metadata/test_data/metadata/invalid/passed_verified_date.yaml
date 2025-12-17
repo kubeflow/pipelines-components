@@ -1,6 +1,5 @@
 ---
 name: passed-verified-date
-tier: third_party
 stability: stable
 dependencies:
   kubeflow:

@@ -1,5 +1,4 @@
 ---
-tier: third_party
 name: happy-path-component
 stability: alpha | beta | stable
 dependencies:
