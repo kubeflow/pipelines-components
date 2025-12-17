@@ -1,7 +1,7 @@
+---
 name: Simple Component
 description: A basic component with required parameters
 documentation: https://example.com/simple-component
 tags:
   - testing
   - basic
-

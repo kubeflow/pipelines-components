@@ -1,5 +1,5 @@
 """Tests for process_data."""
-import pytest
+
 from ..component import process_data
 
 
@@ -25,4 +25,3 @@ def test_process_data_special_chars():
     """Test with special characters."""
     result = process_data.python_func(input_data="hello-123_world!")
     assert result == "HELLO-123_WORLD!"
-
