@@ -1,3 +1,4 @@
+---
 name: Compile and Validate Components
 
 on:
@@ -20,6 +21,6 @@ jobs:
           python-version: "3.11"
 
       - name: Run compile check
-        run: |d
-          uv run python .github/scripts/compile_check/compile_check.py --tier all
-
+        run: |
+          uv run python .github/scripts/compile_check/compile_check.py \
+            --tier all

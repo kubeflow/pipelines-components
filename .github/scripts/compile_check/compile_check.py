@@ -18,15 +18,8 @@ import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
-   
-try:
-    import yaml
-except ImportError as exc:  # pragma: no cover - import guard
-    sys.stderr.write(
-        "PyYAML is required to run compile_check.py. "
-        "Install it with `pip install pyyaml`.\n"
-    )
-    raise
+
+import yaml
 
 try:
     from packaging.specifiers import SpecifierSet
@@ -72,7 +65,9 @@ class ValidationResult:
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Compile Kubeflow components and pipelines.")
+    parser = argparse.ArgumentParser(
+        description="Compile Kubeflow components and pipelines."
+    )
     parser.add_argument(
         "--tier",
         choices=["core", "all"],
@@ -164,7 +159,9 @@ def create_targets(
     for metadata_path, tier, target_kind in discovered:
         if normalized_filters:
             absolute_metadata_dir = metadata_path.parent.resolve()
-            if not any(absolute_metadata_dir.is_relative_to(f) for f in normalized_filters):
+            if not any(
+                absolute_metadata_dir.is_relative_to(f) for f in normalized_filters
+            ):
                 continue
 
         try:
@@ -177,10 +174,16 @@ def create_targets(
             logging.debug("Skipping %s (compile_check disabled).", metadata_path)
             continue
 
-        module_filename = "component.py" if target_kind == "component" else "pipeline.py"
+        module_filename = (
+            "component.py" if target_kind == "component" else "pipeline.py"
+        )
         module_path = metadata_path.with_name(module_filename)
         if not module_path.exists():
-            logging.error("Expected module %s not found for metadata %s", module_path, metadata_path)
+            logging.error(
+                "Expected module %s not found for metadata %s",
+                module_path,
+                metadata_path,
+            )
             continue
 
         module_import = build_module_import_path(module_path)
@@ -197,7 +200,9 @@ def create_targets(
     return targets
 
 
-def find_objects(module, target_kind: str) -> List[Tuple[str, base_component.BaseComponent]]:
+def find_objects(
+    module, target_kind: str
+) -> List[Tuple[str, base_component.BaseComponent]]:
     found: List[Tuple[str, base_component.BaseComponent]] = []
     for attr_name in dir(module):
         attr = getattr(module, attr_name)
@@ -239,7 +244,9 @@ def validate_dependencies(metadata: Dict, result: ValidationResult) -> None:
             if not name:
                 result.add_error(f"{label} is missing a `name` field.")
             if not version:
-                result.add_error(f"{label} for {name or '<unknown>'} is missing a `version` field.")
+                result.add_error(
+                    f"{label} for {name or '<unknown>'} is missing a `version` field."
+                )
             elif SpecifierSet is not None:
                 try:
                     SpecifierSet(str(version))
@@ -347,7 +354,9 @@ def run_validation(args: argparse.Namespace) -> int:
             logging.info(
                 "✓ %s compiled successfully (%s)",
                 target.metadata.get("name", target.module_import),
-                ", ".join(result.compiled_objects) if result.compiled_objects else "no output",
+                ", ".join(result.compiled_objects)
+                if result.compiled_objects
+                else "no output",
             )
         else:
             logging.error(
@@ -359,7 +368,11 @@ def run_validation(args: argparse.Namespace) -> int:
                 break
 
     failed = [res for res in results if not res.success]
-    logging.info("Validation complete: %d succeeded, %d failed.", len(results) - len(failed), len(failed))
+    logging.info(
+        "Validation complete: %d succeeded, %d failed.",
+        len(results) - len(failed),
+        len(failed),
+    )
 
     if failed:
         logging.error("Compile check failed for the targets listed above.")
@@ -379,4 +392,3 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point
     sys.exit(main())
-
