@@ -25,8 +25,33 @@ repos:
         language: system
         types: [python]
         files: ^(components|pipelines)/
+      - id: validate-readme
+        name: validate-readme
+        entry: >
+          bash -c '
+          changed_dirs=$(echo "$@" | xargs -n1 dirname | grep -E "^(components|pipelines)/[^/]+/[^/]+$" | sort -u);
+          if [ -n "$changed_dirs" ]; then
+            ./.github/scripts/validate_readmes/test-readme-check.sh $changed_dirs || exit 1;
+          fi
+          ' --
+        language: system
+        files: ^(components|pipelines)/[^/]+/[^/]+/
       - id: markdownlint
         name: markdownlint
         entry: npx markdownlint-cli@0.39.0 --fix -c .markdownlint.json
         language: system
         types: [markdown]
+      - id: validate-metadata
+        name: validate-metadata
+        entry: >
+          bash -c '
+          changed_dirs=$(echo "$@" | xargs -n1 dirname | sort -u);
+          for dir in $changed_dirs; do
+            if [[ -f "$dir/metadata.yaml" && -f "$dir/OWNERS" ]]; then
+              echo "Validating metadata for $dir";
+              uv run python scripts/validate_metadata/validate_metadata.py --dir "$dir" || exit 1;
+            fi;
+          done
+          ' --
+        language: system
+        files: ^(components|pipelines)/[^/]+/(metadata\.yaml|OWNERS)$

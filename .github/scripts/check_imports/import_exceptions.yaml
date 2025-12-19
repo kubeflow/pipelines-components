@@ -2,4 +2,10 @@
 modules:
   - pytest
   - kfp
-files: {}
+files:
+  # Allow any file in test directories to import from tests module
+  # Glob patterns: * matches any directory, ** matches any path
+  "components/**/tests/*":
+    - tests
+  "pipelines/**/tests/*":
+    - tests

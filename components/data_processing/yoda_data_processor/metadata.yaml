@@ -1,0 +1,19 @@
+name: yoda_data_processor
+tier: core
+stability: alpha  # New component without proven track record
+dependencies:
+  kubeflow:
+    - name: Pipelines
+      version: '>=2.15.2'
+  external_services:
+    - name: HuggingFace Datasets
+      version: ">=4.4.2"
+tags:
+  - data_processing
+  - dataset_preparation
+  - text_processing
+  - yoda_speak
+  - translation
+lastVerified: 2025-12-19T11:30:16Z
+links:
+  dataset: https://huggingface.co/datasets/dvgodoy/yoda_sentences

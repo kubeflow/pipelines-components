@@ -11,6 +11,7 @@ Welcome! This guide covers everything you need to know to contribute components 
 - [Naming Conventions](#naming-conventions)
 - [Development Workflow](#development-workflow)
 - [Testing and Quality](#testing-and-quality)
+  - [Component Testing Guide](#component-testing-guide)
 - [Submitting Your Contribution](#submitting-your-contribution)
 - [Getting Help](#getting-help)
 
@@ -58,7 +59,7 @@ git remote add upstream https://github.com/kubeflow/pipelines-components.git
 uv venv
 source .venv/bin/activate
 uv sync          # Installs package in editable mode
-uv sync --dev    # Include dev dependencies if defined
+uv sync --extra dev    # Include dev dependencies if defined
 pre-commit install
 
 # Verify your setup works
@@ -142,6 +143,7 @@ Your `metadata.yaml` must include these fields:
 
 ```yaml
 name: my_component
+tier: core  # 'core' or 'third_party'
 stability: stable  # 'alpha', 'beta', or 'stable'
 dependencies:
   kubeflow:
@@ -155,9 +157,7 @@ tags:  # Optional keywords for discoverability
   - evaluation
 lastVerified: 2025-11-18T00:00:00Z  # Updated annually; components are removed after 12 months without update
 ci:
-  compile_check: true  # Validates component compiles with kfp.compiler
   skip_dependency_probe: false   # Optional. Set true only with justification
-  pytest: optional
 links:  # Optional, can use custom key-value (not limited to documentation, issue_tracker)
   documentation: https://kubeflow.org/components/my_component
   issue_tracker: https://github.com/kubeflow/pipelines-components/issues
@@ -323,6 +323,176 @@ standard library. Heavy dependencies (like `kfp`, `pandas`, etc.) should be impo
 function/pipeline bodies. Exceptions can be added to
 `.github/scripts/check_imports/import_exceptions.yaml` when justified (e.g., for test files
 importing `pytest`).
+
+### Component Testing Guide
+
+This section explains how to write comprehensive tests for your components, using the `yoda_data_processor` component as a reference example.
+
+#### Types of Tests
+
+**Unit Tests** test your component's core logic in isolation:
+
+- Use mocking to avoid external dependencies
+- Test the component's Python function directly via `.python_func()`
+- Fast execution, no external resources required
+- Located in `tests/test_component_unit.py`
+
+**Local Runner Tests** test your component in a real execution environment:
+
+- Execute the component using KFP's [LocalRunner](https://www.kubeflow.org/docs/components/pipelines/user-guides/core-functions/execute-kfp-pipelines-locally/)
+- Test actual component behavior end-to-end
+- Located in `tests/test_component_local.py`
+
+#### Setting Up Component Tests
+
+Create a `tests/` directory in your component folder with the following structure:
+
+```text
+components/<category>/<component_name>/tests/
+├── __init__.py
+├── test_component_unit.py      # Unit tests with mocking
+└── test_component_local.py     # LocalRunner integration tests
+```
+
+#### Writing Unit Tests
+
+Unit tests should verify your component's logic without external dependencies. Here's the pattern used in `yoda_data_processor`:
+
+```python
+# tests/test_component_unit.py
+from unittest import mock
+from ..component import your_component_function
+
+class TestYourComponentUnitTests:
+    """Unit tests for component logic."""
+
+    def test_component_function_exists(self):
+        """Test that the component function is properly imported."""
+        assert callable(your_component_function)
+        assert hasattr(your_component_function, "python_func")
+
+    @mock.patch("external_library.some_function")
+    def test_component_with_mocked_dependencies(self, mock_function):
+        """Test component behavior with mocked external calls."""
+        # Setup mocks
+        mock_function.return_value = "expected_result"
+
+        # Create mock output objects
+        mock_output = mock.MagicMock()
+        mock_output.path = "/tmp/test_output"
+
+        # Call the component's Python function directly
+        your_component_function.python_func(
+            input_param="test_value",
+            output_artifact=mock_output
+        )
+
+        # Verify expected interactions
+        mock_function.assert_called_once_with("test_value")
+```
+
+Key patterns for unit tests:
+
+- Use `@mock.patch` to mock external dependencies
+- Call `your_component.python_func()` to test the underlying Python function
+- Mock output artifacts with `.path` attributes pointing to test paths
+- Verify function calls and parameter passing
+
+#### Writing Local Runner Tests
+
+Local Runner tests execute your component in a real KFP environment. Use the provided fixtures:
+
+```python
+# tests/test_component_local.py
+from ..component import your_component_function
+from tests.utils.fixtures import setup_and_teardown_subprocess_runner
+
+class TestYourComponentLocalRunner:
+    """Test component with LocalRunner (subprocess execution)."""
+
+    def test_local_execution(self, setup_and_teardown_subprocess_runner):
+        """Test component execution with LocalRunner."""
+        # Execute the component with real parameters
+        your_component_function(
+            input_param="real_value",
+            # Output artifacts are handled automatically by LocalRunner
+        )
+
+        # Add assertions about expected outputs if needed
+        # (files created, logs generated, etc.)
+```
+
+**Important notes for Local Runner tests:**
+
+- The `setup_and_teardown_subprocess_runner` fixture is automatically available (no import required)
+- Use the fixture as a test method parameter: `def test_local_execution(self, setup_and_teardown_subprocess_runner)`
+- The fixture handles LocalRunner setup, workspace creation, and cleanup
+- **Resource Requirements**: Ensure your test environment has sufficient CPU, memory, and disk space to execute the component's actual workload
+- Tests may download data, install packages, or perform computationally intensive operations
+
+#### Test Infrastructure and Configuration
+
+The repository provides test infrastructure through a global `conftest.py` file at the project root:
+
+**Global Test Configuration** (`conftest.py`):
+
+- **Session Setup Hook**: Uses `pytest_sessionstart` to configure the test environment before any tests run
+- **Path Management**: Automatically adds the project root to `sys.path` for clean imports during testing
+- **LocalRunner Fixture**: `setup_and_teardown_subprocess_runner` (module-scoped)
+  - Creates isolated workspace and output directories (`./test_workspace_subprocess`, `./test_pipeline_outputs_subprocess`)
+  - Configures KFP LocalRunner with subprocess execution (no virtual environment)
+  - Enables `raise_on_error=True` for immediate test failure on component errors
+  - Automatically cleans up test artifacts after each test module completes
+
+**Pytest Configuration** (`pyproject.toml`):
+
+- **Test Discovery**: Configured to find tests in `components/*/tests` and `pipelines/*/tests` directories
+- **Import Mode**: Uses `--import-mode=importlib` for better import handling
+- **Automatic Detection**: Automatically discovers component and pipeline tests without manual configuration
+
+#### Handling Import Issues with Ruff
+
+If Ruff complains about pytest fixture imports, you may encounter two types of errors:
+
+**F401 (unused import)** - If Ruff removes imports that are only used as pytest fixture parameters:
+
+```python
+from tests.utils.fixtures import setup_and_teardown_subprocess_runner  # noqa: F401
+```
+
+**F811 (redefinition)** - If Ruff thinks the fixture parameter redefines the imported name:
+
+```python
+def test_local_execution(self, setup_and_teardown_subprocess_runner):  # noqa: F811
+```
+
+These comments tell Ruff that the import and parameter usage are intentional pytest fixture patterns.
+
+#### Running Component Tests
+
+From your component directory, run:
+
+```bash
+# Run all tests
+pytest tests/
+
+# Run only unit tests (fast)
+pytest tests/test_component_unit.py -v
+
+# Run only local runner tests (slower, requires resources)
+pytest tests/test_component_local.py -v
+
+# Run with coverage reporting
+pytest tests/ --cov=. --cov-report=html
+```
+
+#### Test Requirements
+
+- **Unit tests**: Should have high coverage of your component's logic
+- **Local runner tests**: Should verify end-to-end component execution
+- **Resource considerations**: Local runner tests require adequate system resources for your component's workload
+- **Dependencies**: Mock external services in unit tests; use real dependencies in local runner tests
+- **Cleanup**: Use provided fixtures to ensure proper test environment cleanup
 
 ### Building Custom Container Images
 

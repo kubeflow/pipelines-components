@@ -13,7 +13,7 @@ license = "Apache-2.0"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "kfp>=2.15.0",
+    "kfp>=2.15.2",
     "pyyaml",
 ]
 
@@ -26,6 +26,7 @@ lint = [
 test = [
     "pytest",
     "pytest-cov",
+    "docker",
 ]
 ci = [
     "pytest",
@@ -102,6 +103,11 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 docstring-code-format = true
+
+[project.scripts]
+# Format is: script-name = "module.path:function_name"
+my-script = "scripts.generate_readme.cli:main"
+
 
 # Pytest configuration for KEP-913 repository structure
 # Currently tests are in scripts/ only. When component/pipeline tests are added,

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import fnmatch
 import sys
 from functools import lru_cache
 from pathlib import Path
@@ -30,10 +31,20 @@ class ImportGuardConfig:
     ) -> None:
         """Initialize configuration from module and path allow lists."""
         self.module_allowlist: set[str] = {canonicalize_module_name(item) for item in module_allowlist or []}
+        # Store both exact path matches and pattern matches
         self.path_scoped_allowlist: dict[Path, set[str]] = {}
+        self.pattern_scoped_allowlist: dict[str, set[str]] = {}
+
         for raw_path, modules in (path_scoped_allowlist or {}).items():
-            normalized = Path(raw_path).resolve()
-            self.path_scoped_allowlist[normalized] = {canonicalize_module_name(mod) for mod in modules}
+            canonical_modules = {canonicalize_module_name(mod) for mod in modules}
+
+            # If path contains glob patterns (* or ?), store as pattern
+            if "*" in raw_path or "?" in raw_path:
+                self.pattern_scoped_allowlist[raw_path] = canonical_modules
+            else:
+                # Store exact path for backward compatibility
+                normalized = Path(raw_path).resolve()
+                self.path_scoped_allowlist[normalized] = canonical_modules
 
     @classmethod
     def from_path(cls, path: Path) -> "ImportGuardConfig":
@@ -51,14 +62,39 @@ class ImportGuardConfig:
         canonical_module = canonicalize_module_name(module)
         if canonical_module in self.module_allowlist:
             return True
-        resolved = file_path
+
+        resolved = file_path.resolve()
+
+        # Check exact path matches (backward compatibility)
         modules = self.path_scoped_allowlist.get(resolved)
-        if modules:
-            return canonical_module in modules
+        if modules and canonical_module in modules:
+            return True
+
         for parent in resolved.parents:
             modules = self.path_scoped_allowlist.get(parent)
             if modules and canonical_module in modules:
                 return True
+
+        # Check pattern matches
+        # Convert resolved path to relative path from current working directory for pattern matching
+        try:
+            rel_path = str(resolved.relative_to(Path.cwd()))
+        except ValueError:
+            # If file is not relative to cwd, use full path
+            rel_path = str(resolved)
+
+        for pattern, modules in self.pattern_scoped_allowlist.items():
+            if canonical_module in modules:
+                # Check if the file path matches the pattern
+                if fnmatch.fnmatch(rel_path, pattern):
+                    return True
+                # Also check parent directories in the path
+                path_parts = rel_path.split("/")
+                for i in range(len(path_parts)):
+                    partial_path = "/".join(path_parts[: i + 1])
+                    if fnmatch.fnmatch(partial_path, pattern):
+                        return True
+
         return False
 
 

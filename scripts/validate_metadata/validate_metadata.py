@@ -115,6 +115,7 @@ def validate_owners_file(filepath: Path):
 
     with open(filepath) as f:
         for line, next_line in pairwise(f):
+            next_line = next_line.strip()
             if line.startswith("approvers:") and next_line.startswith("-") and len(next_line) > 2:
                 logging.info(f"OWNERS file at {filepath} contains at least one approver under heading 'approvers:'.")
                 return

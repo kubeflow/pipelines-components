@@ -10,6 +10,12 @@ Usage:
 
 # Import submodules to enable the convenient import patterns shown above
 # These imports ensure reliable access to submodules and better IDE support
-from . import components, pipelines
+try:
+    # Try relative imports first (works when installed as package)
+    from . import components, pipelines
+except ImportError:
+    # Fallback to absolute imports (works during testing with sys.path modification)
+    import components  # noqa: F401
+    import pipelines  # noqa: F401
 
 __all__ = ["components", "pipelines"]
