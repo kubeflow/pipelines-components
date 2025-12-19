@@ -2,8 +2,10 @@
 
 import argparse
 import logging
+import sys
 from pathlib import Path
 
+from scripts.generate_readme.constants import EXIT_DIFF_DETECTED, EXIT_SUCCESS
 from scripts.generate_readme.writer import ReadmeWriter
 
 logger = logging.getLogger(__name__)
@@ -81,15 +83,26 @@ def parse_arguments():
         description="Generate README.md documentation for Kubeflow Pipelines components and pipelines",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+Modes:
+  Check mode (default):
+    Validates that READMEs are up-to-date without modifying files.
+    Exits with code 0 if all files are in sync, code 1 if diffs are detected.
+
+  Fix mode (--fix):
+    Updates or creates README files to match expected content.
+
 Examples:
-  # From project root:
+  # Check if READMEs are in sync (default, no changes made):
   python -m scripts.generate_readme --component components/some_category/my_component
+
+  # Fix out-of-sync READMEs:
+  python -m scripts.generate_readme --component components/some_category/my_component --fix
+
+  # Check pipeline README:
   python -m scripts.generate_readme --pipeline pipelines/some_category/my_pipeline
-  python -m scripts.generate_readme --component components/some_category/my_component --output custom_readme.md
-  python -m scripts.generate_readme --component components/some_category/my_component --verbose --overwrite
 
   # Or with uv:
-  uv run python -m scripts.generate_readme --component components/some_category/my_component
+  uv run python -m scripts.generate_readme --component components/some_category/my_component --fix
         """,
     )
     group = parser.add_mutually_exclusive_group(required=True)
@@ -115,9 +128,9 @@ Examples:
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
 
     parser.add_argument(
-        "--overwrite",
+        "--fix",
         action="store_true",
-        help="Overwrite existing README.md without prompting",
+        help="Write/update README files. Without this flag, only checks for diffs (exits 1 if found).",
     )
 
     return parser.parse_args()
@@ -132,11 +145,26 @@ def main():
     log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
 
-    # Create and run the README writer
+    # Create the README writer
     writer = ReadmeWriter(
         component_dir=args.component,
         pipeline_dir=args.pipeline,
         output_file=args.output,
-        overwrite=args.overwrite,
     )
-    writer.generate()
+
+    # Run in check mode (default) or fix mode
+    has_diff = writer.generate(fix=args.fix)
+
+    # Exit with appropriate code based on the mode and diff status
+    if not has_diff:
+        # No diffs - files are in sync (same message for both modes)
+        logger.info("All README files are in sync.")
+        sys.exit(EXIT_SUCCESS)
+    elif args.fix:
+        # Diffs detected and fixed in fix mode
+        logger.info("README files updated successfully.")
+        sys.exit(EXIT_SUCCESS)
+    else:
+        # Diffs detected in check mode
+        logger.error("README files are out of sync. Run with --fix to update them.")
+        sys.exit(EXIT_DIFF_DETECTED)

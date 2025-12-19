@@ -6,14 +6,13 @@
 # 1. Individual component/pipeline READMEs
 # 2. Category index READMEs
 #
-# The script runs the README generator and asserts that no files were changed.
+# The script runs the README generator in check mode (default) and verifies exit codes.
 
 set -e
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 print_success() {
@@ -22,16 +21,6 @@ print_success() {
 
 print_error() {
     echo -e "${RED}❌ $1${NC}"
-}
-
-print_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
-}
-
-print_header() {
-    echo "=================================================="
-    echo "$1"
-    echo "=================================================="
 }
 
 usage() {
@@ -50,10 +39,13 @@ if [ $# -eq 0 ]; then
 fi
 
 TARGET_DIRS=("$@")
+HAS_ERRORS=0
 
-print_header "Running README Generator"
+echo "=================================================="
+echo "Validating README files"
+echo "=================================================="
 
-# Run the README generator for each target
+# Run the README generator in check mode for each target
 for target_dir in "${TARGET_DIRS[@]}"; do
     # Determine if it's a component or pipeline
     if [[ "$target_dir" == components/* ]]; then
@@ -62,40 +54,23 @@ for target_dir in "${TARGET_DIRS[@]}"; do
         TYPE_FLAG="--pipeline"
     else
         print_error "Invalid directory: $target_dir. Must be in components/ or pipelines/"
-        exit 1
+        exit 2
     fi
-    
-    echo "Generating README for $target_dir..."
-    uv run python -m scripts.generate_readme $TYPE_FLAG "$target_dir" --overwrite
+
+    echo "Checking $target_dir..."
+    # Run in check mode (no --fix flag). Exit code 1 means diffs detected.
+    if ! uv run python -m scripts.generate_readme $TYPE_FLAG "$target_dir"; then
+        HAS_ERRORS=1
+    fi
 done
 
-print_header "Validating READMEs"
+echo ""
 
-# Check if any files were modified or created
-modified_files=$(git diff --name-only)
-untracked_files=$(git ls-files --others --exclude-standard)
-
-if [ -n "$modified_files" ] || [ -n "$untracked_files" ]; then
+if [ $HAS_ERRORS -eq 1 ]; then
     print_error "README files are out of sync!"
     echo ""
-    
-    if [ -n "$modified_files" ]; then
-        echo "Modified files:"
-        echo "$modified_files"
-        echo ""
-        echo "Diff:"
-        git diff
-        echo ""
-    fi
-    
-    if [ -n "$untracked_files" ]; then
-        echo "New files created:"
-        echo "$untracked_files"
-        echo ""
-    fi
-    
-    print_error "Please run the README generator locally and commit the changes:"
-    echo "  uv run python -m scripts.generate_readme --component <dir> --overwrite"
+    echo "Please run the README generator locally and commit the changes:"
+    echo "  uv run python -m scripts.generate_readme --component <dir> --fix"
     echo "  (or --pipeline <dir> for pipelines)"
     exit 1
 fi

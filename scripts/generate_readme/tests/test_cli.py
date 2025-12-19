@@ -108,7 +108,7 @@ class TestParseArguments:
         assert args.component == component_dir
         assert args.pipeline is None
         assert args.verbose is False
-        assert args.overwrite is False
+        assert args.fix is False
 
     def test_parse_pipeline_argument(self, pipeline_dir, monkeypatch):
         """Test parsing --pipeline argument."""
@@ -127,13 +127,13 @@ class TestParseArguments:
 
         assert args.verbose is True
 
-    def test_parse_overwrite_flag(self, component_dir, monkeypatch):
-        """Test parsing --overwrite flag."""
-        monkeypatch.setattr("sys.argv", ["prog", "--component", str(component_dir), "--overwrite"])
+    def test_parse_fix_flag(self, component_dir, monkeypatch):
+        """Test parsing --fix flag."""
+        monkeypatch.setattr("sys.argv", ["prog", "--component", str(component_dir), "--fix"])
 
         args = parse_arguments()
 
-        assert args.overwrite is True
+        assert args.fix is True
 
     def test_parse_output_argument(self, component_dir, temp_dir, monkeypatch):
         """Test parsing --output argument."""

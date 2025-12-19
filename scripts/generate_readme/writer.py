@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 from scripts.generate_readme.category_index_generator import CategoryIndexGenerator
-from scripts.generate_readme.constants import CUSTOM_CONTENT_MARKER
+from scripts.generate_readme.constants import CUSTOM_CONTENT_MARKER, EXIT_ERROR
 from scripts.generate_readme.content_generator import ReadmeContentGenerator
 from scripts.generate_readme.metadata_parser import MetadataParser
 
@@ -21,7 +21,6 @@ class ReadmeWriter:
         component_dir: Optional[Path] = None,
         pipeline_dir: Optional[Path] = None,
         output_file: Optional[Path] = None,
-        overwrite: bool = False,
     ):
         """Initialize the README writer.
 
@@ -29,7 +28,6 @@ class ReadmeWriter:
             component_dir: Path to the component directory (must contain component.py and metadata.yaml).
             pipeline_dir: Path to the pipeline directory (must contain pipeline.py and metadata.yaml).
             output_file: Optional output path for the generated README.
-            overwrite: Overwrite existing README without prompting.
         """
         # Validate that exactly one of component_dir or pipeline_dir is provided
         if not component_dir and not pipeline_dir:
@@ -56,7 +54,6 @@ class ReadmeWriter:
         self.parser = MetadataParser(self.source_file, self.function_type)
         self.metadata_file = self.source_dir / "metadata.yaml"
         self.readme_file = output_file if output_file else self.source_dir / "README.md"
-        self.overwrite = overwrite
 
     def _extract_custom_content(self) -> Optional[str]:
         """Extract custom content from existing README if it has a custom-content marker.
@@ -82,13 +79,59 @@ class ReadmeWriter:
             logger.warning(f"Error reading existing README for custom content: {e}")
             return None
 
+    def _read_file_content(self, file_path: Path) -> Optional[str]:
+        """Read content from a file if it exists.
+
+        Args:
+            file_path: Path to the file to read.
+
+        Returns:
+            File content as string, or None if file doesn't exist.
+        """
+        if not file_path.exists():
+            return None
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except Exception as e:
+            logger.warning(f"Error reading {file_path}: {e}")
+            return None
+
+    def _has_diff(self, expected: str, actual: Optional[str]) -> bool:
+        """Check if expected content differs from actual content.
+
+        Args:
+            expected: The expected content.
+            actual: The actual file content (None if file doesn't exist).
+
+        Returns:
+            True if there's a diff, False if content matches.
+        """
+        if actual is None:
+            return True
+        return expected != actual
+
+    def _check_category_index(self, category_content: str) -> bool:
+        """Check if category index matches expected content.
+
+        Args:
+            category_content: The expected category index content.
+
+        Returns:
+            True if there's a diff, False if content matches.
+        """
+        actual_content = self._read_file_content(self.category_index_file)
+        has_diff = self._has_diff(category_content, actual_content)
+        if has_diff:
+            logger.warning(f"Out of sync: {self.category_index_file}")
+        return has_diff
+
     def _write_category_index(self, category_content: str) -> None:
         """Write the category-level README index.
 
         Args:
             category_content: The generated category index content to write.
         """
-        # Check if file exists and handle overwrite
         if self.category_index_file.exists():
             logger.info(f"Category index exists at {self.category_index_file}, regenerating entries.")
         else:
@@ -102,7 +145,27 @@ class ReadmeWriter:
 
         except Exception as e:
             logger.error(f"Could not write category index: {e}")
-            sys.exit(1)
+            sys.exit(EXIT_ERROR)
+
+    def _check_readme_file(self, readme_content: str) -> bool:
+        """Check if README matches expected content.
+
+        Args:
+            readme_content: The expected README content.
+
+        Returns:
+            True if there's a diff, False if content matches.
+        """
+        # Include custom content in comparison if it exists
+        custom_content = self._extract_custom_content()
+        if custom_content:
+            readme_content = f"{readme_content}\n\n{custom_content}"
+
+        actual_content = self._read_file_content(self.readme_file)
+        has_diff = self._has_diff(readme_content, actual_content)
+        if has_diff:
+            logger.warning(f"Out of sync: {self.readme_file}")
+        return has_diff
 
     def _write_readme_file(self, readme_content: str) -> None:
         """Write the README content to the README.md file.
@@ -111,18 +174,9 @@ class ReadmeWriter:
 
         Args:
             readme_content: The content to write to the README.md file.
-
-        Raises:
-            SystemExit: If README exists and --overwrite flag is not provided.
         """
-        # Extract any custom content before checking for overwrite
+        # Extract any custom content
         custom_content = self._extract_custom_content()
-
-        # Check if file exists and handle overwrite
-        if self.readme_file.exists() and not self.overwrite:
-            logger.error(f"README.md already exists at {self.readme_file}")
-            logger.error("Use --overwrite flag to overwrite existing README")
-            sys.exit(1)
 
         # Append custom content if it was found
         if custom_content:
@@ -135,12 +189,18 @@ class ReadmeWriter:
         # Write README.md
         with open(self.readme_file, "w", encoding="utf-8") as f:
             logger.debug(f"Writing README.md to {self.readme_file}")
-            logger.debug(f"README content: {readme_content}")
             f.write(readme_content)
         logger.info(f"README.md generated successfully at {self.readme_file}")
 
-    def generate(self) -> None:
+    def generate(self, fix: bool = False) -> bool:
         """Generate the README documentation.
+
+        Args:
+            fix: If True, write/update README files.
+                 If False, only check for diffs without writing files.
+
+        Returns:
+            True if there are diffs detected, False otherwise.
 
         Raises:
             SystemExit: If function is not found or metadata extraction fails.
@@ -151,7 +211,7 @@ class ReadmeWriter:
 
         if not function_name:
             logger.error(f"No component/pipeline function found in {self.source_file}")
-            sys.exit(1)
+            sys.exit(EXIT_ERROR)
 
         logger.debug(f"Found target decorated function: {function_name}")
 
@@ -159,7 +219,7 @@ class ReadmeWriter:
         metadata = self.parser.extract_metadata(function_name)
         if not metadata:
             logger.error(f"Could not extract metadata from function {function_name}")
-            sys.exit(1)
+            sys.exit(EXIT_ERROR)
 
         logger.debug(f"Extracted metadata for {len(metadata.get('parameters', {}))} parameters")
 
@@ -167,16 +227,24 @@ class ReadmeWriter:
         readme_content_generator = ReadmeContentGenerator(metadata, self.source_dir)
         readme_content = readme_content_generator.generate_readme()
 
-        # Write README.md file
-        self._write_readme_file(readme_content)
-
-        # Log metadata statistics
-        logger.debug(f"README content length: {len(readme_content)} characters")
-        logger.debug(f"Target decorated function name: {metadata.get('name', 'Unknown')}")
-        logger.debug(f"Parameters: {len(metadata.get('parameters', {}))}")
-        logger.debug(f"Has return type: {'Yes' if metadata.get('returns') else 'No'}")
-
-        # Write category index
+        # Generate category index content
         index_generator = CategoryIndexGenerator(self.category_dir, self.is_component)
         index_content = index_generator.generate()
-        self._write_category_index(index_content)
+
+        # Check for diffs (in both modes)
+        readme_has_diff = self._check_readme_file(readme_content)
+        category_has_diff = self._check_category_index(index_content)
+        has_diff = readme_has_diff or category_has_diff
+
+        if has_diff and fix:
+            # Fix mode: write files
+            self._write_readme_file(readme_content)
+            self._write_category_index(index_content)
+
+            # Log metadata statistics
+            logger.debug(f"README content length: {len(readme_content)} characters")
+            logger.debug(f"Target decorated function name: {metadata.get('name', 'Unknown')}")
+            logger.debug(f"Parameters: {len(metadata.get('parameters', {}))}")
+            logger.debug(f"Has return type: {'Yes' if metadata.get('returns') else 'No'}")
+
+        return has_diff

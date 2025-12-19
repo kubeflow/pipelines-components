@@ -14,10 +14,13 @@ python -m scripts.generate_readme --component components/some_category/my_compon
 # Generate README for a pipeline
 python -m scripts.generate_readme --pipeline pipelines/some_category/my_pipeline
 
-# With additional options
+# Check if READMEs are in sync (default, exits 1 if diffs found)
+python -m scripts.generate_readme --component components/some_category/my_component
+
+# Fix out-of-sync READMEs
 python -m scripts.generate_readme \
   --component components/some_category/my_component \
-  --verbose --overwrite
+  --fix
 
 # Or with uv
 uv run python -m scripts.generate_readme --component components/some_category/my_component
