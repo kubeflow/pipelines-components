@@ -5,6 +5,14 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - 'components/**'
+      - 'pipelines/**'
+      - '.github/scripts/compile_check/**'
+      - '.github/workflows/compile-and-deps.yml'
+      - '.github/actions/setup-python-ci/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
   workflow_dispatch:
 
 jobs:
@@ -22,5 +30,4 @@ jobs:
 
       - name: Run compile check
         run: |
-          uv run python .github/scripts/compile_check/compile_check.py \
-            --tier all
+          uv run python .github/scripts/compile_check/compile_check.py

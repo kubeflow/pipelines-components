@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 import tempfile
 import textwrap
 import unittest
@@ -11,13 +12,6 @@ from pathlib import Path
 from typing import Any, Dict
 
 import yaml
-
-import sys
-
-SCRIPTS_ROOT = Path(__file__).resolve().parents[2]
-if str(SCRIPTS_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS_ROOT))
-
 from compile_check import compile_check
 
 
@@ -38,12 +32,14 @@ class CompileCheckTestCase(unittest.TestCase):
     """Unit tests covering compile_check’s discovery, dependency, and compile paths."""
 
     def setUp(self) -> None:
+        """Create a temporary repository root for each test case."""
         self._tempdir = tempfile.TemporaryDirectory()
         self.repo_root = Path(self._tempdir.name)
         self.original_repo_root = compile_check.REPO_ROOT
         compile_check.REPO_ROOT = self.repo_root
 
     def tearDown(self) -> None:
+        """Clean up temporary directories and restore global state."""
         compile_check.REPO_ROOT = self.original_repo_root
         self._tempdir.cleanup()
 
