@@ -247,7 +247,7 @@ def test_hello_world_custom_name():
 This repository requires a standardized README.md. As such, we have provided a README generation
 utility, which can be found in the `scripts` directory.
 
-Read more in the [README Generator Script Documentation](./scripts/generate_readme/README.md).
+Read more in the [README Generator Script Documentation](../scripts/generate_readme/README.md).
 
 ## Testing and Quality
 
