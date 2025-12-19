@@ -19,12 +19,13 @@ dependencies = [
 
 [project.optional-dependencies]
 lint = [
-  "ruff",
-  "yamllint",
+    # We keep these pinned to avoid new lint failures due to updates
+    "ruff==0.8.4",
+    "yamllint==1.35.1",
 ]
 test = [
-  "pytest",
-  "pytest-cov",
+    "pytest",
+    "pytest-cov",
 ]
 ci = [
     "pytest",
