@@ -350,6 +350,15 @@ GitHub Actions automatically runs these checks on every pull request:
 - Metadata schema validation
 - Standardized README content and formatting conformance
 
+### Dependency updates (Dependabot)
+
+This repository uses Dependabot to keep:
+
+- Python dependencies (including pinned direct dependencies in `pyproject.toml`) and `uv.lock` up to date
+- GitHub Actions versions in workflow files up to date
+
+Configuration lives in `.github/dependabot.yml`.
+
 ## Submitting Your Contribution
 
 ### Commit Your Changes
