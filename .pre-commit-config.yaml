@@ -55,3 +55,26 @@ repos:
           ' --
         language: system
         files: ^(components|pipelines)/[^/]+/(metadata\.yaml|OWNERS)$
+      - id: validate-base-images
+        name: validate-base-images
+        entry: >
+          bash -c '
+          components=();
+          pipelines=();
+          for file in "$@"; do
+            if [[ "$file" =~ ^components/[^/]+/[^/]+/component\.py$ ]]; then
+              dir=$(dirname "$file");
+              components+=("--component" "$dir");
+            elif [[ "$file" =~ ^pipelines/[^/]+/[^/]+/pipeline\.py$ ]]; then
+              dir=$(dirname "$file");
+              pipelines+=("--pipeline" "$dir");
+            fi;
+          done;
+          if [[ ${#components[@]} -gt 0 || ${#pipelines[@]} -gt 0 ]]; then
+            echo "Validating base images for changed components/pipelines";
+            uv run python scripts/validate_base_images/validate_base_images.py \
+              "${components[@]}" "${pipelines[@]}" || exit 1;
+          fi
+          ' --
+        language: system
+        files: ^(components|pipelines)/[^/]+/[^/]+/(component|pipeline)\.py$
