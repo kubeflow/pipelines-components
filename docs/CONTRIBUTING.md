@@ -200,9 +200,68 @@ git fetch upstream
 git checkout -b component/my-component upstream/main
 ```
 
-### 2. Implement Your Component
+### 2. Create Your Component or Pipeline
 
-Create your component following the structure above. Here's a basic template:
+You can create components and pipelines using either the automated approach (recommended) or manually. Both approaches are detailed below.
+
+#### Approach A: Automated Skeleton Generation (Recommended)
+
+For rapid development, this repository provides convenient make commands that automate the entire development process.
+
+<details>
+<summary><strong>📋 Overview of Make Commands</strong></summary>
+
+The following make targets simplify the development workflow:
+
+| Command                                                | Description                                       |
+|--------------------------------------------------------|---------------------------------------------------|
+| `make component CATEGORY=<cat> NAME=<name> [NO_TESTS]` | Create a new component skeleton                   |
+| `make pipeline CATEGORY=<cat> NAME=<name> [NO_TESTS]`  | Create a new pipeline skeleton                    |
+| `make tests TYPE=<type> CATEGORY=<cat> NAME=<name>`    | Add tests to existing component/pipeline          |
+| `make readme TYPE=<type> CATEGORY=<cat> NAME=<name>`   | Generate/update README from code                  |
+| `make format`                                          | Auto-fix code formatting and linting issues       |
+| `make lint`                                            | Check code quality (formatting, linting, imports) |
+
+</details>
+
+**Create a component with tests (recommended):**
+
+```bash
+make component CATEGORY=data_processing NAME=my_data_processor
+```
+
+**Create a pipeline with tests:**
+
+```bash
+make pipeline CATEGORY=training NAME=my_training_pipeline
+```
+
+**Create without tests (for rapid prototyping):**
+
+```bash
+make component CATEGORY=data_processing NAME=my_prototype NO_TESTS
+make pipeline CATEGORY=training NAME=my_prototype NO_TESTS
+```
+
+This generates the complete directory structure:
+
+```text
+components/data_processing/my_data_processor/
+├── __init__.py            # Import configuration
+├── component.py           # Implementation template with TODOs
+├── metadata.yaml          # Pre-configured metadata
+├── README.md              # Documentation template
+├── OWNERS                 # Maintainer template
+└── tests/                 # Test directory (if not using NO_TESTS)
+    ├── __init__.py
+    ├── test_component_unit.py     # Unit test template
+    └── test_component_local.py    # Integration test template
+```
+
+<details>
+<summary><strong>🔧 Alternative: Manual Creation</strong></summary>
+
+If you prefer to create components manually or need more control over the structure, you can create your component following the directory structure above. Here's a basic template:
 
 ```python
 # component.py
@@ -211,10 +270,10 @@ from kfp import dsl
 @dsl.component(base_image="python:3.11")
 def hello_world(name: str = "World") -> str:
     """A simple hello world component.
-    
+
     Args:
         name: The name to greet. Defaults to "World".
-        
+
     Returns:
         A greeting message.
     """
@@ -242,12 +301,119 @@ def test_hello_world_custom_name():
     assert result == "Hello, Kubeflow!"
 ```
 
-### 3. Document Your Component
+</details>
 
-This repository requires a standardized README.md. As such, we have provided a README generation
-utility, which can be found in the `scripts` directory.
+### 3. Implement Your Logic
 
-Read more in the [README Generator Script Documentation](../scripts/generate_readme/README.md).
+Edit the generated `component.py` or `pipeline.py` file to replace TODO placeholders with your actual implementation. The skeleton includes:
+
+- Proper imports and decorators
+- Parameter and return type hints
+- Docstring templates
+- Compilation logic
+
+### 4. Add Tests (if created without tests initially)
+
+```bash
+make tests TYPE=component CATEGORY=data_processing NAME=my_data_processor
+make tests TYPE=pipeline CATEGORY=training NAME=my_training_pipeline
+```
+
+### 5. Document Your Component
+
+#### Automated README Generation (Recommended)
+
+After implementing your logic, generate comprehensive README documentation using the existing [README generation utility](../scripts/generate_readme/README.md):
+
+```bash
+make readme TYPE=component CATEGORY=data_processing NAME=my_data_processor
+make readme TYPE=pipeline CATEGORY=training NAME=my_training_pipeline
+```
+
+This automatically:
+
+- Extracts parameters and return types from your code
+- Parses docstrings for descriptions
+- Generates usage examples
+- Creates standardized documentation sections
+
+#### Manual Documentation
+
+Alternatively, you can create documentation manually following the standardized README.md format required by this repository. See the [README Generator Script Documentation](../scripts/generate_readme/README.md) for details on the expected structure.
+
+### 6. Format and Validate Code
+
+**Auto-fix formatting and linting issues:**
+
+```bash
+make format
+```
+
+**Check code quality before committing:**
+
+```bash
+make lint
+```
+
+**Run tests:**
+
+```bash
+# Run your component/pipeline tests
+pytest components/data_processing/my_data_processor/tests/ -v
+pytest pipelines/training/my_training_pipeline/tests/ -v
+
+# Or run all tests
+pytest
+```
+
+### 7. Pre-commit Validation
+
+Run the complete pre-commit validation:
+
+```bash
+pre-commit run
+```
+
+This ensures your contribution meets all quality standards before submission.
+
+### 8. Commit and Submit
+
+Follow the [Submitting Your Contribution](#submitting-your-contribution) section below to commit your changes and create a pull request.
+
+#### Complete Example Workflow
+
+Here's a complete example creating a data processing component:
+
+```bash
+# 1. Create feature branch
+git checkout -b component/csv-cleaner upstream/main
+
+# 2. Create component skeleton
+make component CATEGORY=data_processing NAME=csv_cleaner
+
+# 3. Edit components/data_processing/csv_cleaner/component.py
+# (Implement your logic, replace TODOs)
+
+# 4. Generate documentation
+make readme TYPE=component CATEGORY=data_processing NAME=csv_cleaner
+
+# 5. Format and validate
+make format
+make lint
+
+# 6. Run tests
+pytest components/data_processing/csv_cleaner/tests/ -v
+
+# 7. Final validation
+pre-commit run
+
+# 8. Commit and submit PR
+git add .
+git commit -m "feat(data_processing): add csv_cleaner component"
+git push origin component/csv-cleaner
+```
+
+This workflow typically takes just a few minutes to set up the complete component structure with documentation and tests.
 
 ## Testing and Quality
 
@@ -291,7 +457,7 @@ markdownlint -c .markdownlint.json **/*.md
 python scripts/validate_metadata.py
 
 # Run all pre-commit hooks
-pre-commit run --all-files
+pre-commit run
 ```
 
 ### Base Image Validation
