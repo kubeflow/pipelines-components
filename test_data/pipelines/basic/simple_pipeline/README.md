@@ -4,8 +4,7 @@
 
 A simple test pipeline.
 
-This pipeline demonstrates basic pipeline structure for
-testing the README generator.
+This pipeline demonstrates basic pipeline structure for testing the README generator.
 
 ## Inputs 📥
 
