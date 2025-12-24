@@ -1,0 +1,19 @@
+"""Local runner tests for the {{ name }} {{ skeleton_type }}."""
+
+from ..{{ skeleton_type }} import {{ name }}
+
+
+class Test{{ test_class_name }}LocalRunner:
+    """Test {{ skeleton_type }} with LocalRunner (subprocess execution)."""
+
+    def test_local_execution(self, setup_and_teardown_subprocess_runner):  # noqa: F811
+        """Test {{ skeleton_type }} execution with LocalRunner."""
+        # TODO: Implement local runner tests for your {{ skeleton_type }}
+
+        # Example test structure:
+        result = {{ name }}(
+            input_param="test_value"
+        )
+
+        # Add assertions about expected outputs if needed
+        assert result is not None

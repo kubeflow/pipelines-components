@@ -1,0 +1,7 @@
+{% if is_test_package -%}
+# Test package for {{ skeleton_type }} tests
+{% else -%}
+from .{{ module_name }} import {{ name }}
+
+__all__ = ["{{ name }}"]
+{% endif %}

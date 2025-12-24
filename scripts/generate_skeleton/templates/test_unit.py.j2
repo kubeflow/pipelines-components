@@ -1,0 +1,29 @@
+"""Tests for the {{ name }} {{ skeleton_type }}."""
+
+from unittest import mock
+
+from ..{{ skeleton_type }} import {{ name }}
+
+
+class Test{{ test_class_name }}UnitTests:
+    """Unit tests for {{ skeleton_type }} logic."""
+
+    def test_{{ skeleton_type }}_function_exists(self):
+        """Test that the {{ skeleton_type }} function is properly imported."""
+        assert callable({{ name }})
+        assert hasattr({{ name }}, "python_func")
+
+    def test_{{ skeleton_type }}_with_default_parameters(self):
+        """Test {{ skeleton_type }} with valid input parameters."""
+        # TODO: Implement unit tests for your {{ skeleton_type }}
+
+        # Example test structure:
+        result = {{ name }}.python_func(input_param="test_value")
+        assert isinstance(result, str)
+        assert "test_value" in result
+
+    # TODO: Add more comprehensive unit tests
+    # @mock.patch("external_library.some_function")
+    # def test_{{ skeleton_type }}_with_mocked_dependencies(self, mock_function):
+    #     """Test {{ skeleton_type }} behavior with mocked external calls."""
+    #     pass

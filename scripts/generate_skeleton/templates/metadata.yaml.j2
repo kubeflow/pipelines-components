@@ -1,0 +1,19 @@
+name: {{ name }}
+tier: core
+stability: alpha  # New {{ skeleton_type }} without proven track record
+dependencies:
+  kubeflow:
+    - name: Pipelines
+      version: '>=2.15.2'
+  # external_services:  # Add if {{ skeleton_type }} uses external services
+  #   - name: Example Service
+  #     version: ">=1.0.0"
+tags:
+{% for tag in tags %}
+  - {{ tag }}
+{% endfor %}
+  # Add more relevant tags here
+lastVerified: {{ current_date }}
+# links:  # Add relevant links
+#   documentation: https://your-docs-url.com
+#   issue_tracker: https://github.com/kubeflow/pipelines-components/issues
