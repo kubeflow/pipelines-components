@@ -114,6 +114,7 @@ jobs:
 
   validate-components:
     if: (github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/v')) && github.repository_owner == 'kubeflow'
+    needs: build
     runs-on: ubuntu-24.04
 
     steps:
