@@ -22,6 +22,8 @@ from scripts.lib.discovery import (
 from scripts.lib.kfp_compile import (
     compile_and_get_yaml,
     load_module_from_path,
+)
+from scripts.lib.kfp_compile import (
     find_decorated_functions_runtime as find_decorated_functions,
 )
 from scripts.validate_base_images.validate_base_images import (
