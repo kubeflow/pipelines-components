@@ -106,7 +106,7 @@ def extract_base_images(ir_yaml: dict[str, Any]) -> set[str]:
             images.add(component_ref["image"])
 
     components = ir_yaml.get("components", {})
-    for _comp_name, comp_config in components.items():
+    for _component_name, comp_config in components.items():
         executor_label = comp_config.get("executorLabel")
         if executor_label and executor_label in executors:
             container = executors[executor_label].get("container", {})
