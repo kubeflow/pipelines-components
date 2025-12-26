@@ -50,4 +50,3 @@ USER kfp
 #     useradd --system --gid kfp --create-home --home-dir /home/kfp kfp && \
 #     chgrp -R 0 /app /home/kfp && \
 #     chmod -R g=u /app /home/kfp
-
