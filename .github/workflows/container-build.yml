@@ -34,8 +34,19 @@ defaults:
     shell: bash
 
 jobs:
+  generate-image-matrix:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.set.outputs.matrix }}
+    steps:
+      - id: set
+        run: |
+          MATRIX_JSON='{"include":[{"name":"example","containerfile":"examples/Containerfile","context":"examples"}]}'
+          echo "matrix=$MATRIX_JSON" >> "$GITHUB_OUTPUT"
+
   build:
     if: github.repository_owner == 'kubeflow'
+    needs: generate-image-matrix
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -43,15 +54,7 @@ jobs:
 
     strategy:
       fail-fast: false
-      matrix:
-        include: &container_images
-          # Add images here as needed. Each entry requires:
-          # - name: Image name suffix (final image: ghcr.io/kubeflow/pipelines-components-<name>)
-          # - containerfile: Path to the Containerfile
-          # - context: Build context directory
-          - name: example
-            containerfile: examples/Containerfile
-            context: examples
+      matrix: ${{ fromJson(needs.generate-image-matrix.outputs.matrix) }}
 
     steps:
       - name: Checkout repository
@@ -111,7 +114,6 @@ jobs:
 
   validate-components:
     if: (github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/v')) && github.repository_owner == 'kubeflow'
-    needs: build
     runs-on: ubuntu-24.04
 
     steps:
@@ -128,8 +130,31 @@ jobs:
           fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
+      - name: Setup Python CI
+        uses: ./.github/actions/setup-python-ci
+        with:
+          python-version: "3.13"
+
+      - name: Check base_image tags use :main
+        run: |
+          uv run python scripts/check_base_image_tags/check_base_image_tags.py \
+            "${{ env.IMAGE_PREFIX }}" --directories components pipelines
+
+      - name: Override base_image values for validation
+        run: |
+          uv run python scripts/override_base_images/override_base_images.py \
+            "${{ steps.image-tag.outputs.tag }}" "${{ env.IMAGE_PREFIX }}" --directories components pipelines
+
+      - name: Validate component compilation
+        run: uv run python scripts/validate_components/validate_components.py --directories components pipelines
+
+  pr-smoke-test-images:
+    if: github.event_name == 'pull_request' && github.repository_owner == 'kubeflow'
+    needs: build
+    runs-on: ubuntu-24.04
+
+    steps:
       - name: Download all image artifacts
-        if: github.event_name == 'pull_request'
         uses: actions/download-artifact@v5
         with:
           path: /tmp/images
@@ -137,7 +162,6 @@ jobs:
           merge-multiple: true
 
       - name: Load images
-        if: github.event_name == 'pull_request'
         run: |
           for image in /tmp/images/*.tar.gz; do
             if [ -f "$image" ]; then
@@ -149,7 +173,6 @@ jobs:
           docker images
 
       - name: Runtime smoke test images (PR)
-        if: github.event_name == 'pull_request'
         run: |
           echo "Running smoke tests on PR-built images..."
           shopt -s nullglob
@@ -182,27 +205,11 @@ jobs:
             exit 1
           fi
 
-      - name: Setup Python CI
-        uses: ./.github/actions/setup-python-ci
-        with:
-          python-version: "3.13"
-
-      - name: Check base_image tags use :main
-        run: |
-          uv run python scripts/check_base_image_tags/check_base_image_tags.py \
-            "${{ env.IMAGE_PREFIX }}" --directories components pipelines
-
-      - name: Override base_image values for validation
-        run: |
-          uv run python scripts/override_base_images/override_base_images.py \
-            "${{ steps.image-tag.outputs.tag }}" "${{ env.IMAGE_PREFIX }}" --directories components pipelines
-
-      - name: Validate component compilation
-        run: uv run python scripts/validate_components/validate_components.py --directories components pipelines
-
   tag-smoke-test-images:
     if: startsWith(github.ref, 'refs/tags/v') && github.repository_owner == 'kubeflow'
-    needs: build
+    needs:
+      - build
+      - generate-image-matrix
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -210,8 +217,7 @@ jobs:
 
     strategy:
       fail-fast: false
-      matrix:
-        include: *container_images
+      matrix: ${{ fromJson(needs.generate-image-matrix.outputs.matrix) }}
 
     steps:
       - name: Determine image tag
