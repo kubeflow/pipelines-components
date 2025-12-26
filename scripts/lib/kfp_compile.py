@@ -73,8 +73,10 @@ def find_decorated_functions_runtime(module: Any, decorator_type: str) -> list[t
 
         is_component = (
             hasattr(attr, "component_spec")
-            or getattr(attr, "__wrapped__", None) is not None
-            and hasattr(getattr(attr, "__wrapped__"), "component_spec")
+            or (
+                getattr(attr, "__wrapped__", None) is not None
+                and hasattr(getattr(attr, "__wrapped__"), "component_spec")
+            )
         )
         is_pipeline = hasattr(attr, "pipeline_spec") or getattr(attr, "_pipeline_func", None) is not None
 
