@@ -647,7 +647,7 @@ Document the base image in your component's `metadata.yaml`:
 tier: core
 name: my_component
 stability: alpha
-base_image: ghcr.io/kubeflow/pipelines-components-my-training-component:main
+base_image: ghcr.io/kubeflow/pipelines-components-my-training-image:main
 dependencies:
   kubeflow:
     - name: Pipelines
