@@ -90,7 +90,7 @@ def extract_base_images(ir_yaml: dict[str, Any]) -> set[str]:
     deployment_spec = ir_yaml.get("deploymentSpec", {})
     executors = deployment_spec.get("executors", {})
 
-    for executor_name, executor_config in executors.items():
+    for _executor_name, executor_config in executors.items():
         container = executor_config.get("container", {})
         image = container.get("image")
         if image:
@@ -100,13 +100,13 @@ def extract_base_images(ir_yaml: dict[str, Any]) -> set[str]:
     dag = root.get("dag", {})
     tasks = dag.get("tasks", {})
 
-    for task_name, task_config in tasks.items():
+    for _task_name, task_config in tasks.items():
         component_ref = task_config.get("componentRef", {})
         if "image" in component_ref:
             images.add(component_ref["image"])
 
     components = ir_yaml.get("components", {})
-    for comp_name, comp_config in components.items():
+    for _comp_name, comp_config in components.items():
         executor_label = comp_config.get("executorLabel")
         if executor_label and executor_label in executors:
             container = executors[executor_label].get("container", {})
