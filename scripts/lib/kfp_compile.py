@@ -2,7 +2,6 @@
 
 import importlib.util
 import sys
-from pathlib import Path
 from typing import Any
 
 import yaml
@@ -50,18 +49,6 @@ def compile_and_get_yaml(func: Any, output_path: str) -> dict[str, Any] | None:
     except Exception as e:
         print(f"  Warning: Failed to compile {func}: {e}")
         return None
-
-
-def module_path_from_file(py_file: Path) -> str:
-    """Convert a file path to a Python module path.
-
-    Args:
-        py_file: Path to a Python file.
-
-    Returns:
-        Dotted module path string (e.g., 'components.training.my_component').
-    """
-    return ".".join(py_file.with_suffix("").parts)
 
 
 def find_decorated_functions_runtime(module: Any, decorator_type: str) -> list[tuple[str, Any]]:
