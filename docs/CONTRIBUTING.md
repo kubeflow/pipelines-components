@@ -589,18 +589,19 @@ For the complete recommended pattern (labels, environment settings, etc.), see `
 
 ### Step 2: Add Entry to the Workflow Matrix
 
-Edit `.github/workflows/container-build.yml` and add your image to the matrix:
+Edit `.github/workflows/container-build.yml` and add your image to the matrix. The build
+matrix is currently defined as a JSON array inside a shell script step (rather than as a
+top-level YAML `strategy.matrix`), so you’ll be adding a new JSON object that matches the
+existing entries.
 
-```yaml
-strategy:
-  matrix:
-    include:
-      # Existing entries...
-      
-      # Add your new image:
-      - name: my-training-image
-        containerfile: components/training/my_component/Containerfile
-        context: components/training/my_component
+Look for the JSON array that lists images, which will look similar to:
+
+```bash
+MATRIX='[
+  {"name": "existing-image", "containerfile": "path/to/Containerfile", "context": "path/to/context"},
+  # Add your new image:
+  {"name": "my-training-image", "containerfile": "components/training/my_component/Containerfile", "context": "components/training/my_component"}
+]'
 ```
 
 **Matrix fields:**
