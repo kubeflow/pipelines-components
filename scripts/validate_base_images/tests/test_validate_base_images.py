@@ -1,36 +1,41 @@
 """Unit tests for validate_base_images.py."""
 
-import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from validate_base_images import (
+from scripts.lib.base_image import (
+    extract_base_images,
+    is_valid_base_image,
+    load_base_image_allowlist,
+    validate_base_images,
+)
+from scripts.lib.discovery import (
+    build_component_asset,
+    build_pipeline_asset,
+    discover_assets,
+    resolve_component_path,
+    resolve_pipeline_path,
+)
+from scripts.lib.kfp_compile import (
+    compile_and_get_yaml,
+    load_module_from_path,
+)
+from scripts.lib.kfp_compile import (
+    find_decorated_functions_runtime as find_decorated_functions,
+)
+from scripts.validate_base_images.validate_base_images import (
     ValidationConfig,
     _collect_violations,
     _print_summary,
     _process_assets,
-    build_component_asset,
-    build_pipeline_asset,
-    compile_and_get_yaml,
-    discover_assets,
-    extract_base_images,
-    find_decorated_functions,
     get_repo_root,
-    is_valid_base_image,
-    load_base_image_allowlist,
-    load_module_from_path,
     main,
     parse_args,
     process_asset,
-    resolve_component_path,
-    resolve_pipeline_path,
     set_config,
-    validate_base_images,
 )
 
 RESOURCES_DIR = Path(__file__).parent / "resources"
@@ -73,15 +78,15 @@ class TestIsPythonImage:
         config.allowlist_path = allowlist_file
         config.allowlist = load_base_image_allowlist(allowlist_file)
 
-        assert is_valid_base_image("python:3.11", config)
-        assert is_valid_base_image("python:3.11-slim", config)
-        assert is_valid_base_image("python:3.10-alpine", config)
-        assert is_valid_base_image("python:3.9-bullseye", config)
+        assert is_valid_base_image("python:3.11", allowlist=config.allowlist)
+        assert is_valid_base_image("python:3.11-slim", allowlist=config.allowlist)
+        assert is_valid_base_image("python:3.10-alpine", allowlist=config.allowlist)
+        assert is_valid_base_image("python:3.9-bullseye", allowlist=config.allowlist)
 
-        assert not is_valid_base_image("python:latest", config)
-        assert not is_valid_base_image("docker.io/python:3.11", config)
-        assert is_valid_base_image("ghcr.io/kubeflow/python:3.11", config)
-        assert not is_valid_base_image("ubuntu:22.04", config)
+        assert not is_valid_base_image("python:latest", allowlist=config.allowlist)
+        assert not is_valid_base_image("docker.io/python:3.11", allowlist=config.allowlist)
+        assert is_valid_base_image("ghcr.io/kubeflow/python:3.11", allowlist=config.allowlist)
+        assert not is_valid_base_image("ubuntu:22.04", allowlist=config.allowlist)
 
     def test_python_images_rejected_without_allowlist_entry(self, tmp_path: Path):
         """Test that Python images are rejected when not in allowlist."""
@@ -91,7 +96,7 @@ class TestIsPythonImage:
         config.allowlist_path = allowlist_file
         config.allowlist = load_base_image_allowlist(allowlist_file)
 
-        assert not is_valid_base_image("python:3.11", config)
+        assert not is_valid_base_image("python:3.11", allowlist=config.allowlist)
 
     def test_allowlist_invalid_regex_fails_fast(self, tmp_path: Path):
         """Test that invalid regex patterns in allowlist raise ValueError."""
@@ -451,6 +456,12 @@ class TestProcessAsset:
 class TestIsValidBaseImage:
     """Tests for is_valid_base_image function."""
 
+    @pytest.fixture
+    def default_allowlist(self):
+        """Load the default allowlist for tests that need it."""
+        allowlist_path = Path(__file__).parent.parent / "base_image_allowlist.yaml"
+        return load_base_image_allowlist(allowlist_path)
+
     def test_valid_kubeflow_image(self):
         """Test that ghcr.io/kubeflow images are valid."""
         assert is_valid_base_image("ghcr.io/kubeflow/pipelines-components-example:v1.0.0")
@@ -461,11 +472,11 @@ class TestIsValidBaseImage:
         """Test that empty/unset images are valid."""
         assert is_valid_base_image("")
 
-    def test_valid_python_images(self):
-        """Test that standard Python images are valid."""
-        assert is_valid_base_image("python:3.11")
-        assert is_valid_base_image("python:3.11-slim")
-        assert is_valid_base_image("python:3.10")
+    def test_valid_python_images(self, default_allowlist):
+        """Test that standard Python images are valid with allowlist."""
+        assert is_valid_base_image("python:3.11", allowlist=default_allowlist)
+        assert is_valid_base_image("python:3.11-slim", allowlist=default_allowlist)
+        assert is_valid_base_image("python:3.10", allowlist=default_allowlist)
 
     def test_invalid_dockerhub_image(self):
         """Test that Docker Hub images are invalid."""
@@ -482,10 +493,10 @@ class TestIsValidBaseImage:
         assert not is_valid_base_image("quay.io/some/image:tag")
         assert not is_valid_base_image("registry.example.com/image:v1")
 
-    def test_invalid_python_variants(self):
+    def test_invalid_python_variants(self, default_allowlist):
         """Test that Python images without version are invalid."""
-        assert not is_valid_base_image("python:latest")
-        assert not is_valid_base_image("python")
+        assert not is_valid_base_image("python:latest", allowlist=default_allowlist)
+        assert not is_valid_base_image("python", allowlist=default_allowlist)
 
     def test_invalid_partial_kubeflow_prefix(self):
         """Test that partial kubeflow prefix is invalid."""
@@ -618,17 +629,13 @@ class TestEdgeCases:
         Both variable reference and functools.partial patterns result in
         non-kubeflow images that should be flagged.
         """
-        config = ValidationConfig()
-
-        assert not is_valid_base_image("docker.io/myorg/custom-python:3.11", config)
-        assert not is_valid_base_image("quay.io/myorg/python:3.11", config)
+        assert not is_valid_base_image("docker.io/myorg/custom-python:3.11")
+        assert not is_valid_base_image("quay.io/myorg/python:3.11")
 
     def test_edge_case_with_valid_kubeflow_image(self):
         """Test that edge case patterns work with valid Kubeflow images too."""
-        config = ValidationConfig()
-
-        assert is_valid_base_image("ghcr.io/kubeflow/ml-training:v1.0.0", config)
-        assert is_valid_base_image("ghcr.io/kubeflow/custom-runtime:latest", config)
+        assert is_valid_base_image("ghcr.io/kubeflow/ml-training:v1.0.0")
+        assert is_valid_base_image("ghcr.io/kubeflow/custom-runtime:latest")
 
 
 class TestCollectViolations:
@@ -786,7 +793,7 @@ class TestMainFunction:
     def test_main_with_resources(self, capsys):
         """Test main function running against resources directory."""
         # Patch get_repo_root to return resources directory
-        with patch("validate_base_images.get_repo_root") as mock_root:
+        with patch("scripts.validate_base_images.validate_base_images.get_repo_root") as mock_root:
             mock_root.return_value = RESOURCES_DIR
 
             exit_code = main([])
@@ -799,7 +806,7 @@ class TestMainFunction:
 
     def test_main_with_selected_component_only(self, capsys):
         """Test main function with a specific component selected via CLI."""
-        with patch("validate_base_images.get_repo_root") as mock_root:
+        with patch("scripts.validate_base_images.validate_base_images.get_repo_root") as mock_root:
             mock_root.return_value = RESOURCES_DIR
 
             exit_code = main(["--component", "components/training/custom_image_component"])
@@ -813,7 +820,7 @@ class TestMainFunction:
     def test_main_empty_directory(self, capsys):
         """Test main function with empty directory."""
         with tempfile.TemporaryDirectory() as tmp_dir:
-            with patch("validate_base_images.get_repo_root") as mock_root:
+            with patch("scripts.validate_base_images.validate_base_images.get_repo_root") as mock_root:
                 mock_root.return_value = Path(tmp_dir)
 
                 exit_code = main([])
