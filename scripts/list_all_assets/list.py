@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from scripts.lib.discovery import find_assets_with_metadata
 
 
-def main():
+def main() -> None:
     """CLI entry point."""
     components = find_assets_with_metadata("components")
     pipelines = find_assets_with_metadata("pipelines")
