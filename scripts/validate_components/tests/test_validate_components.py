@@ -166,7 +166,7 @@ class TestValidateImports:
 
     def test_validates_dynamically_discovered_submodules(self, tmp_path: Path, monkeypatch):
         """Validates imports for dynamically discovered subpackages in components/ and pipelines/."""
-        components = tmp_path / "components"
+        components = tmp_path / "tmp_components"
         components.mkdir()
         (components / "__init__.py").touch()
 
@@ -178,7 +178,7 @@ class TestValidateImports:
         custom_category.mkdir()
         (custom_category / "__init__.py").touch()
 
-        pipelines = tmp_path / "pipelines"
+        pipelines = tmp_path / "tmp_pipelines"
         pipelines.mkdir()
         (pipelines / "__init__.py").touch()
 
@@ -189,7 +189,7 @@ class TestValidateImports:
         monkeypatch.chdir(tmp_path)
         monkeypatch.syspath_prepend(str(tmp_path))
 
-        success = validate_imports(["components", "pipelines"])
+        success = validate_imports(["tmp_components", "tmp_pipelines"])
 
         assert success is True
 
