@@ -157,6 +157,7 @@ jobs:
           for image in /tmp/images/*.tar.gz; do
             found_any=true
             NAME=$(basename "$image" .tar.gz)
+            NAME="${NAME#image-}"
             IMAGE_TAG="${{ env.IMAGE_PREFIX }}-${NAME}:${GITHUB_SHA}"
             echo "Testing: $IMAGE_TAG"
 
