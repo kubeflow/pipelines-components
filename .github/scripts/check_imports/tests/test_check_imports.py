@@ -9,7 +9,8 @@ from pathlib import Path
 
 import pytest
 import yaml
-from check_imports import (
+
+from ..check_imports import (
     ImportGuardConfig,
     build_stdlib_index,
     canonicalize_module_name,

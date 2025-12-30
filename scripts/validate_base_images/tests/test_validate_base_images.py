@@ -1,15 +1,12 @@
 """Unit tests for validate_base_images.py."""
 
-import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from validate_base_images import (
+from ..validate_base_images import (
     ValidationConfig,
     _collect_violations,
     _print_summary,
@@ -786,7 +783,7 @@ class TestMainFunction:
     def test_main_with_resources(self, capsys):
         """Test main function running against resources directory."""
         # Patch get_repo_root to return resources directory
-        with patch("validate_base_images.get_repo_root") as mock_root:
+        with patch("scripts.validate_base_images.validate_base_images.get_repo_root") as mock_root:
             mock_root.return_value = RESOURCES_DIR
 
             exit_code = main([])
@@ -799,7 +796,7 @@ class TestMainFunction:
 
     def test_main_with_selected_component_only(self, capsys):
         """Test main function with a specific component selected via CLI."""
-        with patch("validate_base_images.get_repo_root") as mock_root:
+        with patch("scripts.validate_base_images.validate_base_images.get_repo_root") as mock_root:
             mock_root.return_value = RESOURCES_DIR
 
             exit_code = main(["--component", "components/training/custom_image_component"])
@@ -813,7 +810,7 @@ class TestMainFunction:
     def test_main_empty_directory(self, capsys):
         """Test main function with empty directory."""
         with tempfile.TemporaryDirectory() as tmp_dir:
-            with patch("validate_base_images.get_repo_root") as mock_root:
+            with patch("scripts.validate_base_images.validate_base_images.get_repo_root") as mock_root:
                 mock_root.return_value = Path(tmp_dir)
 
                 exit_code = main([])

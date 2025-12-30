@@ -7,8 +7,8 @@ from typing import Optional
 
 import pytest
 
-from scripts.validate_metadata import validate_metadata
-from scripts.validate_metadata.validate_metadata import ValidationError
+from . import validate_metadata
+from .validate_metadata import ValidationError
 
 INVALID_METADATA_DIR = "scripts/validate_metadata/test_data/metadata/invalid/"
 VALID_METADATA_DIR = "scripts/validate_metadata/test_data/metadata/valid/"

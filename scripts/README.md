@@ -61,3 +61,43 @@ uv run pytest */tests/ -v --tb=short
 - `resources/` directories contain test data/mocks
 - Only files in `*/tests/` directories are run by `scripts-tests.yml`
 - The `.github/scripts/` directory follows the same structure and testing conventions for CI-only scripts
+
+## Import Conventions
+
+Scripts are organized as Python packages using `__init__.py` files. Tests use relative imports to import from their parent module.
+
+### Package Structure
+
+Each script directory must have:
+
+- `__init__.py` in the script directory (can be empty)
+- `__init__.py` in the `tests/` subdirectory (can be empty)
+
+```text
+scripts/
+├── my_script/
+│   ├── __init__.py          # Required (can be empty)
+│   ├── my_script.py
+│   └── tests/
+│       ├── __init__.py      # Required (can be empty)
+│       └── test_my_script.py
+```
+
+### Import Pattern
+
+Tests use relative imports to access the parent module:
+
+```python
+# In scripts/my_script/tests/test_my_script.py
+from ..my_script import my_function, MyClass
+```
+
+For scripts with multiple modules:
+
+```python
+# In scripts/my_script/tests/test_utils.py
+from ..utils import helper_function
+from ..my_script import main
+```
+
+This pattern ensures imports work correctly for both IDE static analysis and pytest runtime.
