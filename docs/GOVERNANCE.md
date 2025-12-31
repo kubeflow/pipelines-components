@@ -105,8 +105,7 @@ a single, consistent catalog.
 ## Related Documentation
 
 - **[Contributing Guide](CONTRIBUTING.md)** - Contributor setup, testing, and workflow
-- **[Best Practices Guide](BESTPRACTICES.md)** - Component/pipeline authoring guidance
-- **[Agents Guide](AGENTS.md)** - AI agent guidance
+- **[Authoring guidance](CONTRIBUTING.md#testing-and-quality)** - Component/pipeline authoring and validation expectations
 
 ## Background
 
