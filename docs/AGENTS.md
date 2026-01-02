@@ -130,8 +130,8 @@ Use this prompt pattern:
 
 "Search `components/` for similar functionality and reuse if possible. If a new component is needed, create it under
 `components/<category>/<name>/` following `CONTRIBUTING.md` required files. Implement `component.py` with
-stdlib-only top-level imports (import heavy deps inside the function). Create `metadata.yaml` that passes
-the [`CONTRIBUTING.md` metadata schema](CONTRIBUTING.md#metadatayaml-schema) (required field order, fresh `lastVerified`). Generate/validate
+stdlib-only top-level imports (import heavy deps inside the function). Create `metadata.yaml` that conforms to
+the metadata schema defined in [`CONTRIBUTING.md`](CONTRIBUTING.md#metadatayaml-schema) (required field order, fresh `lastVerified`). Generate/validate
 `README.md` using `scripts/generate_readme` conventions. Add unit tests using `.python_func()` and a LocalRunner test
 using `setup_and_teardown_subprocess_runner`. Reference an existing component like
 `components/data_processing/yoda_data_processor/` for patterns."
