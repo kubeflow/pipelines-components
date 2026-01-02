@@ -1,7 +1,7 @@
 RUFF ?= uv run ruff
 MARKDOWNLINT ?= markdownlint
 YAMLLINT ?= uv run yamllint
-PYTHON ?= uv run python
+PYTHON ?= uv run
 PYTEST ?= uv run pytest
 
 .PHONY: format fix lint lint-format lint-python lint-markdown lint-yaml lint-imports test test-coverage component pipeline tests readme

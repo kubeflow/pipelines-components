@@ -23,7 +23,7 @@ python -m scripts.generate_readme \
   --fix
 
 # Or with uv
-uv run python -m scripts.generate_readme --component components/some_category/my_component
+uv run -m scripts.generate_readme --component components/some_category/my_component
 ```
 
 ## Features

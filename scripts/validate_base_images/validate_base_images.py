@@ -6,7 +6,7 @@ directories, compiles them using kfp.compiler to generate IR YAML, and extracts
 base_image values from the pipeline specifications.
 
 Usage:
-    uv run python scripts/validate_base_images/validate_base_images.py
+    uv run scripts/validate_base_images/validate_base_images.py
 """
 
 import argparse

@@ -443,7 +443,7 @@ make lint                          # Run all linting checks
 make format                        # Auto-format and auto-fix issues
 
 # Validate import guard (enforces stdlib-only top-level imports)
-uv run python .github/scripts/check_imports/check_imports.py \
+uv run .github/scripts/check_imports/check_imports.py \
   --config .github/scripts/check_imports/import_exceptions.yaml \
   components pipelines
 
@@ -478,7 +478,7 @@ Run the validation locally:
 
 ```bash
 # Run with default settings
-uv run python scripts/validate_base_images/validate_base_images.py
+uv run scripts/validate_base_images/validate_base_images.py
 ```
 
 The script allows any standard Python image matching `python:<version>` (e.g., `python:3.11`,

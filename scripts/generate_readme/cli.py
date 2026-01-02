@@ -102,7 +102,7 @@ Examples:
   python -m scripts.generate_readme --pipeline pipelines/some_category/my_pipeline
 
   # Or with uv:
-  uv run python -m scripts.generate_readme --component components/some_category/my_component --fix
+  uv run -m scripts.generate_readme --component components/some_category/my_component --fix
         """,
     )
     group = parser.add_mutually_exclusive_group(required=True)

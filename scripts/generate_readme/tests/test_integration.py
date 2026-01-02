@@ -32,13 +32,13 @@ def test_readme_generation_check_mode(asset_type, asset_path):
 
     If this test fails, it means either:
     - The generator output changed (intentional code change)
-    - The golden README is out of date (run: uv run python -m scripts.generate_readme --{type} {path} --fix)
+    - The golden README is out of date (run: uv run -m scripts.generate_readme --{type} {path} --fix)
     """
     target_dir = TEST_DATA_DIR / asset_path
 
     # Run the README generator in check mode (no --fix flag)
     result = subprocess.run(
-        ["uv", "run", "python", "-m", "scripts.generate_readme", f"--{asset_type}", str(target_dir)],
+        ["uv", "run", "-m", "scripts.generate_readme", f"--{asset_type}", str(target_dir)],
         capture_output=True,
         text=True,
         cwd=Path(__file__).parent.parent.parent.parent,  # Repo root
@@ -49,7 +49,7 @@ def test_readme_generation_check_mode(asset_type, asset_path):
         f"This means the generated README doesn't match the golden file.\n\n"
         f"Stderr:\n{result.stderr}\n\n"
         f"To update the golden file, run:\n"
-        f"  uv run python -m scripts.generate_readme --{asset_type} test_data/{asset_path} --fix\n"
+        f"  uv run -m scripts.generate_readme --{asset_type} test_data/{asset_path} --fix\n"
         f"  git add test_data/{asset_path}/README.md"
     )
 
@@ -73,7 +73,6 @@ def test_category_index_check_mode():
             [
                 "uv",
                 "run",
-                "python",
                 "-m",
                 "scripts.generate_readme",
                 f"--{asset_type}",
@@ -88,6 +87,6 @@ def test_category_index_check_mode():
             f"Category index check failed for {target_dir.name}!\n\n"
             f"Stderr:\n{result.stderr}\n\n"
             f"To update the golden file, run:\n"
-            f"  uv run python -m scripts.generate_readme --{asset_type} {target_dir} --fix\n"
+            f"  uv run -m scripts.generate_readme --{asset_type} {target_dir} --fix\n"
             f"  git add {target_dir.parent}/README.md"
         )
