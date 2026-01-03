@@ -1,0 +1,43 @@
+---
+name: Package Entries Validation
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'components/**'
+      - 'pipelines/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'scripts/validate_package_entries/**'
+      - '.github/workflows/package-entries-check.yml'
+      - '.github/actions/setup-python-ci/**'
+
+# Cancel in-progress runs when a new commit is pushed to the same PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-package-entries:
+    runs-on: ubuntu-24.04
+
+    name: Validate Package Entries
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python CI
+        uses: ./.github/actions/setup-python-ci
+        with:
+          python-version: 3.11
+
+      - name: Run package entries validation
+        run: uv run python scripts/validate_package_entries/validate_package_entries.py
