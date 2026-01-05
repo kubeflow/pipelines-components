@@ -24,20 +24,17 @@ lint = [
     "yamllint==1.35.1",
 ]
 test = [
-    "pytest",
-    "pytest-cov",
-    "docker",
+    # Pinned for reproducible test/CI runs
+    "docker==7.1.0",
+    "pytest==9.0.2",
+    "pytest-cov==7.0.0",
+    "pytest-timeout==2.4.0",
+    "docstring-parser==0.17.0",
+    "jinja2==3.1.6",
+    "semver==3.0.4",
 ]
-ci = [
-    "pytest",
-    "pytest-timeout",
-    "docstring-parser",
-    "jinja2",
-    "semver",
-]
-# Local development (extends ci with additional tools)
+# Local development (extends test with additional tools)
 dev = [
-    "kfp-components[ci]",
     "kfp-components[lint]",
     "kfp-components[test]",
 ]

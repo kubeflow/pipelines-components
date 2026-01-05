@@ -7,9 +7,9 @@ inputs:
     description: 'Python version to use'
     required: true
   extra:
-    description: 'uv extra group to install (defaults to ci)'
+    description: 'uv extra group to install (defaults to test)'
     required: false
-    default: ci
+    default: test
 
 runs:
   using: 'composite'
