@@ -10,8 +10,29 @@ scripts/
 │   ├── <script_name>.py # The script itself (or a module with multiple files)
 │   └── tests/           # Optional: unit tests for this script
 │       └── test_<script_name>.py
-├── utils/               # Shared utilities for common helpers
+├── lib/                 # Shared libraries
 └── README.md
+```
+
+## Common Libraries (`scripts/lib/`)
+
+Shared utilities used across multiple scripts:
+
+| Module               | Description                                                                          |
+|----------------------|--------------------------------------------------------------------------------------|
+| `base_image.py`      | Base image extraction and validation (allowlists, prefix checks)                     |
+| `discovery.py`       | Asset discovery for KFP components/pipelines (path resolution, target normalization) |
+| `kfp_compilation.py` | KFP module loading, compilation, and runtime decorator discovery                     |
+| `parsing.py`         | AST-based utilities for finding decorated functions                                  |
+
+### Usage
+
+```python
+# From a script in scripts/<script_name>/<script_name>.py
+from ..lib.discovery import get_repo_root, discover_assets
+from ..lib.kfp_compilation import load_module_from_path, compile_and_get_yaml
+from ..lib.parsing import find_pipeline_functions
+from ..lib.base_image import extract_base_images, is_valid_base_image
 ```
 
 ## Scripts vs Unit Tests
