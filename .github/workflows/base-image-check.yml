@@ -44,4 +44,4 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Run base image validation
-        run: uv run python scripts/validate_base_images/validate_base_images.py
+        run: uv run python -m scripts.validate_base_images.validate_base_images
