@@ -1,10 +1,15 @@
-"""Parsing-related utility functions."""
+"""KFP module loading, compilation, and decorator discovery utilities."""
 
 from __future__ import annotations
 
 import ast
+import importlib.util
+import sys
 from pathlib import Path
-from typing import List
+from types import ModuleType
+from typing import Any
+
+import yaml
 
 
 def get_ast_tree(file_path: Path) -> ast.AST:
@@ -61,7 +66,7 @@ def is_target_decorator(decorator: ast.AST, decorator_type: str) -> bool:
     return False
 
 
-def find_pipeline_functions(file_path: Path) -> List[str]:
+def find_pipeline_functions(file_path: Path) -> list[str]:
     """Find all function names decorated with @dsl.pipeline.
 
     Args:
@@ -73,8 +78,8 @@ def find_pipeline_functions(file_path: Path) -> List[str]:
     return find_functions_with_decorator(file_path, "pipeline")
 
 
-def find_functions_with_decorator(file_path: Path, decorator_type: str) -> List[str]:
-    """Find all function names decorated with a specific KFP decorator
+def find_functions_with_decorator(file_path: Path, decorator_type: str) -> list[str]:
+    """Find all function names decorated with a specific KFP decorator.
 
     Args:
         file_path: Path to the Python file to parse.
@@ -84,14 +89,56 @@ def find_functions_with_decorator(file_path: Path, decorator_type: str) -> List[
         List of function names that are decorated with the specified decorator.
     """
     tree = get_ast_tree(file_path)
-
-    functions: List[str] = []
+    functions: list[str] = []
 
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             for decorator in node.decorator_list:
                 if is_target_decorator(decorator, decorator_type):
                     functions.append(node.name)
-                    break  # Found the decorator, no need to check other decorators
+                    break
 
     return functions
+
+
+def load_module_from_path(module_path: str, module_name: str) -> ModuleType:
+    """Dynamically load a Python module from a file path.
+
+    Args:
+        module_path: File path to the Python module.
+        module_name: Name to assign to the loaded module.
+
+    Returns:
+        The loaded module object.
+
+    Raises:
+        ImportError: If the module cannot be loaded.
+    """
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not load module from {module_path}")
+
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def compile_and_get_yaml(func: Any, output_path: str) -> dict[str, Any]:
+    """Compile a component or pipeline function and return the parsed YAML.
+
+    Args:
+        func: The KFP component or pipeline function to compile.
+        output_path: Path to write the compiled YAML.
+
+    Returns:
+        Parsed YAML dict.
+
+    Raises:
+        Exception: If compilation fails.
+    """
+    from kfp import compiler
+
+    compiler.Compiler().compile(func, output_path)
+    with open(output_path) as f:
+        return yaml.safe_load(f)

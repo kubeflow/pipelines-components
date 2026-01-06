@@ -14,9 +14,9 @@ from ...lib.discovery import (
     resolve_component_path,
     resolve_pipeline_path,
 )
-from ...lib.kfp_dsl_utils import (
+from ...lib.parsing import (
     compile_and_get_yaml,
-    find_decorated_functions,
+    find_functions_with_decorator,
     load_module_from_path,
 )
 from ..validate_base_images import (
@@ -278,27 +278,24 @@ class TestLoadModuleFromPath:
             load_module_from_path("/nonexistent/module.py", "nonexistent")
 
 
-class TestFindDecoratedFunctions:
-    """Tests for find_decorated_functions function."""
+class TestFindFunctionsWithDecorator:
+    """Tests for find_functions_with_decorator function (AST-based)."""
 
     def test_find_component_functions(self):
         """Test finding @dsl.component decorated functions."""
-        module_path = str(RESOURCES_DIR / "components/training/custom_image_component/component.py")
-        module = load_module_from_path(module_path, "test_find_component")
+        module_path = RESOURCES_DIR / "components/training/custom_image_component/component.py"
 
-        functions = find_decorated_functions(module, "component")
+        func_names = find_functions_with_decorator(module_path, "component")
 
-        assert len(functions) == 1
-        assert functions[0][0] == "train_model"
+        assert len(func_names) == 1
+        assert func_names[0] == "train_model"
 
     def test_find_pipeline_functions(self):
         """Test finding @dsl.pipeline decorated functions."""
-        module_path = str(RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py")
-        module = load_module_from_path(module_path, "test_find_pipeline")
+        module_path = RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py"
 
-        functions = find_decorated_functions(module, "pipeline")
+        func_names = find_functions_with_decorator(module_path, "pipeline")
 
-        func_names = [f[0] for f in functions]
         assert "training_pipeline" in func_names
 
 

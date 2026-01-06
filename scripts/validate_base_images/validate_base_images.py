@@ -33,9 +33,9 @@ from ..lib.discovery import (
     resolve_component_path,
     resolve_pipeline_path,
 )
-from ..lib.kfp_dsl_utils import (
+from ..lib.parsing import (
     compile_and_get_yaml,
-    find_decorated_functions,
+    find_functions_with_decorator,
     load_module_from_path,
 )
 
@@ -147,12 +147,13 @@ def process_asset(
         result["errors"].append(f"Failed to load module: {e}")
         return result
 
-    functions = find_decorated_functions(module, asset_type)
-    if not functions:
+    func_names = find_functions_with_decorator(Path(asset["module_path"]), asset_type)
+    if not func_names:
         result["errors"].append(f"No @dsl.{asset_type} decorated functions found")
         return result
 
-    for func_name, func in functions:
+    for func_name in func_names:
+        func = getattr(module, func_name)
         output_path = os.path.join(temp_dir, f"{module_name}_{func_name}.yaml")
         try:
             ir_yaml = compile_and_get_yaml(func, output_path)
