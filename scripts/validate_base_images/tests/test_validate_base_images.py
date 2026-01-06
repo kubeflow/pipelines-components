@@ -7,17 +7,17 @@ from unittest.mock import patch
 import pytest
 
 from ...lib.base_image import extract_base_images, load_base_image_allowlist
-from ...lib.kfp_dsl_utils import (
-    compile_and_get_yaml,
-    find_decorated_functions,
-    load_module_from_path,
-)
-from ...lib.project_utils import (
+from ...lib.discovery import (
     build_component_asset,
     build_pipeline_asset,
     discover_assets,
     resolve_component_path,
     resolve_pipeline_path,
+)
+from ...lib.kfp_dsl_utils import (
+    compile_and_get_yaml,
+    find_decorated_functions,
+    load_module_from_path,
 )
 from ..validate_base_images import (
     ValidationConfig,

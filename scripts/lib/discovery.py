@@ -1,4 +1,4 @@
-"""Project utilities for path resolution and asset discovery."""
+"""Asset discovery utilities for KFP components and pipelines."""
 
 from __future__ import annotations
 
