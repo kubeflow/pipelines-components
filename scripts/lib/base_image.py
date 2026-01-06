@@ -55,7 +55,7 @@ def load_base_image_allowlist(path: Path) -> BaseImageAllowlist:
     )
 
 
-def is_allowlisted_image(image: str, allowlist: BaseImageAllowlist) -> bool:
+def _is_allowlisted_image(image: str, allowlist: BaseImageAllowlist) -> bool:
     """Check if an image matches the allowlist.
 
     Args:
@@ -146,7 +146,7 @@ def is_valid_base_image(
     if image.startswith(allowed_prefix):
         return True
     if allowlist is not None:
-        return is_allowlisted_image(image, allowlist)
+        return _is_allowlisted_image(image, allowlist)
     return False
 
 

@@ -4,7 +4,7 @@ import ast
 from pathlib import Path
 
 
-def get_ast_tree(file_path: Path) -> ast.AST:
+def _get_ast_tree(file_path: Path) -> ast.AST:
     """Get the parsed AST tree for a Python file.
 
     Args:
@@ -18,7 +18,7 @@ def get_ast_tree(file_path: Path) -> ast.AST:
     return ast.parse(source)
 
 
-def is_target_decorator(decorator: ast.AST, decorator_type: str) -> bool:
+def _is_target_decorator(decorator: ast.AST, decorator_type: str) -> bool:
     """Check if a decorator is a KFP component or pipeline decorator.
 
     Supports the following decorator formats (using component as an example):
@@ -47,7 +47,7 @@ def is_target_decorator(decorator: ast.AST, decorator_type: str) -> bool:
                 return True
         return False
     elif isinstance(decorator, ast.Call):
-        return is_target_decorator(decorator.func, decorator_type)
+        return _is_target_decorator(decorator.func, decorator_type)
     elif isinstance(decorator, ast.Name):
         return decorator.id == decorator_type
     return False
@@ -75,13 +75,13 @@ def find_functions_with_decorator(file_path: Path, decorator_type: str) -> list[
     Returns:
         List of function names that are decorated with the specified decorator.
     """
-    tree = get_ast_tree(file_path)
+    tree = _get_ast_tree(file_path)
     functions: list[str] = []
 
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             for decorator in node.decorator_list:
-                if is_target_decorator(decorator, decorator_type):
+                if _is_target_decorator(decorator, decorator_type):
                     functions.append(node.name)
                     break
 

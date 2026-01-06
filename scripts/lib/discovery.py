@@ -3,8 +3,8 @@
 from pathlib import Path
 from typing import Any, List, Sequence
 
-COMPONENT_FILENAME = "component.py"
-PIPELINE_FILENAME = "pipeline.py"
+_COMPONENT_FILENAME = "component.py"
+_PIPELINE_FILENAME = "pipeline.py"
 
 
 def get_repo_root() -> Path:
@@ -12,7 +12,7 @@ def get_repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def get_default_targets() -> tuple[Path, Path]:
+def _get_default_targets() -> tuple[Path, Path]:
     """Get the default component and pipeline target directories."""
     repo_root = get_repo_root()
     return repo_root / "components", repo_root / "pipelines"
@@ -31,7 +31,7 @@ def normalize_targets(raw_paths: Sequence[str]) -> List[Path]:
         FileNotFoundError: If any specified path does not exist.
     """
     repo_root = get_repo_root()
-    default_targets = get_default_targets()
+    default_targets = _get_default_targets()
 
     if not raw_paths:
         return [target for target in default_targets if target.exists()]
@@ -106,14 +106,14 @@ def resolve_component_path(repo_root: Path, raw: str) -> Path:
     path = path.resolve()
 
     if path.is_dir():
-        path = (path / COMPONENT_FILENAME).resolve()
+        path = (path / _COMPONENT_FILENAME).resolve()
 
     components_root = (repo_root / "components").resolve()
     if not path.is_relative_to(components_root):
         raise ValueError(f"Component path must be under {components_root}: {path}")
 
-    if path.name != COMPONENT_FILENAME:
-        raise ValueError(f"Component path must point to {COMPONENT_FILENAME}: {path}")
+    if path.name != _COMPONENT_FILENAME:
+        raise ValueError(f"Component path must point to {_COMPONENT_FILENAME}: {path}")
 
     if not path.exists():
         raise ValueError(f"Component file not found: {path}")
@@ -140,14 +140,14 @@ def resolve_pipeline_path(repo_root: Path, raw: str) -> Path:
     path = path.resolve()
 
     if path.is_dir():
-        path = (path / PIPELINE_FILENAME).resolve()
+        path = (path / _PIPELINE_FILENAME).resolve()
 
     pipelines_root = (repo_root / "pipelines").resolve()
     if not path.is_relative_to(pipelines_root):
         raise ValueError(f"Pipeline path must be under {pipelines_root}: {path}")
 
-    if path.name != PIPELINE_FILENAME:
-        raise ValueError(f"Pipeline path must point to {PIPELINE_FILENAME}: {path}")
+    if path.name != _PIPELINE_FILENAME:
+        raise ValueError(f"Pipeline path must point to {_PIPELINE_FILENAME}: {path}")
 
     if not path.exists():
         raise ValueError(f"Pipeline file not found: {path}")
@@ -179,7 +179,7 @@ def build_component_asset(repo_root: Path, component_file: Path) -> dict[str, An
     Returns:
         Dictionary containing path, category, name, and module_path.
     """
-    return _build_asset_dict_from_repo_path(repo_root, "components", component_file, COMPONENT_FILENAME)
+    return _build_asset_dict_from_repo_path(repo_root, "components", component_file, _COMPONENT_FILENAME)
 
 
 def build_pipeline_asset(repo_root: Path, pipeline_file: Path) -> dict[str, Any]:
@@ -192,4 +192,4 @@ def build_pipeline_asset(repo_root: Path, pipeline_file: Path) -> dict[str, Any]
     Returns:
         Dictionary containing path, category, name, and module_path.
     """
-    return _build_asset_dict_from_repo_path(repo_root, "pipelines", pipeline_file, PIPELINE_FILENAME)
+    return _build_asset_dict_from_repo_path(repo_root, "pipelines", pipeline_file, _PIPELINE_FILENAME)
