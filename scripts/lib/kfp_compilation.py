@@ -49,3 +49,30 @@ def compile_and_get_yaml(func: Any, output_path: str) -> dict[str, Any]:
     compiler.Compiler().compile(func, output_path)
     with open(output_path) as f:
         return yaml.safe_load(f)
+
+
+def find_decorated_functions(module: Any, decorator_type: str) -> list[tuple[str, Any]]:
+    """Find all functions decorated with @dsl.component or @dsl.pipeline at runtime.
+
+    Args:
+        module: The loaded Python module.
+        decorator_type: Either 'component' or 'pipeline'.
+
+    Returns:
+        List of tuples (function_name, function_object).
+    """
+    functions = []
+    for attr_name in dir(module):
+        if attr_name.startswith("_"):
+            continue
+        attr = getattr(module, attr_name, None)
+        if attr is None or not callable(attr):
+            continue
+        is_component = hasattr(attr, "component_spec") or (
+            getattr(attr, "__wrapped__", None) is not None and hasattr(getattr(attr, "__wrapped__"), "component_spec")
+        )
+        is_pipeline = hasattr(attr, "pipeline_spec") or getattr(attr, "_pipeline_func", None) is not None
+        is_match = (decorator_type == "component" and is_component) or (decorator_type == "pipeline" and is_pipeline)
+        if is_match:
+            functions.append((attr_name, attr))
+    return functions

@@ -15,7 +15,6 @@ from ...lib.discovery import (
     resolve_pipeline_path,
 )
 from ...lib.kfp_compilation import compile_and_get_yaml, load_module_from_path
-from ...lib.parsing import find_functions_with_decorator
 from ..validate_base_images import (
     ValidationConfig,
     _collect_violations,
@@ -273,27 +272,6 @@ class TestLoadModuleFromPath:
         """Test loading a non-existent module raises an exception."""
         with pytest.raises(Exception):
             load_module_from_path("/nonexistent/module.py", "nonexistent")
-
-
-class TestFindFunctionsWithDecorator:
-    """Tests for find_functions_with_decorator function (AST-based)."""
-
-    def test_find_component_functions(self):
-        """Test finding @dsl.component decorated functions."""
-        module_path = RESOURCES_DIR / "components/training/custom_image_component/component.py"
-
-        func_names = find_functions_with_decorator(module_path, "component")
-
-        assert len(func_names) == 1
-        assert func_names[0] == "train_model"
-
-    def test_find_pipeline_functions(self):
-        """Test finding @dsl.pipeline decorated functions."""
-        module_path = RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py"
-
-        func_names = find_functions_with_decorator(module_path, "pipeline")
-
-        assert "training_pipeline" in func_names
 
 
 class TestCompileAndGetYaml:
