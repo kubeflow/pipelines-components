@@ -35,6 +35,9 @@ jobs:
           python-version: "3.11"
           extra: lint
 
+      - name: Check uv.lock is in sync
+        run: uv lock --check
+
       - name: Determine changed Python files
         id: changed-python
         uses: ./.github/actions/detect-changed-assets
