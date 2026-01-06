@@ -14,11 +14,8 @@ from ...lib.discovery import (
     resolve_component_path,
     resolve_pipeline_path,
 )
-from ...lib.parsing import (
-    compile_and_get_yaml,
-    find_functions_with_decorator,
-    load_module_from_path,
-)
+from ...lib.kfp_compilation import compile_and_get_yaml, load_module_from_path
+from ...lib.parsing import find_functions_with_decorator
 from ..validate_base_images import (
     ValidationConfig,
     _collect_violations,

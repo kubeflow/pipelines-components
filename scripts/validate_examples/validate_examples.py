@@ -15,8 +15,8 @@ from typing import List, Sequence, Tuple
 from kfp import compiler
 
 from ..lib.discovery import get_repo_root, normalize_targets
+from ..lib.kfp_compilation import load_module_from_path as _load_module
 from ..lib.parsing import find_pipeline_functions
-from ..lib.parsing import load_module_from_path as _load_module
 
 REPO_ROOT = get_repo_root()
 

@@ -1,7 +1,5 @@
 """Asset discovery utilities for KFP components and pipelines."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any, List, Sequence
 
