@@ -1,7 +1,8 @@
 """Asset discovery utilities for KFP components and pipelines."""
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, List, Sequence
+from typing import Any
 
 _COMPONENT_FILENAME = "component.py"
 _PIPELINE_FILENAME = "pipeline.py"
@@ -18,7 +19,7 @@ def _get_default_targets() -> tuple[Path, Path]:
     return repo_root / "components", repo_root / "pipelines"
 
 
-def normalize_targets(raw_paths: Sequence[str]) -> List[Path]:
+def normalize_targets(raw_paths: Sequence[str]) -> list[Path]:
     """Normalize target paths to absolute Path objects.
 
     Args:
@@ -36,7 +37,7 @@ def normalize_targets(raw_paths: Sequence[str]) -> List[Path]:
     if not raw_paths:
         return [target for target in default_targets if target.exists()]
 
-    normalized: List[Path] = []
+    normalized: list[Path] = []
     for raw in raw_paths:
         candidate = Path(raw)
         if not candidate.is_absolute():
