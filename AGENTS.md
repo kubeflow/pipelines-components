@@ -4,9 +4,9 @@
 
 See also:
 
-- [Contributing Guide](CONTRIBUTING.md)
-- [Governance Guide](GOVERNANCE.md)
-- [Best Practices Guide](BESTPRACTICES.md)
+- [Contributing Guide](docs/CONTRIBUTING.md)
+- [Governance Guide](docs/GOVERNANCE.md)
+- [Best Practices Guide](docs/BESTPRACTICES.md)
 
 ## Sources of truth (keep this doc aligned)
 
@@ -15,12 +15,12 @@ If this guide conflicts with repository enforcement or process docs, treat these
 This guide is expected to stay current; when repository enforcement, CI, or contribution process changes (or when a
 difference is noted), update `AGENTS.md` alongside the change.
 
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) (required files, workflow, required metadata fields)
-- [`GOVERNANCE.md`](GOVERNANCE.md) (roles, ownership, lifecycle)
-- [`CONTRIBUTING.md` (metadata.yaml schema)](CONTRIBUTING.md#metadatayaml-schema)
-- [`scripts/validate_base_images/README.md`](../scripts/validate_base_images/README.md) (base image policy)
-- [`CONTRIBUTING.md` (Testing and Quality)](CONTRIBUTING.md#testing-and-quality)
-- CI workflows live under `.github/workflows/` (example: [`.github/workflows/python-lint.yml`](../.github/workflows/python-lint.yml))
+- [`CONTRIBUTING.md`](docs/CONTRIBUTING.md) (required files, workflow, required metadata fields)
+- [`GOVERNANCE.md`](docs/GOVERNANCE.md) (roles, ownership, lifecycle)
+- [`CONTRIBUTING.md` (metadata.yaml schema)](docs/CONTRIBUTING.md#metadatayaml-schema)
+- [`scripts/validate_base_images/README.md`](scripts/validate_base_images/README.md) (base image policy)
+- [`CONTRIBUTING.md` (Testing and Quality)](docs/CONTRIBUTING.md#testing-and-quality)
+- CI workflows live under `.github/workflows/` (example: [`.github/workflows/python-lint.yml`](.github/workflows/python-lint.yml))
 
 ## Agent modes
 
@@ -59,14 +59,14 @@ Good places to look:
 ### Required files
 
 When the agent changes or adds a component/pipeline directory, follow
-[the required files list](CONTRIBUTING.md#required-files).
+[the required files list](docs/CONTRIBUTING.md#required-files).
 
 ### Initial contributions: Pipelines Working Group approval
 
 For initial contributions (e.g., a new component/pipeline being introduced to the catalog), the repo requires
 Pipelines Working Group approval.
 
-For context on repository roles, decision-making, and approvals, see [`GOVERNANCE.md`](GOVERNANCE.md).
+For context on repository roles, decision-making, and approvals, see [`GOVERNANCE.md`](docs/GOVERNANCE.md).
 
 Process (expected for agents):
 
@@ -84,7 +84,7 @@ Use this prompt pattern:
 "Search `components/` for similar functionality and reuse if possible. If a new component is needed, create it under
 `components/<category>/<name>/` following `CONTRIBUTING.md` required files. Implement `component.py` with
 stdlib-only top-level imports (import heavy deps inside the function). Create `metadata.yaml` that conforms to
-the metadata schema defined in [`CONTRIBUTING.md`](CONTRIBUTING.md#metadatayaml-schema) (required field order, fresh `lastVerified`). Generate/validate
+the metadata schema defined in [`CONTRIBUTING.md`](docs/CONTRIBUTING.md#metadatayaml-schema) (required field order, fresh `lastVerified`). Generate/validate
 `README.md` using `scripts/generate_readme` conventions. Add unit tests using `.python_func()` and a LocalRunner test
 using `setup_and_teardown_subprocess_runner`. Reference an existing component like
 `components/data_processing/yoda_data_processor/` for patterns."
@@ -107,7 +107,7 @@ Goal: compose pipelines using components/pipelines from this repository without 
 
 Recommended references:
 
-- [`README.md`](../README.md) (repository overview / usage entry point)
+- [`README.md`](README.md) (repository overview / usage entry point)
 - Component and pipeline READMEs under `components/<category>/` and `pipelines/<category>/`
 - Kubeflow Pipelines docs (usage and authoring concepts): `https://www.kubeflow.org/docs/components/pipelines/`
 
@@ -117,8 +117,8 @@ Goal: improve repository automation and tooling under `scripts/`, `.github/scrip
 
 Canonical references:
 
-- [`scripts/README.md`](../scripts/README.md)
-- [`.github/scripts/README.md`](../.github/scripts/README.md)
+- [`scripts/README.md`](scripts/README.md)
+- [`.github/scripts/README.md`](.github/scripts/README.md)
 
 Use the same validations section below; it applies to repository maintenance changes as well.
 
@@ -126,14 +126,14 @@ Use the same validations section below; it applies to repository maintenance cha
 
 ### Dependencies and pre-commit
 
-Follow [`CONTRIBUTING.md`](CONTRIBUTING.md#dependency-management-uvlock) for dependency and lockfile management, and
-[`CONTRIBUTING.md`](CONTRIBUTING.md#pre-commit-validation) for pre-commit guidance.
+Follow [`CONTRIBUTING.md`](docs/CONTRIBUTING.md#dependency-management-uvlock) for dependency and lockfile management, and
+[`CONTRIBUTING.md`](docs/CONTRIBUTING.md#pre-commit-validation) for pre-commit guidance.
 
 ### Python lint and formatting
 
 Python lint/format is enforced by CI on pull requests and runs against **changed files**:
 
-- Workflow: [`.github/workflows/python-lint.yml`](../.github/workflows/python-lint.yml)
+- Workflow: [`.github/workflows/python-lint.yml`](.github/workflows/python-lint.yml)
 
 This uses Ruff formatting and linting (see `pyproject.toml` for configuration).
 
@@ -141,51 +141,51 @@ This uses Ruff formatting and linting (see `pyproject.toml` for configuration).
 
 Markdown is linted in CI on pull requests and runs against **changed files**:
 
-- Workflow: [`.github/workflows/markdown-lint.yml`](../.github/workflows/markdown-lint.yml)
-- Config: [`.markdownlint.json`](../.markdownlint.json)
+- Workflow: [`.github/workflows/markdown-lint.yml`](.github/workflows/markdown-lint.yml)
+- Config: [`.markdownlint.json`](.markdownlint.json)
 
 ### YAML lint
 
 YAML is linted in CI on pull requests and runs against **changed files**:
 
-- Workflow: [`.github/workflows/yaml-lint.yml`](../.github/workflows/yaml-lint.yml)
-- Config: [`.yamllint.yml`](../.yamllint.yml)
+- Workflow: [`.github/workflows/yaml-lint.yml`](.github/workflows/yaml-lint.yml)
+- Config: [`.yamllint.yml`](.yamllint.yml)
 
 ### Import guard (components/pipelines)
 
-Follow [`CONTRIBUTING.md` (Testing and Quality)](CONTRIBUTING.md#testing-and-quality).
+Follow [`CONTRIBUTING.md` (Testing and Quality)](docs/CONTRIBUTING.md#testing-and-quality).
 Allowlisted exceptions are defined in
-[`.github/scripts/check_imports/import_exceptions.yaml`](../.github/scripts/check_imports/import_exceptions.yaml).
+[`.github/scripts/check_imports/import_exceptions.yaml`](.github/scripts/check_imports/import_exceptions.yaml).
 
 ### Metadata schema validation
 
 Follow the canonical schema requirements in
-[`CONTRIBUTING.md` (metadata.yaml schema)](CONTRIBUTING.md#metadatayaml-schema).
+[`CONTRIBUTING.md` (metadata.yaml schema)](docs/CONTRIBUTING.md#metadatayaml-schema).
 
-CI workflow (reference): [`.github/workflows/validate-metadata-schema.yml`](../.github/workflows/validate-metadata-schema.yml).
+CI workflow (reference): [`.github/workflows/validate-metadata-schema.yml`](.github/workflows/validate-metadata-schema.yml).
 
 ### Base image validation
 
 Follow the canonical policy in
-[`scripts/validate_base_images/README.md`](../scripts/validate_base_images/README.md).
+[`scripts/validate_base_images/README.md`](scripts/validate_base_images/README.md).
 
-CI workflow (reference): [`.github/workflows/base-image-check.yml`](../.github/workflows/base-image-check.yml).
+CI workflow (reference): [`.github/workflows/base-image-check.yml`](.github/workflows/base-image-check.yml).
 
 ### README generation and sync
 
 Follow the canonical generator behavior in
-[`scripts/generate_readme/README.md`](../scripts/generate_readme/README.md) and keep READMEs in sync.
+[`scripts/generate_readme/README.md`](scripts/generate_readme/README.md) and keep READMEs in sync.
 
-CI workflow (reference): [`.github/workflows/readme-check.yml`](../.github/workflows/readme-check.yml).
+CI workflow (reference): [`.github/workflows/readme-check.yml`](.github/workflows/readme-check.yml).
 
 ### Tests
 
 Follow the canonical testing guidance:
 
-- Component/pipeline tests: [`CONTRIBUTING.md` (Component Testing Guide)](CONTRIBUTING.md#component-testing-guide)
-- Scripts tests: [`scripts/README.md`](../scripts/README.md) and [`.github/scripts/README.md`](../.github/scripts/README.md)
+- Component/pipeline tests: [`CONTRIBUTING.md` (Component Testing Guide)](docs/CONTRIBUTING.md#component-testing-guide)
+- Scripts tests: [`scripts/README.md`](scripts/README.md) and [`.github/scripts/README.md`](.github/scripts/README.md)
 
 Workflow references:
 
-- Component/pipeline tests: [`.github/workflows/component-pipeline-tests.yml`](../.github/workflows/component-pipeline-tests.yml)
-- Scripts tests: [`.github/workflows/scripts-tests.yml`](../.github/workflows/scripts-tests.yml)
+- Component/pipeline tests: [`.github/workflows/component-pipeline-tests.yml`](.github/workflows/component-pipeline-tests.yml)
+- Scripts tests: [`.github/workflows/scripts-tests.yml`](.github/workflows/scripts-tests.yml)

@@ -8,7 +8,6 @@ See also:
 
 - [Contributing Guide](CONTRIBUTING.md)
 - [Governance Guide](GOVERNANCE.md)
-- [Agents Guide](AGENTS.md)
 
 ## Sources of truth (keep this doc aligned)
 
