@@ -12,6 +12,9 @@ See also:
 
 If this guide conflicts with repository enforcement or process docs, treat these as sources of truth:
 
+This guide is expected to stay current; when repository enforcement, CI, or contribution process changes (or when a
+difference is noted), update `AGENTS.md` alongside the change.
+
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) (required files, workflow, required metadata fields)
 - [`GOVERNANCE.md`](GOVERNANCE.md) (roles, ownership, lifecycle)
 - [`CONTRIBUTING.md` (metadata.yaml schema)](CONTRIBUTING.md#metadatayaml-schema)
