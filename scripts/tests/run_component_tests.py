@@ -15,7 +15,7 @@ from typing import List, Sequence
 
 import pytest
 
-from ..utils import get_repo_root, normalize_targets
+from ..lib.discovery import get_repo_root, normalize_targets
 
 REPO_ROOT = get_repo_root()
 TIMEOUT_SECONDS = 120

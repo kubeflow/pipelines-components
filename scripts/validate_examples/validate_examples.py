@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import sys
 import tempfile
 import traceback
@@ -15,7 +14,9 @@ from typing import List, Sequence, Tuple
 
 from kfp import compiler
 
-from ..utils import find_pipeline_functions, get_repo_root, normalize_targets
+from ..lib.discovery import get_repo_root, normalize_targets
+from ..lib.kfp_compilation import load_module_from_path as _load_module
+from ..lib.parsing import find_pipeline_functions
 
 REPO_ROOT = get_repo_root()
 
@@ -90,15 +91,7 @@ def load_module_from_path(module_path: Path) -> ModuleType:
     relative = module_path.relative_to(REPO_ROOT)
     sanitized = "_".join(relative.with_suffix("").parts)
     module_name = f"example_pipelines__{sanitized}"
-
-    spec = importlib.util.spec_from_file_location(module_name, module_path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Unable to load module from {module_path}")
-
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-    return module
+    return _load_module(str(module_path), module_name)
 
 
 def collect_pipeline_functions(module_path: Path, module: ModuleType) -> List[Tuple[str, object]]:

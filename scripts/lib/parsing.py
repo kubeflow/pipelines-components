@@ -1,13 +1,10 @@
-"""Parsing-related utility functions."""
-
-from __future__ import annotations
+"""AST-based utilities for finding KFP decorated functions."""
 
 import ast
 from pathlib import Path
-from typing import List
 
 
-def get_ast_tree(file_path: Path) -> ast.AST:
+def _get_ast_tree(file_path: Path) -> ast.AST:
     """Get the parsed AST tree for a Python file.
 
     Args:
@@ -21,7 +18,7 @@ def get_ast_tree(file_path: Path) -> ast.AST:
     return ast.parse(source)
 
 
-def is_target_decorator(decorator: ast.AST, decorator_type: str) -> bool:
+def _is_target_decorator(decorator: ast.AST, decorator_type: str) -> bool:
     """Check if a decorator is a KFP component or pipeline decorator.
 
     Supports the following decorator formats (using component as an example):
@@ -38,12 +35,9 @@ def is_target_decorator(decorator: ast.AST, decorator_type: str) -> bool:
         True if the decorator is the given decoration_type, False otherwise.
     """
     if isinstance(decorator, ast.Attribute):
-        # Handle attribute-based decorators
         if decorator.attr == decorator_type:
-            # Check for @dsl.<function_type>
             if isinstance(decorator.value, ast.Name) and decorator.value.id == "dsl":
                 return True
-            # Check for @kfp.dsl.<function_type>
             if (
                 isinstance(decorator.value, ast.Attribute)
                 and decorator.value.attr == "dsl"
@@ -53,15 +47,13 @@ def is_target_decorator(decorator: ast.AST, decorator_type: str) -> bool:
                 return True
         return False
     elif isinstance(decorator, ast.Call):
-        # Handle decorators with arguments (e.g., @<function_type>(), @dsl.<function_type>())
-        return is_target_decorator(decorator.func, decorator_type)
+        return _is_target_decorator(decorator.func, decorator_type)
     elif isinstance(decorator, ast.Name):
-        # Handle @<function_type> (if imported directly)
         return decorator.id == decorator_type
     return False
 
 
-def find_pipeline_functions(file_path: Path) -> List[str]:
+def find_pipeline_functions(file_path: Path) -> list[str]:
     """Find all function names decorated with @dsl.pipeline.
 
     Args:
@@ -73,8 +65,8 @@ def find_pipeline_functions(file_path: Path) -> List[str]:
     return find_functions_with_decorator(file_path, "pipeline")
 
 
-def find_functions_with_decorator(file_path: Path, decorator_type: str) -> List[str]:
-    """Find all function names decorated with a specific KFP decorator
+def find_functions_with_decorator(file_path: Path, decorator_type: str) -> list[str]:
+    """Find all function names decorated with a specific KFP decorator.
 
     Args:
         file_path: Path to the Python file to parse.
@@ -83,15 +75,14 @@ def find_functions_with_decorator(file_path: Path, decorator_type: str) -> List[
     Returns:
         List of function names that are decorated with the specified decorator.
     """
-    tree = get_ast_tree(file_path)
-
-    functions: List[str] = []
+    tree = _get_ast_tree(file_path)
+    functions: list[str] = []
 
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             for decorator in node.decorator_list:
-                if is_target_decorator(decorator, decorator_type):
+                if _is_target_decorator(decorator, decorator_type):
                     functions.append(node.name)
-                    break  # Found the decorator, no need to check other decorators
+                    break
 
     return functions

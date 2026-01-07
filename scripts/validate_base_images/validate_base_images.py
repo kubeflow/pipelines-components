@@ -10,81 +10,34 @@ Usage:
 """
 
 import argparse
-import importlib.util
 import os
-import re
 import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import yaml
-from kfp import compiler
-
-ALLOWED_BASE_IMAGE_PREFIX = "ghcr.io/kubeflow/"
-COMPONENT_FILENAME = "component.py"
-PIPELINE_FILENAME = "pipeline.py"
-
-
-@dataclass(frozen=True)
-class BaseImageAllowlist:
-    """Allowlist configuration for base images."""
-
-    allowed_images: frozenset[str]
-    allowed_image_patterns: tuple[re.Pattern[str], ...]
-
-
-def load_base_image_allowlist(path: Path) -> BaseImageAllowlist:
-    """Load and parse base image allowlist from YAML file.
-
-    Args:
-        path: Path to the allowlist YAML file.
-
-    Returns:
-        Parsed allowlist configuration.
-
-    Raises:
-        ValueError: If the allowlist file is malformed or contains invalid patterns.
-    """
-    data = yaml.safe_load(path.read_text())
-    if data is None:
-        data = {}
-    if not isinstance(data, dict):
-        raise ValueError(f"Allowlist must be a YAML mapping: {path}")
-
-    allowed_images_raw = data.get("allowed_images", [])
-    allowed_patterns_raw = data.get("allowed_image_patterns", [])
-
-    if not isinstance(allowed_images_raw, list) or not all(isinstance(x, str) for x in allowed_images_raw):
-        raise ValueError(f"'allowed_images' must be a list of strings: {path}")
-    if not isinstance(allowed_patterns_raw, list) or not all(isinstance(x, str) for x in allowed_patterns_raw):
-        raise ValueError(f"'allowed_image_patterns' must be a list of regex strings: {path}")
-
-    try:
-        patterns = tuple(re.compile(p) for p in allowed_patterns_raw)
-    except re.error as e:
-        raise ValueError(f"Invalid regex in allowlist {path}: {e}") from e
-
-    return BaseImageAllowlist(
-        allowed_images=frozenset(allowed_images_raw),
-        allowed_image_patterns=patterns,
-    )
-
-
-def is_allowlisted_image(image: str, allowlist: BaseImageAllowlist) -> bool:
-    """Check if an image matches the allowlist.
-
-    Args:
-        image: Image name to check.
-        allowlist: Allowlist configuration.
-
-    Returns:
-        True if the image is in the allowlist or matches a pattern.
-    """
-    if image in allowlist.allowed_images:
-        return True
-    return any(p.match(image) for p in allowlist.allowed_image_patterns)
+from ..lib.base_image import (
+    ALLOWED_BASE_IMAGE_PREFIX,
+    BaseImageAllowlist,
+    extract_base_images,
+    load_base_image_allowlist,
+)
+from ..lib.base_image import is_valid_base_image as _is_valid_base_image
+from ..lib.base_image import validate_base_images as _validate_base_images
+from ..lib.discovery import (
+    build_component_asset,
+    build_pipeline_asset,
+    discover_assets,
+    get_repo_root,
+    resolve_component_path,
+    resolve_pipeline_path,
+)
+from ..lib.kfp_compilation import (
+    compile_and_get_yaml,
+    find_decorated_functions,
+    load_module_from_path,
+)
 
 
 @dataclass
@@ -115,259 +68,6 @@ def set_config(config: ValidationConfig) -> None:
     _config = config
 
 
-def get_repo_root() -> Path:
-    """Get the repository root directory."""
-    return Path(__file__).parent.parent.parent.resolve()
-
-
-def resolve_component_path(repo_root: Path, raw: str) -> Path:
-    """Resolve and validate a component file path.
-
-    Args:
-        repo_root: Repository root directory.
-        raw: Component path (directory or file path, relative or absolute).
-
-    Returns:
-        Resolved path to the component.py file.
-
-    Raises:
-        ValueError: If the path is invalid or outside the components directory.
-    """
-    path = Path(raw)
-    if not path.is_absolute():
-        path = repo_root / path
-    path = path.resolve()
-
-    if path.is_dir():
-        path = (path / COMPONENT_FILENAME).resolve()
-
-    components_root = (repo_root / "components").resolve()
-    if not path.is_relative_to(components_root):
-        raise ValueError(f"Component path must be under {components_root}: {path}")
-
-    if path.name != COMPONENT_FILENAME:
-        raise ValueError(f"Component path must point to {COMPONENT_FILENAME}: {path}")
-
-    if not path.exists():
-        raise ValueError(f"Component file not found: {path}")
-
-    return path
-
-
-def resolve_pipeline_path(repo_root: Path, raw: str) -> Path:
-    """Resolve and validate a pipeline file path.
-
-    Args:
-        repo_root: Repository root directory.
-        raw: Pipeline path (directory or file path, relative or absolute).
-
-    Returns:
-        Resolved path to the pipeline.py file.
-
-    Raises:
-        ValueError: If the path is invalid or outside the pipelines directory.
-    """
-    path = Path(raw)
-    if not path.is_absolute():
-        path = repo_root / path
-    path = path.resolve()
-
-    if path.is_dir():
-        path = (path / PIPELINE_FILENAME).resolve()
-
-    pipelines_root = (repo_root / "pipelines").resolve()
-    if not path.is_relative_to(pipelines_root):
-        raise ValueError(f"Pipeline path must be under {pipelines_root}: {path}")
-
-    if path.name != PIPELINE_FILENAME:
-        raise ValueError(f"Pipeline path must point to {PIPELINE_FILENAME}: {path}")
-
-    if not path.exists():
-        raise ValueError(f"Pipeline file not found: {path}")
-
-    return path
-
-
-def _build_asset_dict_from_repo_path(
-    repo_root: Path, asset_root: str, asset_file: Path, expected_filename: str
-) -> dict[str, Any]:
-    root = (repo_root / asset_root).resolve()
-    resolved = asset_file.resolve()
-    if resolved.name != expected_filename:
-        raise ValueError(f"Expected {expected_filename} under {asset_root}: {asset_file}")
-    rel = resolved.relative_to(root)
-    if len(rel.parts) < 3:
-        raise ValueError(f"Path must be {asset_root}/<category>/<name>/{expected_filename}: {asset_file}")
-    category, name = rel.parts[0], rel.parts[1]
-    return {"path": asset_file, "category": category, "name": name, "module_path": str(asset_file)}
-
-
-def build_component_asset(repo_root: Path, component_file: Path) -> dict[str, Any]:
-    """Build asset metadata dictionary for a component.
-
-    Args:
-        repo_root: Repository root directory.
-        component_file: Path to the component.py file.
-
-    Returns:
-        Dictionary containing path, category, name, and module_path.
-    """
-    return _build_asset_dict_from_repo_path(repo_root, "components", component_file, COMPONENT_FILENAME)
-
-
-def build_pipeline_asset(repo_root: Path, pipeline_file: Path) -> dict[str, Any]:
-    """Build asset metadata dictionary for a pipeline.
-
-    Args:
-        repo_root: Repository root directory.
-        pipeline_file: Path to the pipeline.py file.
-
-    Returns:
-        Dictionary containing path, category, name, and module_path.
-    """
-    return _build_asset_dict_from_repo_path(repo_root, "pipelines", pipeline_file, PIPELINE_FILENAME)
-
-
-def discover_assets(base_dir: Path, asset_type: str) -> list[dict[str, Any]]:
-    """Discover all components or pipelines in a directory.
-
-    Args:
-        base_dir: Base directory to search (components/ or pipelines/)
-        asset_type: Either 'component' or 'pipeline'
-
-    Returns:
-        List of dicts with 'path', 'category', 'name', and 'module_path' keys
-    """
-    assets = []
-    filename = f"{asset_type}.py"
-
-    if not base_dir.exists():
-        return assets
-
-    for category_dir in base_dir.iterdir():
-        if not category_dir.is_dir() or category_dir.name.startswith(("_", ".")):
-            continue
-
-        for asset_dir in category_dir.iterdir():
-            if not asset_dir.is_dir() or asset_dir.name.startswith(("_", ".")):
-                continue
-
-            asset_file = asset_dir / filename
-            if asset_file.exists():
-                assets.append(
-                    {
-                        "path": asset_file,
-                        "category": category_dir.name,
-                        "name": asset_dir.name,
-                        "module_path": str(asset_file),
-                    }
-                )
-
-    return assets
-
-
-def load_module_from_path(module_path: str, module_name: str) -> Any:
-    """Dynamically load a Python module from a file path."""
-    spec = importlib.util.spec_from_file_location(module_name, module_path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Could not load module from {module_path}")
-
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-def find_decorated_functions(module: Any, decorator_type: str) -> list[tuple[str, Any]]:
-    """Find all functions decorated with @dsl.component or @dsl.pipeline.
-
-    Args:
-        module: The loaded Python module
-        decorator_type: Either 'component' or 'pipeline'
-
-    Returns:
-        List of tuples (function_name, function_object)
-    """
-    functions = []
-
-    for attr_name in dir(module):
-        if attr_name.startswith("_"):
-            continue
-
-        attr = getattr(module, attr_name, None)
-        if attr is None or not callable(attr):
-            continue
-
-        is_component = (
-            hasattr(attr, "component_spec")
-            or getattr(attr, "__wrapped__", None) is not None
-            and hasattr(getattr(attr, "__wrapped__"), "component_spec")
-        )
-        is_pipeline = hasattr(attr, "pipeline_spec") or getattr(attr, "_pipeline_func", None) is not None
-
-        is_match = (decorator_type == "component" and is_component) or (decorator_type == "pipeline" and is_pipeline)
-        if is_match:
-            functions.append((attr_name, attr))
-
-    return functions
-
-
-def compile_and_get_yaml(func: Any, output_path: str) -> dict[str, Any] | None:
-    """Compile a component or pipeline function and return the parsed YAML.
-
-    Returns None if compilation fails.
-    """
-    try:
-        compiler.Compiler().compile(func, output_path)
-        with open(output_path) as f:
-            return yaml.safe_load(f)
-    except Exception as e:
-        print(f"  Warning: Failed to compile {func}: {e}")
-        return None
-
-
-def extract_base_images(ir_yaml: dict[str, Any]) -> set[str]:
-    """Extract base_image values from a compiled KFP IR YAML.
-
-    The KFP IR YAML structure typically has:
-    - deploymentSpec.executors.<executor_name>.container.image
-
-    Returns a set of unique base image values.
-    """
-    images = set()
-
-    if not ir_yaml:
-        return images
-
-    deployment_spec = ir_yaml.get("deploymentSpec", {})
-    executors = deployment_spec.get("executors", {})
-
-    for executor_name, executor_config in executors.items():
-        container = executor_config.get("container", {})
-        image = container.get("image")
-        if image:
-            images.add(image)
-
-    root = ir_yaml.get("root", {})
-    dag = root.get("dag", {})
-    tasks = dag.get("tasks", {})
-
-    for task_name, task_config in tasks.items():
-        component_ref = task_config.get("componentRef", {})
-        if "image" in component_ref:
-            images.add(component_ref["image"])
-
-    components = ir_yaml.get("components", {})
-    for comp_name, comp_config in components.items():
-        executor_label = comp_config.get("executorLabel")
-        if executor_label and executor_label in executors:
-            container = executors[executor_label].get("container", {})
-            if "image" in container:
-                images.add(container["image"])
-
-    return images
-
-
 def is_valid_base_image(image: str, config: ValidationConfig | None = None) -> bool:
     """Check if a base image is valid according to configuration.
 
@@ -386,13 +86,10 @@ def is_valid_base_image(image: str, config: ValidationConfig | None = None) -> b
     if config is None:
         config = get_config()
 
-    if not image:
-        return True
-    if image.startswith(config.allowed_prefix):
-        return True
     if config.allowlist is None:
         config.allowlist = load_base_image_allowlist(config.allowlist_path)
-    return is_allowlisted_image(image, config.allowlist)
+
+    return _is_valid_base_image(image, config.allowed_prefix, config.allowlist)
 
 
 def validate_base_images(images: set[str], config: ValidationConfig | None = None) -> list[str]:
@@ -407,21 +104,11 @@ def validate_base_images(images: set[str], config: ValidationConfig | None = Non
     """
     if config is None:
         config = get_config()
-    return [img for img in images if not is_valid_base_image(img, config)]
 
+    if config.allowlist is None:
+        config.allowlist = load_base_image_allowlist(config.allowlist_path)
 
-def _find_any_decorated_functions(module: Any) -> list[tuple[str, Any]]:
-    """Fallback to find any KFP decorated functions in a module."""
-    functions = []
-    for attr_name in dir(module):
-        if attr_name.startswith("_"):
-            continue
-        attr = getattr(module, attr_name, None)
-        if attr is None or not callable(attr):
-            continue
-        if hasattr(attr, "component_spec") or hasattr(attr, "pipeline_spec"):
-            functions.append((attr_name, attr))
-    return functions
+    return _validate_base_images(images, config.allowed_prefix, config.allowlist)
 
 
 def _create_result(asset: dict[str, Any], asset_type: str) -> dict[str, Any]:
@@ -462,18 +149,17 @@ def process_asset(
 
     functions = find_decorated_functions(module, asset_type)
     if not functions:
-        functions = _find_any_decorated_functions(module)
-
-    if not functions:
         result["errors"].append(f"No @dsl.{asset_type} decorated functions found")
         return result
 
     for func_name, func in functions:
         output_path = os.path.join(temp_dir, f"{module_name}_{func_name}.yaml")
-        ir_yaml = compile_and_get_yaml(func, output_path)
-        if ir_yaml:
+        try:
+            ir_yaml = compile_and_get_yaml(func, output_path)
             result["compiled"] = True
             result["base_images"].update(extract_base_images(ir_yaml))
+        except Exception as e:
+            print(f"  Warning: Failed to compile {func}: {e}")
 
     result["invalid_base_images"] = validate_base_images(result["base_images"], config)
 
