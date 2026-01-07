@@ -45,7 +45,8 @@ Before adding anything new:
 
 Good places to look:
 
-- `components/data_processing/` (example component: `yoda_data_processor`)
+- `components/` and `pipelines/` category directories for similar patterns and reusable building blocks (example:
+  `components/data_processing/yoda_data_processor`)
 - `scripts/generate_skeleton/` (canonical templates)
 - `scripts/generate_readme/` (README generation expectations)
 
