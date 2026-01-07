@@ -16,6 +16,7 @@ When this guide conflicts with other docs or enforcement, treat these as sources
 
 - **Contribution workflow + required files**: [`CONTRIBUTING.md`](CONTRIBUTING.md)
 - **Ownership / lifecycle**: [`GOVERNANCE.md`](GOVERNANCE.md)
+- **Dependencies and pre-commit**: [`CONTRIBUTING.md` (dependency management)](CONTRIBUTING.md#dependency-management-uvlock) and [`CONTRIBUTING.md` (pre-commit validation)](CONTRIBUTING.md#pre-commit-validation)
 - **Metadata requirements**: [`CONTRIBUTING.md` (metadata.yaml schema)](CONTRIBUTING.md#metadatayaml-schema) and [`GOVERNANCE.md` (verification and removal)](GOVERNANCE.md#verification-and-removal)
 - **Base image policy**: [`scripts/validate_base_images/README.md`](../scripts/validate_base_images/README.md)
 - **Import guard**: [`CONTRIBUTING.md` (Testing and Quality)](CONTRIBUTING.md#testing-and-quality)

@@ -120,6 +120,11 @@ Use the same validations section below; it applies to repository maintenance cha
 
 ## Repository validations an agent must satisfy
 
+### Dependencies and pre-commit
+
+Follow [`CONTRIBUTING.md`](CONTRIBUTING.md#dependency-management-uvlock) for dependency and lockfile management, and
+[`CONTRIBUTING.md`](CONTRIBUTING.md#pre-commit-validation) for pre-commit guidance.
+
 ### Python lint and formatting
 
 Python lint/format is enforced by CI on pull requests and runs against **changed files**:
