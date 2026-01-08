@@ -143,7 +143,6 @@ Your `metadata.yaml` must include these fields:
 
 ```yaml
 name: my_component
-tier: core  # 'core' or 'third_party'
 stability: stable  # 'alpha', 'beta', or 'stable'
 dependencies:
   kubeflow:

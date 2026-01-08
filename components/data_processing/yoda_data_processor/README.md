@@ -20,7 +20,6 @@ and saves them as output artifacts.
 ## Metadata 🗂️
 
 - **Name**: yoda_data_processor
-- **Tier**: core
 - **Stability**: alpha
 - **Dependencies**:
   - Kubeflow:

@@ -1,5 +1,5 @@
+---
 name: yoda_data_processor
-tier: core
 stability: alpha  # New component without proven track record
 dependencies:
   kubeflow:
