@@ -9,3 +9,8 @@ files:
     - tests
   "pipelines/**/tests/*":
     - tests
+  # Allow pipelines to import the repo package at module scope
+  "pipelines/*.py":
+    - kfp_components
+  "pipelines/**/*.py":
+    - kfp_components

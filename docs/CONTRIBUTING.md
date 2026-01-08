@@ -489,6 +489,12 @@ standard library. Heavy dependencies (like `kfp`, `pandas`, etc.) should be impo
 function/pipeline bodies. Exceptions can be added to
 `.github/scripts/check_imports/import_exceptions.yaml` when justified (e.g., for test files
 importing `pytest`).
+Note: `kfp` is allowlisted at module scope; `kfp_components` is allowlisted at module scope for `pipelines/**`.
+
+**Common error**: `imports non-stdlib module '<module>' at top level`
+
+This often happens in modules under `components/` or `pipelines/`.
+Keep top-level imports lightweight and move heavier third-party imports inside pipeline/component bodies.
 
 ### Component Testing Guide
 
