@@ -31,6 +31,7 @@ test = [
     "docstring-parser",
     "jinja2",
     "semver",
+    "pip",
 ]
 # Local development (extends test with additional tools)
 dev = [
