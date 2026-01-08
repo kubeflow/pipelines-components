@@ -1,0 +1,48 @@
+name: Stale Component Check
+
+on:
+  schedule:
+    # Run weekly on Monday at 9:00 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (do not create issues)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  check-stale-components:
+    name: Check for stale components
+    runs-on: ubuntu-24.04
+    permissions:
+      issues: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Python CI
+        uses: ./.github/actions/setup-python-ci
+        with:
+          python-version: 3.11
+
+      - name: Create issues for stale components
+        if: github.event.inputs.dry_run != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          uv run .github/scripts/create_stale_issues/create_stale_issues.py \
+            --repo ${{ github.repository }}
+
+      - name: Dry run (show what would be created)
+        if: github.event.inputs.dry_run == 'true'
+        run: |
+          uv run .github/scripts/create_stale_issues/create_stale_issues.py \
+            --repo ${{ github.repository }} \
+            --dry-run
+
