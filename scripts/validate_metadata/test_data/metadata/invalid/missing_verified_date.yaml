@@ -1,6 +1,5 @@
 ---
 name: missing-verified-date
-tier: core
 stability: alpha
 dependencies:
   kubeflow:

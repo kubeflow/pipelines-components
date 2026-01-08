@@ -9,11 +9,9 @@ import yaml
 from semver import Version
 
 # The following ordered fields are required in a metadata.yaml file.
-REQUIRED_FIELDS = ["name", "tier", "stability", "dependencies", "lastVerified"]
+REQUIRED_FIELDS = ["name", "stability", "dependencies", "lastVerified"]
 # The following fields are optional in a metadata.yaml file.
 OPTIONAL_FIELDS = ["tags", "ci", "links"]
-# 'Tier' must be 'core' or 'third-party'.
-TIER_OPTIONS = ["core", "third_party"]
 # 'Stability' must be 'alpha', 'beta', or 'stable'.
 STABILITY_OPTIONS = ["alpha", "beta", "stable"]
 # 'Dependencies' must contain 'kubeflow' and can contain 'external_services'.
@@ -230,15 +228,7 @@ def validate_required_fields(metadata: dict):
     for field in metadata:
         value_type = type(metadata.get(field)).__name__
 
-        if field == "tier":
-            tier_val = metadata.get("tier")
-            if tier_val not in TIER_OPTIONS:
-                raise ValidationError(
-                    f"Invalid 'tier' value in {METADATA} for '{name}': '{tier_val}'. "
-                    f"Expected a scalar string from the following options: {TIER_OPTIONS}."
-                )
-
-        elif field == "stability":
+        if field == "stability":
             stability_val = metadata.get("stability")
             if stability_val not in STABILITY_OPTIONS:
                 raise ValidationError(

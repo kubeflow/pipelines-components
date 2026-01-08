@@ -1,6 +1,5 @@
 ---
 name: invalid-ci
-tier: core
 stability: alpha
 dependencies:
   kubeflow:

@@ -1,6 +1,5 @@
 ---
 name: invalid-dependencies-type
-tier: third_party
 stability: alpha
 dependencies: "invalid-dependencies-type"
 tags:

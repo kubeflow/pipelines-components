@@ -1,6 +1,5 @@
 ---
 name: invalid-ci-category
-tier: core
 stability: stable
 dependencies:
   kubeflow:
