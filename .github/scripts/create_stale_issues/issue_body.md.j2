@@ -1,0 +1,26 @@
+## Component Verification Required
+
+The component **{{ name }}** has not been verified in over 365 days.
+
+| Field                   | Value               |
+|-------------------------|---------------------|
+| Path                    | `{{ path }}`        |
+| Last Verified           | {{ last_verified }} |
+| Days Since Verification | {{ age_days }}      |
+
+### Maintainers
+
+{{ owners_mention }}
+
+### How to Resolve
+
+1. Verify the component still works with the current KFP version
+2. Run any associated tests
+3. Update `lastVerified` in `{{ path }}/metadata.yaml`:
+
+```yaml
+lastVerified: {{ today }}
+```
+
+4. Submit a PR with the updated metadata
+
