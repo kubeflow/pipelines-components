@@ -1,0 +1,16 @@
+name: download_model_from_hf
+tier: core
+stability: alpha
+dependencies:
+  kubeflow:
+    - name: Pipelines
+      version: '>=2.5'
+  external_services: {}
+tags:
+  - deployment
+lastVerified: 2025-01-08T00:00:00Z
+ci:
+  skip_dependency_probe: false
+links:
+  documentation: https://huggingface.co/docs/huggingface_hub/guides/download
+  issue_tracker: https://github.com/kubeflow/pipelines-components/issues
