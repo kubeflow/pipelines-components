@@ -6,7 +6,7 @@ directories, compiles them using kfp.compiler to generate IR YAML, and extracts
 base_image values from the pipeline specifications.
 
 Usage:
-    uv run scripts/validate_base_images/validate_base_images.py
+    uv run python -m scripts.validate_base_images.validate_base_images
 """
 
 import argparse
@@ -18,7 +18,6 @@ from pathlib import Path
 from typing import Any
 
 from ..lib.base_image import (
-    ALLOWED_BASE_IMAGE_PREFIX,
     BaseImageAllowlist,
     extract_base_images,
     load_base_image_allowlist,
@@ -33,18 +32,13 @@ from ..lib.discovery import (
     resolve_component_path,
     resolve_pipeline_path,
 )
-from ..lib.kfp_compilation import (
-    compile_and_get_yaml,
-    find_decorated_functions,
-    load_module_from_path,
-)
+from ..lib.kfp_compilation import compile_and_get_yaml, find_decorated_functions_runtime, load_module_from_path
 
 
 @dataclass
 class ValidationConfig:
     """Configuration for base image validation."""
 
-    allowed_prefix: str = ALLOWED_BASE_IMAGE_PREFIX
     allowlist_path: Path = Path(__file__).parent / "base_image_allowlist.yaml"
     allowlist: BaseImageAllowlist | None = None
 
@@ -72,7 +66,6 @@ def is_valid_base_image(image: str, config: ValidationConfig | None = None) -> b
     """Check if a base image is valid according to configuration.
 
     Valid base images either:
-    - Start with the configured allowed_prefix (default: 'ghcr.io/kubeflow/')
     - Are empty/unset (represented as empty string or None)
     - Match the configured allowlist file
 
@@ -89,10 +82,10 @@ def is_valid_base_image(image: str, config: ValidationConfig | None = None) -> b
     if config.allowlist is None:
         config.allowlist = load_base_image_allowlist(config.allowlist_path)
 
-    return _is_valid_base_image(image, config.allowed_prefix, config.allowlist)
+    return _is_valid_base_image(image, config.allowlist)
 
 
-def validate_base_images(images: set[str], config: ValidationConfig | None = None) -> list[str]:
+def validate_base_images(images: set[str], config: ValidationConfig | None = None) -> set[str]:
     """Validate a set of base images and return invalid ones.
 
     Args:
@@ -100,7 +93,7 @@ def validate_base_images(images: set[str], config: ValidationConfig | None = Non
         config: Optional ValidationConfig; uses global config if not provided
 
     Returns:
-        List of invalid base image strings
+        Set of invalid base image strings
     """
     if config is None:
         config = get_config()
@@ -108,7 +101,7 @@ def validate_base_images(images: set[str], config: ValidationConfig | None = Non
     if config.allowlist is None:
         config.allowlist = load_base_image_allowlist(config.allowlist_path)
 
-    return _validate_base_images(images, config.allowed_prefix, config.allowlist)
+    return _validate_base_images(images, config.allowlist)
 
 
 def _create_result(asset: dict[str, Any], asset_type: str) -> dict[str, Any]:
@@ -119,7 +112,7 @@ def _create_result(asset: dict[str, Any], asset_type: str) -> dict[str, Any]:
         "type": asset_type,
         "path": str(asset["path"]),
         "base_images": set(),
-        "invalid_base_images": [],
+        "invalid_base_images": set(),
         "errors": [],
         "compiled": False,
     }
@@ -147,21 +140,33 @@ def process_asset(
         result["errors"].append(f"Failed to load module: {e}")
         return result
 
-    functions = find_decorated_functions(module, asset_type)
+    functions = find_decorated_functions_runtime(module, asset_type)
     if not functions:
         result["errors"].append(f"No @dsl.{asset_type} decorated functions found")
         return result
 
+    compiled_count = 0
+    failed_count = 0
     for func_name, func in functions:
         output_path = os.path.join(temp_dir, f"{module_name}_{func_name}.yaml")
         try:
             ir_yaml = compile_and_get_yaml(func, output_path)
             result["compiled"] = True
+            compiled_count += 1
             result["base_images"].update(extract_base_images(ir_yaml))
         except Exception as e:
+            failed_count += 1
             print(f"  Warning: Failed to compile {func}: {e}")
 
+    if not result["compiled"]:
+        result["errors"].append(f"All {len(functions)} function(s) failed to compile")
+    elif failed_count:
+        result["errors"].append(
+            f"{failed_count}/{len(functions)} function(s) failed to compile ({compiled_count} succeeded)"
+        )
+
     result["invalid_base_images"] = validate_base_images(result["base_images"], config)
+    result["base_images"] = sorted(result["base_images"])
 
     return result
 
@@ -237,11 +242,11 @@ def _print_violations(violations: list[dict[str, Any]], config: ValidationConfig
     print()
 
     print(f"Invalid base images ({len(violations)}):")
-    print(f"  Base images must start with '{config.allowed_prefix}', be unset, or match the allowlist.")
+    print("  Base images must be unset or match the allowlist.")
     print(f"  Allowlist: {config.allowlist_path}")
     print()
     print("  To fix this issue, either:")
-    print(f"    1. Use an approved base image (e.g., '{config.allowed_prefix}pipelines-components-<name>:<tag>')")
+    print("    1. Use an approved base image (e.g., 'ghcr.io/kubeflow/pipelines-components-<name>:<tag>')")
     print("    2. Leave base_image unset to use the KFP SDK default image")
     print(f"    3. Add an allowlist entry in {config.allowlist_path}")
     print()
@@ -300,11 +305,8 @@ def _print_final_status(
 
     if violations:
         print(f"FAILED: {len(violations)} violation(s) found.")
-        print(f"  - {len(violations)} invalid base image(s): must use '{config.allowed_prefix}' registry")
-        print(
-            f"    (e.g., '{config.allowed_prefix}pipelines-components-<name>:<tag>'), "
-            f"leave unset, or match the allowlist."
-        )
+        print(f"  - {len(violations)} invalid base image(s): must match the allowlist")
+        print("    (e.g., 'ghcr.io/kubeflow/pipelines-components-<name>:<tag>'), leave unset, or match the allowlist.")
         print(f"    Allowlist: {config.allowlist_path}")
         return 1
 
@@ -363,7 +365,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Valid base images are:
-  - ghcr.io/kubeflow/* (Kubeflow registry images)
   - images matching scripts/validate_base_images/base_image_allowlist.yaml
 
 Examples:
@@ -432,7 +433,6 @@ def main(argv: list[str] | None = None) -> int:
     print("Kubeflow Pipelines Base Image Validator")
     print("=" * 70)
     print()
-    print(f"Allowed prefix: {config.allowed_prefix}")
     print(f"Allowlist: {config.allowlist_path}")
     print()
 
