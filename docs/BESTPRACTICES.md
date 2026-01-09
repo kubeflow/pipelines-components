@@ -29,7 +29,7 @@ authors. Additional guidance will be added over time as the repository matures.
   installations beyond the repo's base tooling (`kfp`, `pytest`, stdlib).
 - Import guard applies: avoid importing non-stdlib modules at module scope (with
   limited exceptions like `kfp`; `kfp_components` is allowlisted for `pipelines/**`).
-  Import heavier third-party dependencies inside the pipeline function body instead.
+  Import runtime dependencies inside the function body instead.
 
 ## Additional Topics (Coming Soon)
 
