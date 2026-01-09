@@ -494,7 +494,7 @@ Note: `kfp` is allowlisted at module scope; `kfp_components` is allowlisted at m
 **Common error**: `imports non-stdlib module '<module>' at top level`
 
 This often happens in modules under `components/` or `pipelines/`.
-Keep top-level imports lightweight and move heavier third-party imports inside pipeline/component bodies.
+Keep top-level imports to a bare minimum for compilation, and place imports needed at runtime inside pipeline/component bodies.
 
 ### Component Testing Guide
 
