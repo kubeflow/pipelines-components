@@ -187,6 +187,30 @@ The `OWNERS` file enables code review automation by leveraging PROW commands:
 See [full Prow documentation](https://docs.prow.k8s.io/docs/components/plugins/approve/approvers/#lgtm-label)
 for usage details.
 
+## Branching Strategy
+
+This repository follows a branch naming convention aligned with Kubeflow Pipelines:
+
+| Branch                    | Purpose                                    | Base Image Tag        |
+|---------------------------|--------------------------------------------|-----------------------|
+| `main`                    | Active development                         | `:main`               |
+| `release-<major>.<minor>` | Release maintenance (e.g., `release-1.11`) | `:v<major>.<minor>.0` |
+
+### Release Branches
+
+Release branches are created for each minor version release:
+
+- **Naming:** `release-<major>.<minor>` (e.g., `release-1.11`, `release-2.0`)
+- **Purpose:** Maintain stable releases and backport critical fixes
+- **Base images:** Components on release branches should reference the release tag (e.g., `:v1.11.0`)
+
+When working on a release branch:
+
+```python
+# For release-1.11, components should use:
+@dsl.component(base_image="ghcr.io/kubeflow/pipelines-components-example:v1.11.0")
+```
+
 ## Development Workflow
 
 ### 1. Create Your Feature Branch

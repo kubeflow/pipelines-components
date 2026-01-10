@@ -5,6 +5,9 @@ env:
   VALIDATION_SCRIPT_PATH: $GITHUB_WORKSPACE/scripts/validate_metadata/validate_metadata.py
 on:
   pull_request:
+    branches:
+      - 'main'
+      - 'release-*'
     paths:
       - 'components/**'
       - 'pipelines/**'
