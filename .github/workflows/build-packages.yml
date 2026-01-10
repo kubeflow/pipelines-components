@@ -1,22 +1,47 @@
 ---
 name: Build and Test Python Packages
 
+# Reusable build/validation workflow; callable via push/PR or workflow_call.
 on:
   push:
     branches:
       - main
-    tags:
-      - 'v*'
   pull_request:
     branches:
       - main
+  workflow_call:
+    inputs:
+      python_versions:
+        description: 'JSON array of Python versions for the matrix, e.g. ["3.11","3.13"]'
+        required: false
+        type: string
+        default: '["3.11","3.13"]'
+      publish_packages:
+        description: 'Set true to build from sdist and publish to PyPI'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write  # Required when publishing via Trusted Publishing
+    # Flag release mode based on trigger inputs or tagged builds.
+    env:
+      SHOULD_PUBLISH: >-
+        ${{ (github.event_name == 'workflow_call' && inputs.publish_packages)
+            || (github.event_name != 'workflow_call'
+            && (github.ref matches '^refs/tags/v[0-9]+\\.[0-9]+\\.[0-9]+$')) }}
     strategy:
       matrix:
-        python-version: ["3.11", "3.13"]
+        python-version: >-
+          ${{ fromJson(
+            github.event_name == 'workflow_call' && inputs.python_versions != ''
+              ? inputs.python_versions
+              : '["3.11","3.13"]'
+          ) }}
 
     name: Build packages (Python ${{ matrix.python-version }})
 
@@ -31,7 +56,38 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      # Release-mode builders regenerate artifacts from the sdist and validate metadata.
+      - name: Install build tools for release artifacts
+        if: env.SHOULD_PUBLISH == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build twine
+
+      - name: Build release sdist
+        if: env.SHOULD_PUBLISH == 'true'
+        run: |
+          rm -rf dist
+          python -m build --sdist --outdir dist
+
+      - name: Rebuild wheel from sdist
+        if: env.SHOULD_PUBLISH == 'true'
+        run: |
+          set -eux
+          tmp_dir="$(mktemp -d)"
+          sdist_path="$(ls dist/*.tar.gz)"
+          tar -xzf "$sdist_path" -C "$tmp_dir"
+          sdist_root="$(find "$tmp_dir" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          python -m build --wheel --outdir "$tmp_dir/dist" "$sdist_root"
+          cp "$tmp_dir/dist"/*.whl dist/
+
+      - name: Run Twine checks
+        if: env.SHOULD_PUBLISH == 'true'
+        run: |
+          python -m twine check dist/*
+
+      # Validation path: standard build/test workflow across matrix versions.
       - name: Build Package
+        if: env.SHOULD_PUBLISH != 'true'
         run: |
           echo "Building package (kfp-components)..."
           uv build --out-dir dist/
@@ -72,3 +128,9 @@ jobs:
           name: package-py${{ matrix.python-version }}
           path: dist/
           retention-days: 30
+
+      - name: Publish to PyPI
+        if: env.SHOULD_PUBLISH == 'true' && matrix.python-version == '3.11'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
