@@ -15,7 +15,8 @@ import tempfile
 import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Sequence
+from collections.abc import Sequence
+from typing import Optional
 
 from kfp.dsl import graph_component
 
@@ -41,9 +42,9 @@ class ValidationResult:
 
     target: MetadataTarget
     success: bool
-    compiled_objects: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    errors: List[str] = field(default_factory=list)
+    compiled_objects: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
     def add_error(self, message: str) -> None:
         """Record a validation error and mark the result unsuccessful."""
@@ -174,7 +175,7 @@ def run_validation(args: argparse.Namespace) -> int:
         logging.info("No targets discovered for compile check.")
         return 0
 
-    results: List[ValidationResult] = []
+    results: list[ValidationResult] = []
     for target in targets:
         display_name = target.metadata.get("name")
         if not display_name:

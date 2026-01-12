@@ -8,7 +8,7 @@ import tempfile
 import textwrap
 import unittest
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import yaml
 from scripts.compile_check import compile_check
@@ -58,7 +58,7 @@ class CompileCheckTestCase(unittest.TestCase):
         self,
         component_name: str,
         *,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
         body: str,
     ) -> Path:
         component_root = self.repo_root / "components"
@@ -105,7 +105,7 @@ class CompileCheckTestCase(unittest.TestCase):
         self,
         pipeline_name: str,
         *,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
         body: str,
         with_decorator: bool = True,
     ) -> Path:

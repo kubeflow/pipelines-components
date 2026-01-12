@@ -5,7 +5,9 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Optional
+
+from collections.abc import Iterable, Sequence
 
 import yaml
 
@@ -26,10 +28,10 @@ class MetadataTarget:
     metadata_path: Path
     module_path: Path
     target_kind: str  # "component" or "pipeline"
-    metadata: Dict
+    metadata: dict
 
 
-def discover_metadata_files(repo_root: Optional[Path] = None) -> List[Tuple[Path, str]]:
+def discover_metadata_files(repo_root: Optional[Path] = None) -> list[tuple[Path, str]]:
     """Return a list of (metadata_path, target_kind) for the repository.
 
     Args:
@@ -38,12 +40,12 @@ def discover_metadata_files(repo_root: Optional[Path] = None) -> List[Tuple[Path
     if repo_root is None:
         repo_root = get_repo_root()
 
-    search_roots: List[Tuple[Path, str]] = [
+    search_roots: list[tuple[Path, str]] = [
         (repo_root / "components", "component"),
         (repo_root / "pipelines", "pipeline"),
     ]
 
-    discovered: List[Tuple[Path, str]] = []
+    discovered: list[tuple[Path, str]] = []
     for root, target_kind in search_roots:
         if not root.exists():
             continue
@@ -52,7 +54,7 @@ def discover_metadata_files(repo_root: Optional[Path] = None) -> List[Tuple[Path
     return discovered
 
 
-def load_metadata(metadata_path: Path) -> Dict:
+def load_metadata(metadata_path: Path) -> dict:
     """Load and validate a metadata YAML file."""
     with metadata_path.open("r", encoding="utf-8") as handle:
         data = yaml.safe_load(handle) or {}
@@ -61,7 +63,7 @@ def load_metadata(metadata_path: Path) -> Dict:
         return data
 
 
-def metadata_should_run(metadata: Dict, include_flagless: bool) -> bool:
+def metadata_should_run(metadata: dict, include_flagless: bool) -> bool:
     """Return whether metadata indicates the target should be processed."""
     ci_config = metadata.get("ci") or {}
     if "compile_check" in ci_config:
@@ -69,8 +71,8 @@ def metadata_should_run(metadata: Dict, include_flagless: bool) -> bool:
     return include_flagless
 
 
-def _normalize_path_filters(path_filters: Sequence[str], repo_root: Path) -> List[Path]:
-    normalized: List[Path] = []
+def _normalize_path_filters(path_filters: Sequence[str], repo_root: Path) -> list[Path]:
+    normalized: list[Path] = []
     for raw in path_filters:
         candidate = Path(raw)
         if not candidate.is_absolute():
@@ -82,13 +84,13 @@ def _normalize_path_filters(path_filters: Sequence[str], repo_root: Path) -> Lis
 
 
 def create_metadata_targets(
-    discovered: Iterable[Tuple[Path, str]],
+    discovered: Iterable[tuple[Path, str]],
     include_flagless: bool,
     path_filters: Sequence[str],
     *,
     repo_root: Optional[Path] = None,
     logger: Optional[logging.Logger] = None,
-) -> List[MetadataTarget]:
+) -> list[MetadataTarget]:
     """Build MetadataTarget objects from discovered metadata files.
 
     Args:
@@ -103,7 +105,7 @@ def create_metadata_targets(
     log = logger or LOGGER
     normalized_filters = _normalize_path_filters(path_filters, repo_root)
 
-    targets: List[MetadataTarget] = []
+    targets: list[MetadataTarget] = []
 
     for metadata_path, target_kind in discovered:
         try:
@@ -155,15 +157,15 @@ def create_metadata_targets(
     return targets
 
 
-def validate_dependencies(metadata: Dict) -> Tuple[List[str], List[str]]:
+def validate_dependencies(metadata: dict) -> tuple[list[str], list[str]]:
     """Validate dependency metadata declared for a target.
 
     Returns:
         Tuple of (errors, warnings).
     """
     dependencies = metadata.get("dependencies") or {}
-    errors: List[str] = []
-    warnings: List[str] = []
+    errors: list[str] = []
+    warnings: list[str] = []
 
     if not isinstance(dependencies, dict):
         errors.append("`dependencies` must be a mapping.")
@@ -205,4 +207,5 @@ def validate_dependencies(metadata: Dict) -> Tuple[List[str], List[str]]:
                 return errors, warnings
 
     return errors, warnings
+
 
