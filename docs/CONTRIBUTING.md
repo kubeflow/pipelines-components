@@ -495,10 +495,10 @@ Run it locally with:
 
 ```bash
 # Run against all metadata-backed targets
-uv run python scripts/compile_check/compile_check.py
+uv run python -m scripts.compile_check.compile_check
 
 # Limit to one directory (can be repeated)
-uv run python scripts/compile_check/compile_check.py \
+uv run python -m scripts.compile_check.compile_check \
   --path components/training/my_component
 ```
 

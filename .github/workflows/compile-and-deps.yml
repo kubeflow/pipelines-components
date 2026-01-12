@@ -30,4 +30,4 @@ jobs:
 
       - name: Run compile check
         run: |
-          uv run python scripts/compile_check/compile_check.py
+          uv run python -m scripts.compile_check.compile_check

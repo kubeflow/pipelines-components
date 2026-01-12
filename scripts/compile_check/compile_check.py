@@ -13,9 +13,9 @@ import logging
 import sys
 import tempfile
 import traceback
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from collections.abc import Sequence
 from typing import Optional
 
 from kfp.dsl import graph_component
@@ -116,9 +116,7 @@ def validate_target(target: MetadataTarget) -> ValidationResult:
         module_name = _module_name_from_path(target.module_path)
         module = load_module_from_path(str(target.module_path), module_name)
     except Exception:
-        result.add_error(
-            f"Failed to load module defined in {target.module_path}.\n{traceback.format_exc()}"
-        )
+        result.add_error(f"Failed to load module defined in {target.module_path}.\n{traceback.format_exc()}")
         return result
 
     objects = find_decorated_functions(module, target.target_kind)
@@ -128,9 +126,7 @@ def validate_target(target: MetadataTarget) -> ValidationResult:
         objects = [(name, obj) for name, obj in objects if not isinstance(obj, graph_component.GraphComponent)]
 
     if not objects:
-        result.add_error(
-            f"No @dsl.{target.target_kind} decorated functions discovered in module {target.module_path}."
-        )
+        result.add_error(f"No @dsl.{target.target_kind} decorated functions discovered in module {target.module_path}.")
         return result
 
     with tempfile.TemporaryDirectory() as temp_dir:

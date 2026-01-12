@@ -47,9 +47,7 @@ def test_create_metadata_targets_filters_and_validates(tmp_path: Path) -> None:
     (comp_dir / "__init__.py").write_text("", encoding="utf-8")
     component_file = comp_dir / "component.py"
     component_file.write_text(
-        "from kfp import dsl\n\n@dsl.component\n"
-        "def sample_op() -> int:\n"
-        "    return 1\n",
+        "from kfp import dsl\n\n@dsl.component\ndef sample_op() -> int:\n    return 1\n",
         encoding="utf-8",
     )
 
@@ -117,4 +115,3 @@ def test_create_metadata_targets_filters_and_validates(tmp_path: Path) -> None:
         repo_root=repo_root,
     )
     assert targets == []
-

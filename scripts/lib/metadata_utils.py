@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
-
-from collections.abc import Iterable, Sequence
 
 import yaml
 
@@ -201,11 +200,7 @@ def validate_dependencies(metadata: dict) -> tuple[list[str], list[str]]:
                         f"{label} for {name or '<unknown>'} has an invalid version specifier {version!r}: {exc}"
                     )
             else:
-                warnings.append(
-                    "packaging module not available; skipping validation for dependency versions."
-                )
+                warnings.append("packaging module not available; skipping validation for dependency versions.")
                 return errors, warnings
 
     return errors, warnings
-
-

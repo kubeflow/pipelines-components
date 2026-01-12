@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
 from scripts.compile_check import compile_check
 
 
@@ -19,7 +20,7 @@ def _write_file(path: Path, contents: str) -> None:
     path.write_text(contents, encoding="utf-8")
 
 
-def _ensure_packages(paths: Dict[str, Path]) -> None:
+def _ensure_packages(paths: dict[str, Path]) -> None:
     for package_path in paths.values():
         package_path.mkdir(parents=True, exist_ok=True)
         init_file = package_path / "__init__.py"
@@ -75,7 +76,7 @@ class CompileCheckTestCase(unittest.TestCase):
         metadata_path = component_dir / "metadata.yaml"
         component_path = component_dir / "component.py"
 
-        base_metadata: Dict[str, Any] = {
+        base_metadata: dict[str, Any] = {
             "name": component_name,
             "tier": "core",
             "stability": "stable",
@@ -123,7 +124,7 @@ class CompileCheckTestCase(unittest.TestCase):
         metadata_path = pipeline_dir / "metadata.yaml"
         pipeline_path = pipeline_dir / "pipeline.py"
 
-        base_metadata: Dict[str, Any] = {
+        base_metadata: dict[str, Any] = {
             "name": pipeline_name,
             "tier": "core",
             "stability": "stable",
