@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import sys
 import tempfile
 import textwrap
 import unittest
@@ -12,7 +11,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 import yaml
-from compile_check import compile_check
+from scripts.compile_check import compile_check
 
 
 def _write_file(path: Path, contents: str) -> None:
@@ -45,7 +44,6 @@ class CompileCheckTestCase(unittest.TestCase):
 
     def _run_check(self, **overrides) -> int:
         args = argparse.Namespace(
-            tier="all",
             path=[],
             fail_fast=False,
             include_flagless=False,
@@ -54,11 +52,7 @@ class CompileCheckTestCase(unittest.TestCase):
         for key, value in overrides.items():
             setattr(args, key, value)
 
-        original_sys_path = list(sys.path)
-        try:
-            return compile_check.run_validation(args)
-        finally:
-            sys.path[:] = original_sys_path
+        return compile_check.run_validation(args)
 
     def _create_component(
         self,
@@ -107,12 +101,76 @@ class CompileCheckTestCase(unittest.TestCase):
         )
         return component_dir
 
+    def _create_pipeline(
+        self,
+        pipeline_name: str,
+        *,
+        metadata: Dict[str, Any],
+        body: str,
+        with_decorator: bool = True,
+    ) -> Path:
+        pipeline_root = self.repo_root / "pipelines"
+        training_dir = pipeline_root / "training"
+        pipeline_dir = training_dir / pipeline_name
+        _ensure_packages(
+            {
+                "root": pipeline_root,
+                "category": training_dir,
+                "pipeline": pipeline_dir,
+            }
+        )
+
+        metadata_path = pipeline_dir / "metadata.yaml"
+        pipeline_path = pipeline_dir / "pipeline.py"
+
+        base_metadata: Dict[str, Any] = {
+            "name": pipeline_name,
+            "tier": "core",
+            "stability": "stable",
+            "ci": {"compile_check": True},
+        }
+        base_metadata.update(metadata)
+
+        metadata_path.write_text(
+            yaml.safe_dump(base_metadata, sort_keys=False),
+            encoding="utf-8",
+        )
+
+        lines = [
+            "from kfp import dsl",
+            "",
+            "@dsl.component",
+            "def helper(x: int) -> int:",
+            "    return x + 1",
+            "",
+        ]
+        if with_decorator:
+            lines.append('@dsl.pipeline(name="test")')
+        lines.append(f"def {pipeline_name}_pipeline():")
+        for line in textwrap.dedent(body).strip().splitlines():
+            lines.append(f"    {line}")
+
+        _write_file(pipeline_path, "\n".join(lines) + "\n")
+        return pipeline_dir
+
     def test_successful_compile(self) -> None:
         """A valid component compiles and returns success."""
         self._create_component(
             "valid_component",
             metadata={"dependencies": {}},
             body="return a + 1",
+        )
+        exit_code = self._run_check()
+        self.assertEqual(exit_code, 0)
+
+    def test_successful_pipeline_compile(self) -> None:
+        """A valid pipeline compiles and returns success."""
+        self._create_pipeline(
+            "valid_pipeline",
+            metadata={"dependencies": {}},
+            body="""
+helper(x=1)
+""",
         )
         exit_code = self._run_check()
         self.assertEqual(exit_code, 0)
@@ -129,6 +187,19 @@ class CompileCheckTestCase(unittest.TestCase):
                 },
             },
             body="return a + 1",
+        )
+        exit_code = self._run_check()
+        self.assertEqual(exit_code, 1)
+
+    def test_pipeline_missing_decorator_fails(self) -> None:
+        """A pipeline module without @dsl.pipeline decorator fails validation."""
+        self._create_pipeline(
+            "invalid_pipeline",
+            metadata={"dependencies": {}},
+            body="""
+helper(x=1)
+""",
+            with_decorator=False,
         )
         exit_code = self._run_check()
         self.assertEqual(exit_code, 1)

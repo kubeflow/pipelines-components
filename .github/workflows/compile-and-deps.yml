@@ -8,7 +8,7 @@ on:
     paths:
       - 'components/**'
       - 'pipelines/**'
-      - '.github/scripts/compile_check/**'
+      - 'scripts/compile_check/**'
       - '.github/workflows/compile-and-deps.yml'
       - '.github/actions/setup-python-ci/**'
       - 'pyproject.toml'
@@ -30,4 +30,4 @@ jobs:
 
       - name: Run compile check
         run: |
-          uv run python .github/scripts/compile_check/compile_check.py
+          uv run python scripts/compile_check/compile_check.py
