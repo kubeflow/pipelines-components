@@ -88,7 +88,49 @@ def train_model(
     # KFP TaskConfig passthrough for volumes/env/resources, etc.
     kubernetes_config: dsl.TaskConfig = None,
 ) -> str:
-    """Train model using TrainingHub (OSFT/SFT). Outputs model artifact and metrics."""
+    """Train model using TrainingHub (OSFT/SFT). Outputs model artifact and metrics.
+
+    Args:
+        pvc_path: Workspace PVC root path (use dsl.WORKSPACE_PATH_PLACEHOLDER).
+        output_model: Output model artifact.
+        output_metrics: Output training metrics artifact.
+        dataset: Input training dataset artifact.
+        training_base_model: Base model (HuggingFace ID or local path).
+        training_algorithm: Training algorithm: OSFT or SFT.
+        training_effective_batch_size: Effective batch size per optimizer step.
+        training_max_tokens_per_gpu: Max tokens per GPU (memory cap).
+        training_max_seq_len: Max sequence length in tokens.
+        training_learning_rate: Learning rate (default: 5e-6).
+        training_backend: Backend: mini-trainer (OSFT) or instructlab-training (SFT).
+        training_lr_warmup_steps: Learning rate warmup steps.
+        training_checkpoint_at_epoch: Save checkpoint at each epoch.
+        training_num_epochs: Number of training epochs.
+        training_data_output_dir: Directory for processed training data.
+        training_hf_token: HuggingFace token for gated models.
+        training_pull_secret: Pull secret for container registry.
+        training_envs: Environment overrides as KEY=VAL,KEY=VAL.
+        training_resource_cpu_per_worker: CPU cores per worker.
+        training_resource_gpu_per_worker: GPUs per worker.
+        training_resource_memory_per_worker: Memory per worker (e.g., 32Gi).
+        training_resource_num_procs_per_worker: Processes per worker (auto or int).
+        training_resource_num_workers: Number of training pods.
+        training_metadata_labels: Pod labels as key=value,key=value.
+        training_metadata_annotations: Pod annotations as key=value,key=value.
+        training_unfreeze_rank_ratio: [OSFT] Fraction of parameters to unfreeze.
+        training_osft_memory_efficient_init: [OSFT] Use memory-efficient initialization.
+        training_target_patterns: [OSFT] Target layer patterns (comma-separated).
+        training_seed: Random seed for reproducibility.
+        training_use_liger: Enable Liger kernel optimizations.
+        training_use_processed_dataset: Use pre-processed dataset.
+        training_unmask_messages: Unmask assistant messages during training.
+        training_lr_scheduler: LR scheduler type (cosine, linear, etc.).
+        training_lr_scheduler_kwargs: LR scheduler kwargs as key=val,key=val.
+        training_save_final_checkpoint: Save final checkpoint after training.
+        training_save_samples: [SFT] Number of samples to save.
+        training_accelerate_full_state_at_epoch: [SFT] Save full accelerate state.
+        training_fsdp_sharding_strategy: [SFT] FSDP sharding strategy.
+        kubernetes_config: KFP TaskConfig for volumes/env/resources passthrough.
+    """
     import os, sys, json, time, logging, re, subprocess, shutil
     from typing import Dict, List, Tuple, Optional as _Optional
 

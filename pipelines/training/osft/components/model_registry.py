@@ -39,10 +39,20 @@ def model_registry(
     or falls back to PVC path if no artifact is provided.
 
     Args:
+        pvc_mount_path: PVC mount path for workspace storage.
         input_model: Model artifact from training step.
         input_metrics: Training metrics.
         eval_metrics: Evaluation metrics from lm-eval.
         eval_results: Full evaluation results JSON artifact.
+        registry_address: Model Registry server address (hostname or IP).
+        registry_port: Model Registry server port (default: 8080).
+        model_name: Name for the registered model.
+        model_version: Version string for the model (e.g. "1.0.0").
+        model_format_name: Model format name (e.g. "pytorch", "onnx").
+        model_format_version: Model format version.
+        model_description: Optional description for the model.
+        author: Author name for the model registration.
+        shared_log_file: Filename for shared pipeline log.
         source_pipeline_name: Name of the source KFP pipeline.
         source_pipeline_run_id: Unique ID of the pipeline run.
         source_pipeline_run_name: Display name of the pipeline run.

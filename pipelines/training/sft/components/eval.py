@@ -46,11 +46,19 @@ def universal_llm_evaluator(
     2. Custom holdout evaluation: When eval_dataset is provided, evaluates on your held-out data
 
     Args:
+        output_metrics: Output metrics artifact with evaluation scores.
+        output_results: Output artifact containing full evaluation results JSON.
+        output_samples: Output artifact containing logged evaluation samples.
+        task_names: List of benchmark task names (e.g. ["mmlu", "gsm8k"]).
         model_path: String path or HF ID. Used if model_artifact is None.
         model_artifact: KFP Model artifact from a previous pipeline step.
         eval_dataset: JSONL dataset in chat format for custom holdout evaluation.
-        task_names: List of benchmark task names (e.g. ["mmlu", "gsm8k"]).
         model_args: Dictionary for model initialization (e.g. {"dtype": "float16"}).
+        gen_kwargs: Dictionary of generation kwargs passed to the model.
+        batch_size: Batch size for evaluation ("auto" or integer).
+        limit: Limit number of examples per task (-1 for no limit).
+        log_samples: Whether to log individual evaluation samples.
+        verbosity: Logging verbosity level (DEBUG, INFO, WARNING, ERROR).
         custom_eval_max_tokens: Max tokens for generation in custom eval (default: 256).
     """
     import logging

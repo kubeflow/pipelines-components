@@ -107,19 +107,49 @@ def sft_pipeline(
     4) Model Registry - Registers trained model to Kubeflow Model Registry
 
     Args:
-        phase_01_dataset_man_data_uri: [REQUIRED] Dataset location (hf://dataset, s3://bucket/path, https://url, pvc://path)
-        phase_01_dataset_man_data_split: Train/eval split ratio (0.9 = 90% train, 10% eval)
-        phase_02_train_man_batch: Effective batch size (samples per optimizer step). Start with 128
-        phase_02_train_man_epochs: Number of training epochs. 1 is often sufficient
-        phase_02_train_man_gpu: GPUs per worker. KEEP AT 1 to avoid /dev/shm issues
-        phase_02_train_man_model: Base model (HuggingFace ID or path)
-        phase_02_train_man_tokens: Max tokens per GPU (memory cap). 10000 for SFT
-        phase_02_train_man_workers: Number of training pods. 4 pods x 1 GPU = 4 total GPUs
-        phase_03_eval_man_tasks: lm-eval tasks (arc_easy, mmlu, gsm8k, hellaswag, etc.)
-        phase_04_registry_man_address: Model Registry address (empty = skip registration)
-        phase_04_registry_man_author: Author name for the registered model
-        phase_04_registry_man_name: Model name in registry
-        phase_04_registry_man_version: Semantic version (major.minor.patch)
+        phase_01_dataset_man_data_uri: Dataset location (hf://, s3://, https://, pvc://).
+        phase_01_dataset_man_data_split: Train/eval split ratio (0.9 = 90% train).
+        phase_02_train_man_batch: Effective batch size per optimizer step.
+        phase_02_train_man_epochs: Number of training epochs.
+        phase_02_train_man_gpu: GPUs per worker. Keep at 1 to avoid /dev/shm issues.
+        phase_02_train_man_model: Base model (HuggingFace ID or path).
+        phase_02_train_man_tokens: Max tokens per GPU (memory cap).
+        phase_02_train_man_workers: Number of training pods.
+        phase_03_eval_man_tasks: lm-eval tasks (arc_easy, mmlu, gsm8k, etc.).
+        phase_04_registry_man_address: Model Registry address (empty = skip).
+        phase_04_registry_man_author: Author name for the registered model.
+        phase_04_registry_man_name: Model name in registry.
+        phase_04_registry_man_version: Semantic version (major.minor.patch).
+        phase_01_dataset_opt_hf_token: HuggingFace token for private datasets.
+        phase_01_dataset_opt_subset: Limit dataset to N samples (0 = all).
+        phase_02_train_opt_annotations: Pod annotations as key=value,key=value.
+        phase_02_train_opt_cpu: CPU cores per worker.
+        phase_02_train_opt_env_vars: Environment variables as KEY=VAL,KEY=VAL.
+        phase_02_train_opt_fsdp_sharding: FSDP strategy (FULL_SHARD, HYBRID_SHARD).
+        phase_02_train_opt_hf_token: HuggingFace token for gated models.
+        phase_02_train_opt_labels: Pod labels as key=value,key=value.
+        phase_02_train_opt_learning_rate: Learning rate for training.
+        phase_02_train_opt_lr_scheduler: LR scheduler type (cosine, linear).
+        phase_02_train_opt_lr_warmup: Learning rate warmup steps.
+        phase_02_train_opt_max_seq_len: Maximum sequence length in tokens.
+        phase_02_train_opt_memory: Memory per worker (e.g., 64Gi).
+        phase_02_train_opt_num_procs: Processes per worker (auto or int).
+        phase_02_train_opt_pull_secret: Pull secret for container registry.
+        phase_02_train_opt_save_epoch: Save checkpoint at each epoch.
+        phase_02_train_opt_save_full_state: Save full accelerate state at epoch.
+        phase_02_train_opt_save_samples: Number of samples to save (0 = none).
+        phase_02_train_opt_seed: Random seed for reproducibility.
+        phase_02_train_opt_use_liger: Enable Liger kernel optimizations.
+        phase_03_eval_opt_batch: Batch size for evaluation (auto or int).
+        phase_03_eval_opt_gen_kwargs: Generation kwargs for evaluation.
+        phase_03_eval_opt_limit: Limit examples per task (-1 = no limit).
+        phase_03_eval_opt_log_samples: Log individual evaluation samples.
+        phase_03_eval_opt_model_args: Model initialization arguments.
+        phase_03_eval_opt_verbosity: Logging verbosity (DEBUG, INFO, etc.).
+        phase_04_registry_opt_description: Model description for registry.
+        phase_04_registry_opt_format_name: Model format (pytorch, onnx).
+        phase_04_registry_opt_format_version: Model format version.
+        phase_04_registry_opt_port: Model Registry server port.
     """
 
     # =========================================================================
