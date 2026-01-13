@@ -58,6 +58,9 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+
     - name: Detect changed assets
       id: detect
       shell: bash
