@@ -191,10 +191,10 @@ for usage details.
 
 This repository follows a branch naming convention aligned with Kubeflow Pipelines:
 
-| Branch                    | Purpose                                    | Base Image Tag        |
-|---------------------------|--------------------------------------------|-----------------------|
-| `main`                    | Active development                         | `:main`               |
-| `release-<major>.<minor>` | Release maintenance (e.g., `release-1.11`) | `:v<major>.<minor>.0` |
+| Branch                    | Purpose                                    | Base Image Tag                 |
+|---------------------------|--------------------------------------------|--------------------------------|
+| `main`                    | Active development                         | `:main`                        |
+| `release-<major>.<minor>` | Release maintenance (e.g., `release-1.11`) | `:v<major>.<minor>.<z-stream>` |
 
 ### Release Branches
 
@@ -202,14 +202,23 @@ Release branches are created for each minor version release:
 
 - **Naming:** `release-<major>.<minor>` (e.g., `release-1.11`, `release-2.0`)
 - **Purpose:** Maintain stable releases and backport critical fixes
-- **Base images:** Components on release branches should reference the release tag (e.g., `:v1.11.0`)
+- **Base images:** Components on release branches should reference the appropriate release tag (e.g., `:v1.11.0`, `:v1.11.1`, ...)
 
 When working on a release branch:
 
 ```python
-# For release-1.11, components should use:
+# For release-1.11, components should use the appropriate patch tag:
 @dsl.component(base_image="ghcr.io/kubeflow/pipelines-components-example:v1.11.0")
 ```
+
+#### Z-stream (patch) releases
+
+In addition to the initial `x.y.0` release for a given `release-x.y` branch, we may cut one or more patch (z-stream) releases (`x.y.1`, `x.y.2`, ...).
+
+Typical characteristics:
+
+- **Contents**: Backported bug fixes, security fixes, dependency/base-image updates, and other low-risk changes needed to keep the release usable.
+- **Triggers**: Critical regressions, CVEs, or other issues that require updates on a maintained `release-x.y` branch.
 
 ## Development Workflow
 
