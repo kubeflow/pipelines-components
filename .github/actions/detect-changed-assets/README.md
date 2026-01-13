@@ -131,13 +131,13 @@ Detect changes only in specific file types:
 
 ```bash
 # Test the detection script directly
-python3 .github/scripts/detect_changed_assets/detect.py --base-ref origin/HEAD --head-ref HEAD
+uv run python .github/scripts/detect_changed_assets/detect.py --base-ref origin/HEAD --head-ref HEAD
 
 # With pattern filter
-python3 .github/scripts/detect_changed_assets/detect.py --base-ref origin/HEAD --filter '\.py$'
+uv run python .github/scripts/detect_changed_assets/detect.py --base-ref origin/HEAD --filter '\.py$'
 
 # Show help
-python3 .github/scripts/detect_changed_assets/detect.py --help
+uv run python .github/scripts/detect_changed_assets/detect.py --help
 
 # Or run the full test suite
 .github/actions/detect-changed-assets/test.sh

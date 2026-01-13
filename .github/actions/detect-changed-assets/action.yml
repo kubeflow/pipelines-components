@@ -63,7 +63,7 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
-        python3 .github/scripts/detect_changed_assets/detect.py \
+        uv run python .github/scripts/detect_changed_assets/detect.py \
           --base-ref "${{ inputs.base-ref }}" \
           --head-ref "${{ inputs.head-ref }}" \
           --filter "${{ inputs.filter }}" \
