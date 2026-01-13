@@ -18,9 +18,9 @@ from kfp import dsl
 from kfp_components.components.training.finetuning import train_model
 
 # Import pipeline-specific (non-reusable) components
-from .components.dataset_download import dataset_download
-from .components.eval import universal_llm_evaluator
-from .components.model_registry import model_registry
+from pipelines.training.osft.components.dataset_download import dataset_download
+from pipelines.training.osft.components.eval import universal_llm_evaluator
+from pipelines.training.osft.components.model_registry import model_registry
 
 # =============================================================================
 # PVC Configuration (COMPILE-TIME settings)
