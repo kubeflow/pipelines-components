@@ -1,37 +1,34 @@
-# Dataset Download
+# Dataset Download ✨
 
-## Overview
+## Overview 🧾
 
-Download datasets from multiple sources for ML training pipelines.
+Download and prepare datasets from multiple sources.
 
-This component supports downloading datasets from:
-- **HuggingFace**: `hf://dataset-name` or just `dataset-name`
-- **AWS S3**: `s3://bucket/path/to/file.jsonl`
-- **HTTP/HTTPS**: `https://example.com/dataset.jsonl` (e.g., MinIO shared links)
-- **Local/PVC**: `pvc://path/to/file.jsonl` or `/absolute/path/file.jsonl`
+Validates that datasets follow chat template format (messages/conversations with role/content).
 
-The component validates that datasets follow the chat template format (messages with role/content),
-splits into train/eval sets, and saves them as JSONL files.
-
-## Inputs
+## Inputs 📥
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `dataset_uri` | `str` | Required | Dataset URI with scheme (hf://, s3://, https://, pvc://) |
-| `pvc_mount_path` | `str` | Required | Path where the shared PVC is mounted |
-| `train_split_ratio` | `float` | `0.9` | Ratio for train split (0.9 = 90% train, 10% eval) |
-| `subset_count` | `int` | `0` | Limit to N examples (0 = use all) |
-| `hf_token` | `str` | `""` | HuggingFace token for gated/private datasets |
-| `shared_log_file` | `str` | `"pipeline_log.txt"` | Name of the shared log file |
+| `train_dataset` | `dsl.Output[dsl.Dataset]` | `None` | Output artifact for training dataset (JSONL format) |
+| `eval_dataset` | `dsl.Output[dsl.Dataset]` | `None` | Output artifact for evaluation dataset (JSONL format) |
+| `dataset_uri` | `str` | `None` | Dataset URI with scheme (hf://, s3://, https://, pvc://) |
+| `pvc_mount_path` | `str` | `None` | Path where the shared PVC is mounted |
+| `train_split_ratio` | `float` | `0.9` | Ratio for train split (e.g., 0.9 for 90/10) |
+| `subset_count` | `int` | `0` | Number of examples to use (0 = use all) |
+| `hf_token` | `str` | `` | HuggingFace token for gated/private datasets |
+| `shared_log_file` | `str` | `pipeline_log.txt` | Name of the shared log file |
 
-## Outputs
+### Supported URI Schemes
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `train_dataset` | `dsl.Output[dsl.Dataset]` | Training dataset in JSONL format |
-| `eval_dataset` | `dsl.Output[dsl.Dataset]` | Evaluation dataset in JSONL format |
+- **HuggingFace**: `hf://dataset-name` or just `dataset-name`
+- **AWS S3**: `s3://bucket/path/file.jsonl`
+- **HTTP/HTTPS**: `http://...` or `https://...` (e.g., MinIO shared links)
+- **Local/PVC**: `pvc://path/file.jsonl` or `/absolute/path/file.jsonl`
 
-## Metadata
+> **Note**: S3 credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) must be provided via Kubernetes secret mounted as environment variables.
+
+## Metadata 🗂️
 
 - **Name**: dataset_download
 - **Tier**: core
@@ -48,7 +45,7 @@ splits into train/eval sets, and saves them as JSONL files.
   - download
   - huggingface
   - s3
-- **Last Verified**: 2026-01-14
+- **Last Verified**: 2026-01-14 00:00:00+00:00
 - **Owners**:
   - Approvers:
     - briangallagher
@@ -57,33 +54,6 @@ splits into train/eval sets, and saves them as JSONL files.
     - MStokluska
     - szaher
 
-## Usage Examples
+## Additional Resources 📚
 
-### HuggingFace Dataset
-```python
-dataset_download(
-    dataset_uri="hf://HuggingFaceH4/ultrachat_200k",
-    pvc_mount_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
-    train_split_ratio=0.9,
-)
-```
-
-### S3 Dataset
-```python
-dataset_download(
-    dataset_uri="s3://my-bucket/datasets/chat_data.jsonl",
-    pvc_mount_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
-)
-```
-
-### HTTP/MinIO Dataset
-```python
-dataset_download(
-    dataset_uri="https://minio.example.com/bucket/dataset.jsonl",
-    pvc_mount_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
-)
-```
-
-## Additional Resources
-
-- **HuggingFace Datasets**: [https://huggingface.co/docs/datasets](https://huggingface.co/docs/datasets)
+- **Documentation**: [https://github.com/kubeflow/pipelines-components](https://github.com/kubeflow/pipelines-components)

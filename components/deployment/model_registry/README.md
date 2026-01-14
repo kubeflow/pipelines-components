@@ -1,46 +1,42 @@
-# Model Registry
+# Model Registry ✨
 
-## Overview
+## Overview 🧾
 
-Register trained models to Kubeflow Model Registry with full provenance tracking.
+Register model to Kubeflow Model Registry with full provenance tracking.
 
-This component uses the upstream model artifact produced by training and registers it
-to Kubeflow Model Registry with metadata including:
-- Training hyperparameters
-- Evaluation metrics
-- Pipeline provenance (run ID, namespace, pipeline name)
-- Base model information
+Uses the upstream model artifact (input_model) produced by training,
+or falls back to PVC path if no artifact is provided.
 
-## Inputs
+## Inputs 📥
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `pvc_mount_path` | `str` | Required | PVC mount path for workspace storage |
-| `input_model` | `dsl.Input[dsl.Model]` | `None` | Model artifact from training step |
-| `input_metrics` | `dsl.Input[dsl.Metrics]` | `None` | Training metrics/hyperparameters |
-| `eval_metrics` | `dsl.Input[dsl.Metrics]` | `None` | Evaluation metrics from lm-eval |
-| `eval_results` | `dsl.Input[dsl.Artifact]` | `None` | Full evaluation results JSON |
-| `registry_address` | `str` | `""` | Model Registry server address (empty = skip) |
-| `registry_port` | `int` | `8080` | Model Registry server port |
-| `model_name` | `str` | `"fine-tuned-model"` | Name for the registered model |
-| `model_version` | `str` | `"1.0.0"` | Semantic version string |
-| `model_format_name` | `str` | `"pytorch"` | Model format (pytorch, onnx) |
-| `model_format_version` | `str` | `"1.0"` | Model format version |
-| `model_description` | `str` | `""` | Optional model description |
-| `author` | `str` | `"pipeline"` | Author name for registration |
-| `shared_log_file` | `str` | `"pipeline_log.txt"` | Shared log filename |
-| `source_pipeline_name` | `str` | `""` | Source KFP pipeline name |
-| `source_pipeline_run_id` | `str` | `""` | Unique pipeline run ID |
-| `source_pipeline_run_name` | `str` | `""` | Display name of pipeline run |
-| `source_namespace` | `str` | `""` | Namespace (auto-detected if empty) |
+| `pvc_mount_path` | `str` | `None` | PVC mount path for workspace storage. |
+| `input_model` | `dsl.Input[dsl.Model]` | `None` | Model artifact from training step. |
+| `input_metrics` | `dsl.Input[dsl.Metrics]` | `None` | Training metrics. |
+| `eval_metrics` | `dsl.Input[dsl.Metrics]` | `None` | Evaluation metrics from lm-eval. |
+| `eval_results` | `dsl.Input[dsl.Artifact]` | `None` | Full evaluation results JSON artifact. |
+| `registry_address` | `str` | `` | Model Registry server address (hostname or IP). |
+| `registry_port` | `int` | `8080` | Model Registry server port (default: 8080). |
+| `model_name` | `str` | `fine-tuned-model` | Name for the registered model. |
+| `model_version` | `str` | `1.0.0` | Version string for the model (e.g. "1.0.0"). |
+| `model_format_name` | `str` | `pytorch` | Model format name (e.g. "pytorch", "onnx"). |
+| `model_format_version` | `str` | `1.0` | Model format version. |
+| `model_description` | `str` | `` | Optional description for the model. |
+| `author` | `str` | `pipeline` | Author name for the model registration. |
+| `shared_log_file` | `str` | `pipeline_log.txt` | Filename for shared pipeline log. |
+| `source_pipeline_name` | `str` | `` | Name of the source KFP pipeline. |
+| `source_pipeline_run_id` | `str` | `` | Unique ID of the pipeline run. |
+| `source_pipeline_run_name` | `str` | `` | Display name of the pipeline run. |
+| `source_namespace` | `str` | `` | Namespace where pipeline runs (auto-detected if empty). |
 
-## Outputs
+## Outputs 📤
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| Return value | `str` | Registered model ID or "SKIPPED" |
+| Name | Type | Description |
+|------|------|-------------|
+| Output | `str` |  |
 
-## Metadata
+## Metadata 🗂️
 
 - **Name**: model_registry
 - **Tier**: core
@@ -55,7 +51,7 @@ to Kubeflow Model Registry with metadata including:
   - model_registry
   - registration
   - kubeflow
-- **Last Verified**: 2026-01-14
+- **Last Verified**: 2026-01-14 00:00:00+00:00
 - **Owners**:
   - Approvers:
     - briangallagher
@@ -64,23 +60,6 @@ to Kubeflow Model Registry with metadata including:
     - MStokluska
     - szaher
 
-## Usage Example
+## Additional Resources 📚
 
-```python
-model_registry_task = model_registry(
-    pvc_mount_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
-    input_model=training_task.outputs["output_model"],
-    input_metrics=training_task.outputs["output_metrics"],
-    eval_metrics=eval_task.outputs["output_metrics"],
-    eval_results=eval_task.outputs["output_results"],
-    registry_address="model-registry.kubeflow.svc.cluster.local",
-    model_name="my-finetuned-model",
-    model_version="1.0.0",
-    source_pipeline_name=PIPELINE_NAME,
-    source_pipeline_run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
-)
-```
-
-## Additional Resources
-
-- **Kubeflow Model Registry**: [https://github.com/kubeflow/model-registry](https://github.com/kubeflow/model-registry)
+- **Documentation**: [https://github.com/kubeflow/model-registry](https://github.com/kubeflow/model-registry)

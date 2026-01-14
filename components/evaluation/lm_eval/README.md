@@ -1,40 +1,34 @@
-# LM-Eval
+# Lm Eval ✨
 
-## Overview
+## Overview 🧾
 
-A comprehensive LLM evaluation component using EleutherAI's lm-evaluation-harness.
+A Universal LLM Evaluator component using EleutherAI's lm-evaluation-harness.
 
-This component supports two types of evaluation:
-1. **Benchmark evaluation**: Standard lm-eval tasks (arc_easy, mmlu, gsm8k, hellaswag, etc.)
-2. **Custom holdout evaluation**: Evaluate on your held-out dataset in chat format
+Supports two types of evaluation:
 
-Uses vLLM as the inference backend for efficient GPU evaluation.
+1. Benchmark evaluation: Standard lm-eval tasks (arc_easy, mmlu, gsm8k, etc.)
+2. Custom holdout evaluation: When eval_dataset is provided, evaluates on your held-out data
 
-## Inputs
+## Inputs 📥
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `task_names` | `list` | Required | List of benchmark task names (e.g., ["arc_easy", "mmlu"]) |
-| `model_path` | `str` | `None` | HuggingFace model ID or path (if model_artifact not provided) |
-| `model_artifact` | `dsl.Input[dsl.Model]` | `None` | Model artifact from upstream pipeline step |
-| `eval_dataset` | `dsl.Input[dsl.Dataset]` | `None` | Custom holdout dataset in chat format (JSONL) |
-| `model_args` | `dict` | `{}` | Model initialization arguments |
-| `gen_kwargs` | `dict` | `{}` | Generation kwargs for the model |
-| `batch_size` | `str` | `"auto"` | Batch size for evaluation |
-| `limit` | `int` | `-1` | Limit examples per task (-1 = no limit) |
-| `log_samples` | `bool` | `True` | Whether to log individual samples |
-| `verbosity` | `str` | `"INFO"` | Logging verbosity level |
-| `custom_eval_max_tokens` | `int` | `256` | Max tokens for custom eval generation |
+| `output_metrics` | `dsl.Output[dsl.Metrics]` | `None` | Output metrics artifact with evaluation scores. |
+| `output_results` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing full evaluation results JSON. |
+| `output_samples` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing logged evaluation samples. |
+| `task_names` | `list` | `None` | List of benchmark task names (e.g. ["mmlu", "gsm8k"]). |
+| `model_path` | `str` | `None` | String path or HF ID. Used if model_artifact is None. |
+| `model_artifact` | `dsl.Input[dsl.Model]` | `None` | KFP Model artifact from a previous pipeline step. |
+| `eval_dataset` | `dsl.Input[dsl.Dataset]` | `None` | JSONL dataset in chat format for custom holdout evaluation. |
+| `model_args` | `dict` | `{}` | Dictionary for model initialization (e.g. {"dtype": "float16"}). |
+| `gen_kwargs` | `dict` | `{}` | Dictionary of generation kwargs passed to the model. |
+| `batch_size` | `str` | `auto` | Batch size for evaluation ("auto" or integer). |
+| `limit` | `int` | `-1` | Limit number of examples per task (-1 for no limit). |
+| `log_samples` | `bool` | `True` | Whether to log individual evaluation samples. |
+| `verbosity` | `str` | `INFO` | Logging verbosity level (DEBUG, INFO, WARNING, ERROR). |
+| `custom_eval_max_tokens` | `int` | `256` | Max tokens for generation in custom eval (default: 256). |
 
-## Outputs
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `output_metrics` | `dsl.Output[dsl.Metrics]` | Evaluation metrics (accuracy scores) |
-| `output_results` | `dsl.Output[dsl.Artifact]` | Full evaluation results JSON |
-| `output_samples` | `dsl.Output[dsl.Artifact]` | Logged evaluation samples |
-
-## Metadata
+## Metadata 🗂️
 
 - **Name**: lm_eval
 - **Tier**: core
@@ -51,7 +45,7 @@ Uses vLLM as the inference backend for efficient GPU evaluation.
   - lm_eval
   - benchmarks
   - metrics
-- **Last Verified**: 2026-01-14
+- **Last Verified**: 2026-01-14 00:00:00+00:00
 - **Owners**:
   - Approvers:
     - briangallagher
@@ -60,29 +54,6 @@ Uses vLLM as the inference backend for efficient GPU evaluation.
     - MStokluska
     - szaher
 
-## Supported Tasks
+## Additional Resources 📚
 
-Common lm-eval benchmark tasks:
-- `arc_easy`, `arc_challenge` - AI2 Reasoning Challenge
-- `mmlu` - Massive Multitask Language Understanding
-- `gsm8k` - Grade School Math
-- `hellaswag` - Commonsense reasoning
-- `winogrande` - Winograd Schema Challenge
-- `truthfulqa` - TruthfulQA
-
-## Usage Example
-
-```python
-eval_task = universal_llm_evaluator(
-    model_artifact=training_task.outputs["output_model"],
-    eval_dataset=dataset_task.outputs["eval_dataset"],
-    task_names=["arc_easy", "mmlu"],
-    batch_size="auto",
-    limit=-1,
-)
-```
-
-## Additional Resources
-
-- **lm-evaluation-harness**: [https://github.com/EleutherAI/lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness)
-- **vLLM**: [https://github.com/vllm-project/vllm](https://github.com/vllm-project/vllm)
+- **Documentation**: [https://github.com/EleutherAI/lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness)
