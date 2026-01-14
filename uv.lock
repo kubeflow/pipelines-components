@@ -420,7 +420,6 @@ version = "1.11.0"
 source = { editable = "." }
 dependencies = [
     { name = "kfp" },
-    { name = "pyyaml" },
 ]
 
 [package.optional-dependencies]
@@ -432,6 +431,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-timeout" },
+    { name = "pyyaml" },
     { name = "ruff" },
     { name = "semver" },
     { name = "yamllint" },
@@ -448,6 +448,7 @@ test = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-timeout" },
+    { name = "pyyaml" },
     { name = "semver" },
 ]
 
@@ -463,7 +464,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'test'" },
     { name = "pytest-cov", marker = "extra == 'test'" },
     { name = "pytest-timeout", marker = "extra == 'test'" },
-    { name = "pyyaml" },
+    { name = "pyyaml", marker = "extra == 'test'" },
     { name = "ruff", marker = "extra == 'lint'", specifier = "==0.14.11" },
     { name = "semver", marker = "extra == 'test'" },
     { name = "yamllint", marker = "extra == 'lint'", specifier = "==1.38.0" },

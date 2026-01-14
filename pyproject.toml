@@ -14,7 +14,6 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "kfp>=2.15.2",
-    "pyyaml",
 ]
 
 [project.optional-dependencies]
@@ -30,6 +29,7 @@ test = [
     "pytest-timeout",
     "docstring-parser",
     "jinja2",
+    "pyyaml",
     "semver",
     "pip",
 ]
