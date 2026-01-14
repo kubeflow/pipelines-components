@@ -232,6 +232,8 @@ class ReadmeContentGenerator:
         # Extract links for separate Additional Resources section (removes from feature_metadata)
         links = self.feature_metadata.pop("links", {})
 
+        stability = str(self.feature_metadata.get("stability", "")).strip()
+
         return {
             "title": title,
             "overview": overview,
@@ -241,4 +243,5 @@ class ReadmeContentGenerator:
             "example_code": example_code,
             "formatted_metadata": self.formatted_feature_metadata,
             "links": links,
+            "stability": stability,
         }

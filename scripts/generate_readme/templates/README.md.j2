@@ -1,5 +1,9 @@
 # {{ title }} ✨
 
+{% if stability and stability|lower != "stable" %}
+> ⚠️ **Stability: {{ stability }}** — This asset is not yet stable and may change.
+
+{% endif %}
 ## Overview 🧾
 
 {{ overview }}

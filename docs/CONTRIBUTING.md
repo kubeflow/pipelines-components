@@ -143,7 +143,7 @@ Your `metadata.yaml` must include these fields:
 
 ```yaml
 name: my_component
-stability: stable  # 'alpha', 'beta', or 'stable'
+stability: stable  # 'experimental', 'alpha', 'beta', or 'stable'
 dependencies:
   kubeflow:
     - name: Pipelines

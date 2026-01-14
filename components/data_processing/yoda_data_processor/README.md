@@ -1,5 +1,7 @@
 # Yoda Data Processor ✨
 
+> ⚠️ **Stability: alpha** — This asset is not yet stable and may change.
+
 ## Overview 🧾
 
 Prepare the training and evaluation datasets by downloading and preprocessing.
