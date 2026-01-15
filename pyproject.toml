@@ -19,7 +19,7 @@ dependencies = [
 [project.optional-dependencies]
 lint = [
     # We keep these pinned to avoid new lint failures due to updates
-    "ruff==0.14.11",
+    "ruff==0.14.12",
     "yamllint==1.38.0",
 ]
 test = [
