@@ -1,4 +1,4 @@
-"""Model Registry Component.
+"""Kubeflow Model Registry Component.
 
 Registers a trained model to Kubeflow Model Registry using the official SDK.
 """
@@ -10,7 +10,7 @@ from kfp import dsl
     base_image="quay.io/opendatahub/odh-training-th04-cpu-torch29-py312-rhel9:cpu-3.3",
     packages_to_install=["model-registry==0.3.4"],
 )
-def model_registry(
+def kubeflow_model_registry(
     pvc_mount_path: str,
     input_model: dsl.Input[dsl.Model] = None,
     input_metrics: dsl.Input[dsl.Metrics] = None,
@@ -232,7 +232,7 @@ if __name__ == "__main__":
     from kfp import compiler
 
     compiler.Compiler().compile(
-        model_registry,
+        kubeflow_model_registry,
         package_path=__file__.replace(".py", "_component.yaml"),
     )
-    print("Compiled: model_registry_component.yaml")
+    print("Compiled: kubeflow_model_registry_component.yaml")

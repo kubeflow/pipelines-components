@@ -17,7 +17,7 @@ from kfp import dsl
 
 # Import reusable components
 from components.data_processing.dataset_download import dataset_download
-from components.deployment.model_registry import model_registry
+from components.deployment.kubeflow_model_registry import kubeflow_model_registry
 from components.evaluation.lm_eval import universal_llm_evaluator
 from components.training.finetuning import train_model
 
@@ -208,7 +208,7 @@ def osft_minimal_pipeline(
     # =========================================================================
     # Stage 4: Model Registry
     # =========================================================================
-    model_registry_task = model_registry(
+    model_registry_task = kubeflow_model_registry(
         pvc_mount_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
         input_model=training_task.outputs["output_model"],
         input_metrics=training_task.outputs["output_metrics"],

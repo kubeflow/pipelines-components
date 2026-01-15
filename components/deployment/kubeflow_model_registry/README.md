@@ -1,4 +1,4 @@
-# Model Registry ✨
+# Kubeflow Model Registry ✨
 
 ## Overview 🧾
 
@@ -38,7 +38,7 @@ or falls back to PVC path if no artifact is provided.
 
 ## Metadata 🗂️
 
-- **Name**: model_registry
+- **Name**: kubeflow_model_registry
 - **Tier**: core
 - **Stability**: experimental
 - **Dependencies**:
@@ -51,7 +51,7 @@ or falls back to PVC path if no artifact is provided.
   - model_registry
   - registration
   - kubeflow
-- **Last Verified**: 2026-01-14 00:00:00+00:00
+- **Last Verified**: 2026-01-15 00:00:00+00:00
 - **Owners**:
   - Approvers:
     - briangallagher
