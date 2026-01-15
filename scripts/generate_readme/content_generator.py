@@ -209,7 +209,13 @@ class ReadmeContentGenerator:
         parameters = {}
         for param_name, param_info in self.metadata.get("parameters", {}).items():
             param_type = param_info.get("type", "Any")
-            default_str = f"`{param_info['default']}`" if "default" in param_info else "Required"
+
+            if "default" in param_info:
+                # If default is an empty string, use `""` to handle markdown rendering issues
+                default_str = f"`{param_info['default']}`" if param_info["default"] != "" else '`""`'
+            else:
+                default_str = "Required"
+
             description = param_info.get("description", "")
 
             parameters[param_name] = {
