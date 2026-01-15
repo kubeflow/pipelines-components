@@ -64,7 +64,6 @@ A 4-stage ML pipeline for fine-tuning language models:
 ## Metadata 🗂️
 
 - **Name**: sft_pipeline
-- **Tier**: core
 - **Stability**: alpha
 - **Dependencies**:
   - Kubeflow:

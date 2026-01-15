@@ -12,7 +12,6 @@ To be implemented in a follow-up PR.
 ## Metadata 🗂️
 
 - **Name**: osft_pipeline
-- **Tier**: core
 - **Stability**: alpha
 - **Dependencies**:
   - Kubeflow:

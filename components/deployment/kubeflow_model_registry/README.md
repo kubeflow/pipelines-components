@@ -41,7 +41,6 @@ or falls back to PVC path if no artifact is provided.
 ## Metadata 🗂️
 
 - **Name**: kubeflow_model_registry
-- **Tier**: core
 - **Stability**: experimental
 - **Dependencies**:
   - Kubeflow:

@@ -59,7 +59,6 @@ Train model using TrainingHub (OSFT/SFT). Outputs model artifact and metrics.
 ## Metadata 🗂️
 
 - **Name**: finetuning
-- **Tier**: core
 - **Stability**: alpha
 - **Dependencies**:
   - Kubeflow:

@@ -24,7 +24,6 @@ Validates that datasets follow chat template format (messages/conversations with
 ## Metadata 🗂️
 
 - **Name**: dataset_download
-- **Tier**: core
 - **Stability**: experimental
 - **Dependencies**:
   - Kubeflow:

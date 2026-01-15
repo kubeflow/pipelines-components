@@ -40,7 +40,6 @@ A minimal 4-stage ML pipeline for fine-tuning language models with OSFT:
 ## Metadata 🗂️
 
 - **Name**: osft_minimal_pipeline
-- **Tier**: core
 - **Stability**: alpha
 - **Dependencies**:
   - Kubeflow:

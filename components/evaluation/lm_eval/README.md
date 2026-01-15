@@ -33,7 +33,6 @@ Supports two types of evaluation:
 ## Metadata 🗂️
 
 - **Name**: lm_eval
-- **Tier**: core
 - **Stability**: experimental
 - **Dependencies**:
   - Kubeflow:
