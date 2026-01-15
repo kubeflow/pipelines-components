@@ -24,7 +24,7 @@ from components.training.finetuning import train_model
 # =============================================================================
 # PVC Configuration (COMPILE-TIME settings)
 # =============================================================================
-PVC_SIZE = "10Gi"
+PVC_SIZE = "50Gi"
 PVC_STORAGE_CLASS = "nfs-csi"
 PVC_ACCESS_MODES = ["ReadWriteMany"]
 PIPELINE_NAME = "osft-minimal-pipeline"
@@ -71,7 +71,7 @@ def osft_minimal_pipeline(
     phase_02_train_opt_learning_rate: float = 5e-6,
     phase_02_train_opt_max_seq_len: int = 8192,
     phase_02_train_opt_use_liger: bool = True,
-    phase_04_registry_opt_format_version: str = "1.0",
+    phase_04_registry_opt_port: int = 8080,
 ):
     """OSFT Minimal Training Pipeline - Continual learning without catastrophic forgetting.
 
@@ -101,7 +101,7 @@ def osft_minimal_pipeline(
         phase_02_train_opt_learning_rate: Learning rate (1e-6 to 1e-4). 5e-6 recommended
         phase_02_train_opt_max_seq_len: Max sequence length in tokens
         phase_02_train_opt_use_liger: [OSFT] Enable Liger kernel optimizations. Recommended
-        phase_04_registry_opt_format_version: Model format version
+        phase_04_registry_opt_port: Model registry server port
     """
     # =========================================================================
     # Stage 1: Dataset Download
@@ -215,11 +215,11 @@ def osft_minimal_pipeline(
         eval_metrics=eval_task.outputs["output_metrics"],
         eval_results=eval_task.outputs["output_results"],
         registry_address=phase_04_registry_man_address,
-        registry_port=8080,
+        registry_port=phase_04_registry_opt_port,
         model_name=phase_04_registry_man_reg_name,
         model_version=phase_04_registry_man_reg_version,
         model_format_name="pytorch",
-        model_format_version=phase_04_registry_opt_format_version,
+        model_format_version="2.9",
         model_description="",
         author="pipeline",
         shared_log_file="pipeline_log.txt",
@@ -237,6 +237,3 @@ if __name__ == "__main__":
         pipeline_func=osft_minimal_pipeline,
         package_path=__file__.replace(".py", ".yaml"),
     )
-    print("OSFT Minimal Pipeline compiled successfully!")
-    print(f"  PVC Size: {PVC_SIZE}")
-    print(f"  Storage Class: {PVC_STORAGE_CLASS}")

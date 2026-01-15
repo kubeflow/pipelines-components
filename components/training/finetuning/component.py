@@ -808,7 +808,7 @@ def train_model(
         logger.info(f"Submitted TrainingHub job: {job_name}")
         try:
             # Wait for the job to start running, then wait for completion or failure.
-            client.wait_for_job_status(name=job_name, status={"Running"}, timeout=300)
+            client.wait_for_job_status(name=job_name, status={"Running"}, timeout=900)
             client.wait_for_job_status(name=job_name, status={"Complete", "Failed"}, timeout=1800)
             job = client.get_job(name=job_name)
             if getattr(job, "status", None) == "Failed":
@@ -952,4 +952,3 @@ if __name__ == "__main__":
         train_model,
         package_path=__file__.replace(".py", "_component.yaml"),
     )
-    print("Compiled: train_model_component.yaml")

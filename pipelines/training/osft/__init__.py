@@ -1,1 +1,3 @@
-"""OSFT Pipeline - Placeholder for future implementation."""
+from .pipeline import osft_pipeline
+
+__all__ = ["osft_pipeline"]

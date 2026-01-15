@@ -35,7 +35,7 @@ A minimal 4-stage ML pipeline for fine-tuning language models with OSFT:
 | `phase_02_train_opt_learning_rate` | `float` | `5e-06` | Learning rate (1e-6 to 1e-4). 5e-6 recommended |
 | `phase_02_train_opt_max_seq_len` | `int` | `8192` | Max sequence length in tokens |
 | `phase_02_train_opt_use_liger` | `bool` | `True` | [OSFT] Enable Liger kernel optimizations. Recommended |
-| `phase_04_registry_opt_format_version` | `str` | `1.0` | Model format version |
+| `phase_04_registry_opt_port` | `int` | `8080` | Model registry server port |
 
 ## Metadata 🗂️
 

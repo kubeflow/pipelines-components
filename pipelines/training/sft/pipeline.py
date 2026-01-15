@@ -23,7 +23,7 @@ from components.training.finetuning import train_model
 # =============================================================================
 # PVC Configuration (COMPILE-TIME settings)
 # =============================================================================
-PVC_SIZE = "10Gi"
+PVC_SIZE = "50Gi"
 PVC_STORAGE_CLASS = "nfs-csi"
 PVC_ACCESS_MODES = ["ReadWriteMany"]
 PIPELINE_NAME = "sft-pipeline"
@@ -51,7 +51,7 @@ def sft_pipeline(
     # =========================================================================
     phase_01_dataset_man_data_uri: str,
     phase_01_dataset_man_data_split: float = 0.9,
-    phase_02_train_man_batch: int = 128,
+    phase_02_train_man_train_batch: int = 128,
     phase_02_train_man_epochs: int = 1,
     phase_02_train_man_gpu: int = 1,
     phase_02_train_man_model: str = "Qwen/Qwen2.5-1.5B-Instruct",
@@ -110,7 +110,7 @@ def sft_pipeline(
     Args:
         phase_01_dataset_man_data_uri: Dataset location (hf://, s3://, https://, pvc://).
         phase_01_dataset_man_data_split: Train/eval split ratio (0.9 = 90% train).
-        phase_02_train_man_batch: Effective batch size per optimizer step.
+        phase_02_train_man_train_batch: Effective batch size per optimizer step.
         phase_02_train_man_epochs: Number of training epochs.
         phase_02_train_man_gpu: GPUs per worker. Keep at 1 to avoid /dev/shm issues.
         phase_02_train_man_model: Base model (HuggingFace ID or path).
@@ -188,7 +188,7 @@ def sft_pipeline(
         training_backend="instructlab-training",  # Hardcoded for SFT
         training_unfreeze_rank_ratio=0.0,  # Not used by SFT
         # Hyperparameters
-        training_effective_batch_size=phase_02_train_man_batch,
+        training_effective_batch_size=phase_02_train_man_train_batch,
         training_max_tokens_per_gpu=phase_02_train_man_tokens,
         training_max_seq_len=phase_02_train_opt_max_seq_len,
         training_learning_rate=phase_02_train_opt_learning_rate,
@@ -294,6 +294,3 @@ if __name__ == "__main__":
         pipeline_func=sft_pipeline,
         package_path=__file__.replace(".py", ".yaml"),
     )
-    print("SFT Pipeline compiled successfully!")
-    print(f"  PVC Size: {PVC_SIZE}")
-    print(f"  Storage Class: {PVC_STORAGE_CLASS}")

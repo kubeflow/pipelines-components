@@ -19,7 +19,7 @@ A 4-stage ML pipeline for fine-tuning language models:
 |-----------|------|---------|-------------|
 | `phase_01_dataset_man_data_uri` | `str` | `None` | Dataset location (hf://, s3://, https://, pvc://). |
 | `phase_01_dataset_man_data_split` | `float` | `0.9` | Train/eval split ratio (0.9 = 90% train). |
-| `phase_02_train_man_batch` | `int` | `128` | Effective batch size per optimizer step. |
+| `phase_02_train_man_train_batch` | `int` | `128` | Effective batch size per optimizer step. |
 | `phase_02_train_man_epochs` | `int` | `1` | Number of training epochs. |
 | `phase_02_train_man_gpu` | `int` | `1` | GPUs per worker. Keep at 1 to avoid /dev/shm issues. |
 | `phase_02_train_man_model` | `str` | `Qwen/Qwen2.5-1.5B-Instruct` | Base model (HuggingFace ID or path). |
