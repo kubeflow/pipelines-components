@@ -93,6 +93,7 @@ def train_model(
         pvc_path: Workspace PVC root path (use dsl.WORKSPACE_PATH_PLACEHOLDER).
         output_model: Output model artifact.
         output_metrics: Output training metrics artifact.
+        output_loss_chart: Output HTML artifact with training loss chart.
         dataset: Input training dataset artifact.
         training_base_model: Base model (HuggingFace ID or local path).
         training_algorithm: Training algorithm: OSFT or SFT.
@@ -889,7 +890,7 @@ def train_model(
     # ------------------------------
     def _get_training_metrics(search_root: str, algo: str = "osft") -> tuple:
         """Find and parse TrainingHub metrics file (OSFT/SFT).
-        
+
         Returns:
             Tuple of (metrics dict, losses list for plotting)
         """
@@ -960,6 +961,7 @@ def train_model(
         from io import BytesIO
 
         import matplotlib
+
         matplotlib.use("Agg")  # Non-interactive backend
         import matplotlib.pyplot as plt
 
@@ -1023,7 +1025,8 @@ def train_model(
 </head>
 <body>
     <div class="stats">Loss: {losses[0]:.4f} to {losses[-1]:.4f} (min {min_loss:.4f}) | {len(losses)} steps</div>
-    <img class="chart" src="data:image/png;base64,{img_base64}" alt="Training Loss" onclick="window.open(this.src, '_blank')" title="Click to view full size" />
+    <img class="chart" src="data:image/png;base64,{img_base64}" alt="Training Loss"
+         onclick="window.open(this.src, '_blank')" title="Click to view full size" />
 </body>
 </html>"""
             with open(output_path, "w") as f:

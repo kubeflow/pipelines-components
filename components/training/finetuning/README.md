@@ -13,6 +13,7 @@ Train model using TrainingHub (OSFT/SFT). Outputs model artifact and metrics.
 | `pvc_path` | `str` | `None` | Workspace PVC root path (use dsl.WORKSPACE_PATH_PLACEHOLDER). |
 | `output_model` | `dsl.Output[dsl.Model]` | `None` | Output model artifact. |
 | `output_metrics` | `dsl.Output[dsl.Metrics]` | `None` | Output training metrics artifact. |
+| `output_loss_chart` | `dsl.Output[dsl.HTML]` | `None` | Output HTML artifact with training loss chart. |
 | `dataset` | `dsl.Input[dsl.Dataset]` | `None` | Input training dataset artifact. |
 | `training_base_model` | `str` | `Qwen/Qwen2.5-1.5B-Instruct` | Base model (HuggingFace ID or local path). |
 | `training_algorithm` | `str` | `OSFT` | Training algorithm: OSFT or SFT. |
