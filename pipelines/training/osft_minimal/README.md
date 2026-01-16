@@ -18,7 +18,7 @@ A minimal 4-stage ML pipeline for fine-tuning language models with OSFT:
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `phase_01_dataset_man_data_uri` | `str` | `None` | [REQUIRED] Dataset location (hf://dataset, s3://bucket/path, https://url, pvc://path) |
-| `phase_01_dataset_man_data_split` | `float` | `0.9` | Train/eval split ratio (0.9 = 90% train, 10% eval) |
+| `phase_01_dataset_man_data_split` | `float` | `0.9` | Train/eval split (0.9 = 90% train/10% eval, 1.0 = no split, all for training) |
 | `phase_02_train_man_train_batch` | `int` | `128` | Effective batch size (samples per optimizer step) |
 | `phase_02_train_man_train_epochs` | `int` | `1` | Number of training epochs. OSFT typically needs 1-2 |
 | `phase_02_train_man_train_gpu` | `int` | `1` | GPUs per worker. OSFT handles multi-GPU well |

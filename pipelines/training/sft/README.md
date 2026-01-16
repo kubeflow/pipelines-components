@@ -18,7 +18,7 @@ A 4-stage ML pipeline for fine-tuning language models:
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `phase_01_dataset_man_data_uri` | `str` | `None` | Dataset location (hf://, s3://, https://, pvc://). |
-| `phase_01_dataset_man_data_split` | `float` | `0.9` | Train/eval split ratio (0.9 = 90% train). |
+| `phase_01_dataset_man_data_split` | `float` | `0.9` | Train/eval split (0.9 = 90% train/10% eval, 1.0 = no split, all for training). |
 | `phase_02_train_man_train_batch` | `int` | `128` | Effective batch size per optimizer step. |
 | `phase_02_train_man_epochs` | `int` | `1` | Number of training epochs. |
 | `phase_02_train_man_gpu` | `int` | `1` | GPUs per worker. Keep at 1 to avoid /dev/shm issues. |
@@ -41,7 +41,6 @@ A 4-stage ML pipeline for fine-tuning language models:
 | `phase_02_train_opt_max_seq_len` | `int` | `8192` | Maximum sequence length in tokens. |
 | `phase_02_train_opt_memory` | `str` | `64Gi` | Memory per worker (e.g., 64Gi). |
 | `phase_02_train_opt_num_procs` | `str` | `auto` | Processes per worker (auto or int). |
-| `phase_02_train_opt_pull_secret` | `str` | `` | Pull secret for container registry. |
 | `phase_02_train_opt_save_epoch` | `bool` | `True` | Save checkpoint at each epoch. |
 | `phase_02_train_opt_save_full_state` | `bool` | `False` | Save full accelerate state at epoch. |
 | `phase_02_train_opt_fsdp_sharding` | `str` | `FULL_SHARD` | FSDP strategy (FULL_SHARD, HYBRID_SHARD). |

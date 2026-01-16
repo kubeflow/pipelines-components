@@ -18,7 +18,7 @@ A 4-stage ML pipeline for fine-tuning language models:
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `phase_01_dataset_man_data_uri` | `str` | `None` | [REQUIRED] Dataset location (hf://dataset, s3://bucket/path, https://url, pvc://path) |
-| `phase_01_dataset_man_data_split` | `float` | `0.9` | Train/eval split ratio (0.9 = 90% train, 10% eval) |
+| `phase_01_dataset_man_data_split` | `float` | `0.9` | Train/eval split (0.9 = 90% train/10% eval, 1.0 = no split, all for training) |
 | `phase_02_train_man_train_batch` | `int` | `128` | Effective batch size (samples per optimizer step). Start with 128 |
 | `phase_02_train_man_epochs` | `int` | `1` | Number of training epochs. 1 is often sufficient |
 | `phase_02_train_man_gpu` | `int` | `1` | GPUs per worker. KEEP AT 1 to avoid /dev/shm issues |

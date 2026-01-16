@@ -93,7 +93,7 @@ def sft_minimal_pipeline(
     4) Model Registry - Registers trained model to Kubeflow Model Registry
     Args:
         phase_01_dataset_man_data_uri: [REQUIRED] Dataset location (hf://dataset, s3://bucket/path, https://url, pvc://path)
-        phase_01_dataset_man_data_split: Train/eval split ratio (0.9 = 90% train, 10% eval)
+        phase_01_dataset_man_data_split: Train/eval split (0.9 = 90% train/10% eval, 1.0 = no split, all for training)
         phase_02_train_man_train_batch: Effective batch size (samples per optimizer step). Start with 128
         phase_02_train_man_epochs: Number of training epochs. 1 is often sufficient
         phase_02_train_man_gpu: GPUs per worker. KEEP AT 1 to avoid /dev/shm issues

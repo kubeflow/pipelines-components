@@ -22,7 +22,7 @@ def dataset_download(
     eval_dataset: dsl.Output[dsl.Dataset],
     dataset_uri: str,
     pvc_mount_path: str,
-    train_split_ratio: float = 0.9,
+    train_split_ratio: float = 0.9,  # 1.0 = no eval split (all data for training)
     subset_count: int = 0,
     shared_log_file: str = "pipeline_log.txt",
 ):
@@ -35,7 +35,7 @@ def dataset_download(
         eval_dataset: Output artifact for evaluation dataset (JSONL format)
         dataset_uri: Dataset URI (hf://, s3://, https://, pvc:// or absolute path)
         pvc_mount_path: Path where the shared PVC is mounted
-        train_split_ratio: Ratio for train split (e.g., 0.9 for 90/10)
+        train_split_ratio: Train/eval split (0.9 = 90%/10%, 1.0 = no split, all for training)
         subset_count: Number of examples to use (0 = use all)
         shared_log_file: Name of the shared log file
     """
@@ -342,14 +342,20 @@ def dataset_download(
         log_message("Validating chat template format...")
         validate_chat_format_dataset(dataset)
 
-        # Split dataset using built-in method
+        # Split dataset (or use all for training if ratio is 1.0)
         log_message(f"Splitting dataset with {len(dataset)} examples...")
-        split_dataset = dataset.train_test_split(test_size=1 - train_split_ratio, seed=42)
 
-        train_ds = split_dataset["train"]
-        eval_ds = split_dataset["test"]
-
-        log_message(f"Split complete: {len(train_ds)} train, {len(eval_ds)} eval")
+        if train_split_ratio >= 1.0:
+            # No split - use all data for training, create empty eval
+            log_message("train_split_ratio=1.0: Using all data for training (no eval split)")
+            train_ds = dataset
+            eval_ds = Dataset.from_dict({k: [] for k in dataset.features.keys()})
+            log_message(f"No split: {len(train_ds)} train, 0 eval (eval dataset will be empty)")
+        else:
+            split_dataset = dataset.train_test_split(test_size=1 - train_split_ratio, seed=42)
+            train_ds = split_dataset["train"]
+            eval_ds = split_dataset["test"]
+            log_message(f"Split complete: {len(train_ds)} train, {len(eval_ds)} eval")
 
         # Save datasets as JSONL files to KFP artifacts
         log_message(f"Saving train dataset to {train_dataset.path}")
