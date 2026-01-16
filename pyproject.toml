@@ -80,6 +80,7 @@ exclude = [
     "__pycache__",
     "node_modules",
     "**/_generated/",
+    "**/test_data/**",  # Test fixtures may have intentional styles (quote types, etc.)
 ]
 
 [tool.ruff.lint]
@@ -90,6 +91,7 @@ ignore = [
     "D104",  # Missing docstring in public package
     "D415",  # First line should end with punctuation (not needed for simple module names)
 ]
+
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

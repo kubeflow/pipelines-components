@@ -10,12 +10,14 @@ repos:
         pass_filenames: false
       - id: ruff-format
         name: ruff format
-        entry: uv run ruff format
+        # --force-exclude respects pyproject.toml excludes when files are passed directly
+        entry: uv run ruff format --force-exclude
         language: system
         types: [python]
       - id: ruff-check
         name: ruff check
-        entry: uv run ruff check --fix
+        # --force-exclude respects pyproject.toml excludes when files are passed directly
+        entry: uv run ruff check --fix --force-exclude
         language: system
         types: [python]
       - id: yamllint
