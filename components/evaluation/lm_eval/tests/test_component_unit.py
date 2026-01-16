@@ -1,7 +1,5 @@
 """Unit tests for the lm_eval component."""
 
-from unittest import mock
-
 from ..component import universal_llm_evaluator
 
 

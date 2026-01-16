@@ -76,4 +76,4 @@ class TestKubeflowModelRegistryUnitTests:
         sig = inspect.signature(kubeflow_model_registry.python_func)
 
         # The component should return a string (model_id)
-        assert sig.return_annotation == str or "str" in str(sig.return_annotation)
+        assert sig.return_annotation is str or "str" in str(sig.return_annotation)
