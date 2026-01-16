@@ -114,6 +114,7 @@ def osft_minimal_pipeline(
         hf_token=phase_01_dataset_opt_hf_token,
         shared_log_file="pipeline_log.txt",
     )
+    dataset_download_task.set_display_name("1. Data Download")
     dataset_download_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(dataset_download_task, "IfNotPresent")
 
@@ -163,6 +164,7 @@ def osft_minimal_pipeline(
         training_resource_num_procs_per_worker="auto",
         training_resource_num_workers=phase_02_train_man_train_workers,
     )
+    training_task.set_display_name("2. Fine Tuning")
     training_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(training_task, "IfNotPresent")
 
@@ -197,6 +199,7 @@ def osft_minimal_pipeline(
         model_args={},
         gen_kwargs={},
     )
+    eval_task.set_display_name("3. Model Eval")
     eval_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(eval_task, "IfNotPresent")
 
@@ -236,6 +239,7 @@ def osft_minimal_pipeline(
         source_pipeline_run_name=dsl.PIPELINE_JOB_NAME_PLACEHOLDER,
         source_namespace="",
     )
+    model_registry_task.set_display_name("4. Model Registry")
     model_registry_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(model_registry_task, "IfNotPresent")
 
