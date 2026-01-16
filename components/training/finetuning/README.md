@@ -25,8 +25,6 @@ Train model using TrainingHub (OSFT/SFT). Outputs model artifact and metrics.
 | `training_checkpoint_at_epoch` | `Optional[bool]` | `None` | Save checkpoint at each epoch. |
 | `training_num_epochs` | `Optional[int]` | `None` | Number of training epochs. |
 | `training_data_output_dir` | `Optional[str]` | `None` | Directory for processed training data. |
-| `training_hf_token` | `str` | `` | HuggingFace token for gated models. |
-| `training_pull_secret` | `str` | `` | Pull secret for container registry. |
 | `training_envs` | `str` | `` | Environment overrides as KEY=VAL,KEY=VAL. |
 | `training_resource_cpu_per_worker` | `str` | `8` | CPU cores per worker. |
 | `training_resource_gpu_per_worker` | `int` | `1` | GPUs per worker. |

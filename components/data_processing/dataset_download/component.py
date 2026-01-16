@@ -129,19 +129,45 @@ def dataset_download(
         log_message(f"Dataset validated: {len(dataset)} examples in chat format")
         return True
 
+    def split_hf_id_and_config(dataset_path: str) -> tuple[str, str | None]:
+        """Split an HF dataset identifier into (id, config) if a config suffix is provided.
+
+        Examples:
+            "LipengCS/Table-GPT:All" -> ("LipengCS/Table-GPT", "All")
+            "bigcode/the-stack-dedup-python" -> ("bigcode/the-stack-dedup-python", None)
+        """
+        if ":" in dataset_path:
+            base, cfg = dataset_path.split(":", 1)
+            return base, (cfg or None)
+        return dataset_path, None
+
     def download_from_huggingface(dataset_path: str) -> Dataset:
         """Download dataset from HuggingFace."""
-        log_message(f"Downloading from HuggingFace: {dataset_path}")
+        ds_id, ds_config = split_hf_id_and_config(dataset_path)
+        if ds_config:
+            log_message(f"Downloading from HuggingFace: {ds_id} (config: {ds_config})")
+        else:
+            log_message(f"Downloading from HuggingFace: {ds_id}")
 
         # Set up authentication if token provided
         if hf_token:
             log_message("Using provided HuggingFace token for authentication")
+        else:
+            import logging as _logging
+
+            _logging.warning(
+                "No HF_TOKEN provided; only public, non-gated Hugging Face datasets can be downloaded. "
+                "If you need access to gated datasets, configure the 'hf-token' Kubernetes secret or "
+                "pass an hf_token parameter."
+            )
 
         # Try to load with "train" split first
         load_kwargs = {
-            "path": dataset_path,
+            "path": ds_id,
             "split": "train",
         }
+        if ds_config:
+            load_kwargs["name"] = ds_config
 
         if hf_token:
             load_kwargs["token"] = hf_token
@@ -158,7 +184,9 @@ def dataset_download(
 
                 # Load dataset info without specifying split
                 try:
-                    load_kwargs_no_split = {"path": dataset_path}
+                    load_kwargs_no_split = {"path": ds_id}
+                    if ds_config:
+                        load_kwargs_no_split["name"] = ds_config
                     if hf_token:
                         load_kwargs_no_split["token"] = hf_token
 
@@ -201,8 +229,20 @@ def dataset_download(
         log_message(f"Loading from AWS S3: s3://{s3_path}")
 
         # Get credentials from Kubernetes secret (environment variables)
-        access_key = os.environ.get("AWS_ACCESS_KEY_ID")
-        secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+        access_key = (os.environ.get("AWS_ACCESS_KEY_ID") or "").strip()
+        secret_key = (os.environ.get("AWS_SECRET_ACCESS_KEY") or "").strip()
+
+        # Validate that credentials are present and consistent
+        if (access_key and not secret_key) or (secret_key and not access_key):
+            raise ValueError(
+                "S3 credentials misconfigured: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must either "
+                "both be set and non-empty, or both be unset. Check the 's3-secret' Kubernetes secret."
+            )
+        if not access_key and not secret_key:
+            raise ValueError(
+                "S3 credentials missing: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be provided via "
+                "the 's3-secret' Kubernetes secret when using s3:// dataset URIs."
+            )
 
         # Build storage_options for datasets library
         storage_options = {}

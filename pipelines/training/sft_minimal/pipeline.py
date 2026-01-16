@@ -130,7 +130,7 @@ def sft_minimal_pipeline(
 
     kfp.kubernetes.use_secret_as_env(
         dataset_download_task,
-        secret_name="minio-secret",
+        secret_name="s3-secret",
         secret_key_to_env={
             "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
             "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY",
@@ -171,7 +171,6 @@ def sft_minimal_pipeline(
         training_accelerate_full_state_at_epoch=False,
         training_fsdp_sharding_strategy=phase_02_train_opt_fsdp_sharding,
         # Environment
-        training_hf_token=phase_01_dataset_opt_hf_token,
         training_envs=phase_02_train_opt_env_vars,
         # Resources
         training_resource_cpu_per_worker="4",
@@ -187,9 +186,10 @@ def sft_minimal_pipeline(
         task=training_task,
         secret_name="kubernetes-credentials",
         secret_key_to_env={
-            "server_url": "KUBERNETES_SERVER_URL",
-            "auth_token": "KUBERNETES_AUTH_TOKEN",
+            "KUBERNETES_SERVER_URL": "KUBERNETES_SERVER_URL",
+            "KUBERNETES_AUTH_TOKEN": "KUBERNETES_AUTH_TOKEN",
         },
+        optional=False,
     )
 
     # =========================================================================
@@ -213,12 +213,14 @@ def sft_minimal_pipeline(
     eval_task.set_accelerator_type("nvidia.com/gpu")
     eval_task.set_accelerator_limit(1)
 
-    kfp.kubernetes.use_secret_as_env(
-        task=eval_task,
-        secret_name="hf-token",
-        secret_key_to_env={"HF_TOKEN": "HF_TOKEN"},
-        optional=True,
-    )
+    # Attach shared Hugging Face token secret to all main tasks
+    for _task in [dataset_download_task, training_task, eval_task]:
+        kfp.kubernetes.use_secret_as_env(
+            task=_task,
+            secret_name="hf-token",
+            secret_key_to_env={"HF_TOKEN": "HF_TOKEN"},
+            optional=True,
+        )
 
     # =========================================================================
     # Stage 4: Model Registry
