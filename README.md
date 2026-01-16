@@ -130,11 +130,9 @@ Each component includes standardized metadata:
 
 ### Repository Documentation
 
-- [Onboarding Guide](docs/ONBOARDING.md): Getting started for new contributors
 - [Contributing Guidelines](docs/CONTRIBUTING.md): How to contribute components and pipelines
-- [Best Practices](docs/BESTPRACTICES.md): Component authoring best practices
 - [Governance](docs/GOVERNANCE.md): Repository governance and ownership model
-- [Agent Guidelines](docs/AGENTS.md): Guidance for code-generation agents
+- [Agent Guidelines](AGENTS.md): Guidance for code-generation agents
 
 ## 🤝 Contributing
 

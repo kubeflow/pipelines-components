@@ -84,6 +84,35 @@ uv pip install dist/kfp_components-*.whl
 python -c "from kfp_components import components, pipelines; print('Core package imports OK')"
 ```
 
+### Dependency management (`uv.lock`)
+
+This repository uses `uv` with a committed lockfile:
+
+- Dependency definitions live in `pyproject.toml`
+- Resolved dependency graph lives in `uv.lock`
+
+Prefer leaving dependency versions unpinned/unrestricted in `pyproject.toml` unless you have a concrete reason
+(e.g., known incompatibility, security issue, or a required feature/behavior). If you restrict a dependency, add a
+short comment explaining why (and link an issue if applicable). Use `uv.lock` to lock the resolved versions for
+reproducible local development and CI.
+
+If you change dependencies (e.g., edit `pyproject.toml`), update the lockfile and ensure it is in sync:
+
+```bash
+uv lock
+uv lock --check
+```
+
+CI also verifies that `uv.lock` is in sync (see `.github/workflows/python-lint.yml`).
+
+### Pre-commit validation
+
+Before opening a PR, run pre-commit locally so you catch formatting/lint/validation issues early:
+
+```bash
+pre-commit run
+```
+
 ## What We Accept
 
 We welcome contributions of production-ready ML components and re-usable pipelines:
@@ -494,6 +523,10 @@ Note: `kfp` is allowlisted at module scope; `kfp_components` is allowlisted at m
 
 This often happens in modules under `components/` or `pipelines/`.
 Keep top-level imports to a bare minimum for compilation, and place imports needed at runtime inside pipeline/component bodies.
+
+**Scripts tests (relative imports)**: For tests under `scripts/**/tests/` and `.github/scripts/**/tests/`, use relative
+imports from the parent module so imports work consistently in both IDEs and pytest. Canonical guidance:
+[`scripts/README.md` (Import Conventions)](../scripts/README.md#import-conventions).
 
 ### Component Testing Guide
 
