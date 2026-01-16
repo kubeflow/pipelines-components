@@ -19,9 +19,11 @@ import kfp.kubernetes
 from kfp import dsl
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-# Import reusable components
+
 from components.data_processing.dataset_download import dataset_download
-from components.deployment.model_registry import model_registry
+from components.deployment.kubeflow_model_registry import (
+    kubeflow_model_registry as model_registry,
+)
 from components.evaluation.lm_eval import universal_llm_evaluator
 from components.training.finetuning import train_model
 
@@ -85,6 +87,7 @@ def sft_minimal_pipeline(
     """SFT Training Pipeline - Standard supervised fine-tuning with instructlab-training.
 
     A 4-stage ML pipeline for fine-tuning language models:
+
     1) Dataset Download - Prepares training data from HuggingFace, S3, HTTP, or PVC
     2) SFT Training - Fine-tunes using instructlab-training backend
     3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.)
