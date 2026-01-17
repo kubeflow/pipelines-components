@@ -483,6 +483,27 @@ uv run scripts/validate_base_images/validate_base_images.py
 The script allows any standard Python image matching `python:<version>` (e.g., `python:3.11`,
 `python:3.10-slim`) in addition to Kubeflow registry images.
 
+### Compile & Dependency Validation
+
+Every component and pipeline that sets `ci.compile_check: true` in its `metadata.yaml` must compile
+successfully and declare well-formed dependency metadata. The compile-check CLI discovers
+metadata-backed assets, validates their `dependencies` block, and compiles the exposed
+`@dsl.component`/`@dsl.pipeline` functions.
+
+Run it locally with:
+
+```bash
+# Run against all metadata-backed targets
+uv run python -m scripts.compile_check.compile_check
+
+# Limit to one directory (can be repeated)
+uv run python -m scripts.compile_check.compile_check \
+  --path components/training/my_component
+```
+
+The script exits non-zero if any dependency metadata is malformed or if compilation fails, matching
+the behaviour enforced by CI (`.github/workflows/compile-and-deps.yml`).
+
 **Import Guard**: This repository enforces that top-level imports must be limited to Python's
 standard library. Heavy dependencies (like `kfp`, `pandas`, etc.) should be imported within
 function/pipeline bodies. Exceptions can be added to
