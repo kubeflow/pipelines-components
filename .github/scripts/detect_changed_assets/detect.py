@@ -76,6 +76,12 @@ class GitClient:
         if not base_ref.startswith("origin/"):
             return
 
+        # origin/HEAD is a symbolic reference that exists after cloning and
+        # points to the default branch. It cannot be fetched like a regular
+        # branch since "HEAD" is not a valid branch name on the remote.
+        if base_ref == "origin/HEAD":
+            return
+
         base_branch = base_ref.removeprefix("origin/")
 
         # Try full fetch first, then shallow fetch
