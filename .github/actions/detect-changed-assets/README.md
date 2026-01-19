@@ -36,11 +36,12 @@ jobs:
 | `head-ref` | Head git reference                                              | `HEAD`    |
 | `filter`   | Grep pattern to filter changed components, pipelines, and files | _(empty)_ |
 
-**Default behavior details**
+### Default behavior details
 
 - `base-ref` (Dynamic):
   - For pull requests: `origin/{PR base}`
   - For other events: `origin/{default branch}`
+
 ## Outputs
 
 | Output                     | Description                   | Example                                            |
