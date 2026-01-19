@@ -1,3 +1,4 @@
+---
 name: 'Detect Changed Components and Pipelines'
 description: 'Detects changed components and pipelines in the repository'
 author: 'Kubeflow Pipelines Components Team'
