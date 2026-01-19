@@ -241,7 +241,7 @@ When working on a release branch:
 @dsl.component(base_image="ghcr.io/kubeflow/pipelines-components-example:v1.11.0")
 ```
 
-#### Z-stream (patch) releases
+### Z-stream (patch) releases
 
 In addition to the initial `x.y.0` release for a given `release-x.y` branch, we may cut one or more patch (z-stream) releases (`x.y.1`, `x.y.2`, ...).
 
