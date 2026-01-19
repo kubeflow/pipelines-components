@@ -15,11 +15,7 @@ from kfp import dsl
 
 @dsl.component(
     base_image="quay.io/opendatahub/odh-training-th04-cpu-torch29-py312-rhel9:cpu-3.3",
-    packages_to_install=[
-        "kubernetes",
-        "olot",
-        "matplotlib",
-    ],
+    packages_to_install=["kubernetes", "olot", "matplotlib"],
     task_config_passthroughs=[
         dsl.TaskConfigField.RESOURCES,
         dsl.TaskConfigField.KUBERNETES_TOLERATIONS,
@@ -30,21 +26,13 @@ from kfp import dsl
     ],
 )
 def train_model(
-    # Workspace/PVC root (pass dsl.WORKSPACE_PATH_PLACEHOLDER at call site)
     pvc_path: str,
-    # Outputs (no defaults)
     output_model: dsl.Output[dsl.Model],
     output_metrics: dsl.Output[dsl.Metrics],
     output_loss_chart: dsl.Output[dsl.HTML],
-    # Dataset input and optional remote artifact path via metadata (e.g., s3://...)
     dataset: dsl.Input[dsl.Dataset] = None,
-    # Base model (HF ID or local path)
     training_base_model: str = "Qwen/Qwen2.5-1.5B-Instruct",
-    # Training algorithm selector
     training_algorithm: str = "OSFT",
-    # ------------------------------
-    # Common params (used by both OSFT and SFT)
-    # ------------------------------
     training_effective_batch_size: int = 128,
     training_max_tokens_per_gpu: int = 64000,
     training_max_seq_len: int = 8192,
@@ -54,9 +42,7 @@ def train_model(
     training_checkpoint_at_epoch: Optional[bool] = None,
     training_num_epochs: Optional[int] = None,
     training_data_output_dir: Optional[str] = None,
-    # Env overrides: "KEY=VAL,KEY=VAL"
     training_envs: str = "",
-    # Resource and runtime parameters (per worker/pod)
     training_resource_cpu_per_worker: str = "8",
     training_resource_gpu_per_worker: int = 1,
     training_resource_memory_per_worker: str = "32Gi",
@@ -64,9 +50,6 @@ def train_model(
     training_resource_num_workers: int = 1,
     training_metadata_labels: str = "",
     training_metadata_annotations: str = "",
-    # ------------------------------
-    # OSFT-only params (see ai-innovation/training_hub/src/training_hub/algorithms/osft.py)
-    # ------------------------------
     training_unfreeze_rank_ratio: float = 0.25,
     training_osft_memory_efficient_init: bool = True,
     training_target_patterns: str = "",
@@ -77,14 +60,9 @@ def train_model(
     training_lr_scheduler: Optional[str] = None,
     training_lr_scheduler_kwargs: str = "",
     training_save_final_checkpoint: Optional[bool] = None,
-    # ------------------------------
-    # SFT-only params (see ai-innovation/training_hub/src/training_hub/algorithms/sft.py)
-    # ------------------------------
     training_save_samples: Optional[int] = None,
     training_accelerate_full_state_at_epoch: Optional[bool] = None,
-    # FSDP sharding strategy: FULL_SHARD, HYBRID_SHARD, NO_SHARD
     training_fsdp_sharding_strategy: Optional[str] = None,
-    # KFP TaskConfig passthrough for volumes/env/resources, etc.
     kubernetes_config: dsl.TaskConfig = None,
 ) -> str:
     """Train model using TrainingHub (OSFT/SFT). Outputs model artifact and metrics.
@@ -139,474 +117,262 @@ def train_model(
     import shutil
     import subprocess
     import sys
-    from typing import Dict, List, Tuple
-    from typing import Optional as _Optional
+    from typing import Dict, List
+    from typing import Optional as _Opt
 
-    # ------------------------------
-    # Logging configuration
-    # ------------------------------
-    def _setup_logger() -> logging.Logger:
-        """Configure and return a logger for this component."""
-        _logger = logging.getLogger("train_model")
-        _logger.setLevel(logging.INFO)
-        if not _logger.handlers:
-            _ch = logging.StreamHandler(sys.stdout)
-            _ch.setLevel(logging.INFO)
-            _ch.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
-            _logger.addHandler(_ch)
-        return _logger
+    def _log():
+        lg = logging.getLogger("train_model")
+        lg.setLevel(logging.INFO)
+        if not lg.handlers:
+            h = logging.StreamHandler(sys.stdout)
+            h.setLevel(logging.INFO)
+            h.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+            lg.addHandler(h)
+        return lg
 
-    logger = _setup_logger()
-    logger.info("Initializing training component")
-    logger.info(f"pvc_path={pvc_path}, model_name={training_base_model}")
+    log = _log()
+    log.info(f"Init: pvc={pvc_path}, model={training_base_model}")
 
-    # ------------------------------
-    # Utility: find model directory (with config.json)
-    # ------------------------------
-    def find_model_directory(checkpoints_root: str) -> _Optional[str]:
-        """Find the actual model directory containing config.json.
-
-        Searches recursively for a directory with config.json, prioritizing
-        the most recently modified one. Handles nested checkpoint structures
-        like: checkpoints/epoch-1/samples_90.0/config.json
-        """
-        if not os.path.isdir(checkpoints_root):
+    def find_model_dir(root: str) -> _Opt[str]:
+        if not os.path.isdir(root):
             return None
-
-        candidates: list = []
-        for root, dirs, files in os.walk(checkpoints_root):
-            if "config.json" in files:
+        cands = []
+        for r, _, fs in os.walk(root):
+            if "config.json" in fs:
                 try:
-                    mtime = os.path.getmtime(os.path.join(root, "config.json"))
-                    candidates.append((mtime, root))
+                    cands.append((os.path.getmtime(os.path.join(r, "config.json")), r))
                 except OSError:
-                    continue
-
-        if not candidates:
-            # Fallback: return most recent top-level directory
-            latest: _Optional[Tuple[float, str]] = None
-            for entry in os.listdir(checkpoints_root):
-                full = os.path.join(checkpoints_root, entry)
-                if os.path.isdir(full):
+                    pass
+        if not cands:
+            latest = None
+            for e in os.listdir(root):
+                p = os.path.join(root, e)
+                if os.path.isdir(p):
                     try:
-                        mtime = os.path.getmtime(full)
+                        m = os.path.getmtime(p)
+                        if latest is None or m > latest[0]:
+                            latest = (m, p)
                     except OSError:
-                        continue
-                    if latest is None or mtime > latest[0]:
-                        latest = (mtime, full)
+                        pass
             return latest[1] if latest else None
+        cands.sort(reverse=True)
+        return cands[0][1]
 
-        # Return the most recently modified model directory
-        candidates.sort(reverse=True)
-        return candidates[0][1]
-
-    # ------------------------------
-    # Kubernetes connection
-    # ------------------------------
-    def _init_k8s_client() -> _Optional[object]:
-        """Initialize and return a Kubernetes client using explicit environment variables.
-
-        Kubernetes credentials are required and must be provided via the
-        KUBERNETES_SERVER_URL and KUBERNETES_AUTH_TOKEN environment variables,
-        typically wired from the 'kubernetes-credentials' secret at the pipeline
-        level. If either variable is missing or empty, this function raises a
-        RuntimeError instead of falling back to in-cluster or kubeconfig-based
-        configuration.
-        """
+    def _init_k8s() -> _Opt[object]:
         try:
-            from kubernetes import client as k8s_client
+            from kubernetes import client as k8s
 
-            env_server = os.environ.get("KUBERNETES_SERVER_URL", "").strip()
-            env_token = os.environ.get("KUBERNETES_AUTH_TOKEN", "").strip()
-
-            # Require explicit Kubernetes credentials via environment variables.
-            # This is typically wired from the 'kubernetes-credentials' secret at the pipeline level.
-            if not env_server or not env_token:
-                raise RuntimeError(
-                    "Kubernetes credentials missing or incomplete: both KUBERNETES_SERVER_URL and "
-                    "KUBERNETES_AUTH_TOKEN must be set and non-empty. Ensure the 'kubernetes-credentials' "
-                    "secret is configured and mounted into the training task."
-                )
-
-            logger.info("Configuring Kubernetes client from env (KUBERNETES_SERVER_URL/_AUTH_TOKEN)")
-            cfg = k8s_client.Configuration()
-            cfg.host = env_server
-            cfg.verify_ssl = False
-            cfg.api_key = {"authorization": f"Bearer {env_token}"}
-            k8s_client.Configuration.set_default(cfg)
-            return k8s_client.ApiClient(cfg)
-        except Exception as _exc:
-            logger.warning(f"Kubernetes client not initialized: {_exc}")
+            srv = os.environ.get("KUBERNETES_SERVER_URL", "").strip()
+            tok = os.environ.get("KUBERNETES_AUTH_TOKEN", "").strip()
+            if not srv or not tok:
+                raise RuntimeError("K8s creds missing: KUBERNETES_SERVER_URL and KUBERNETES_AUTH_TOKEN required")
+            log.info("K8s client from env")
+            cfg = k8s.Configuration()
+            cfg.host, cfg.verify_ssl = srv, False
+            cfg.api_key = {"authorization": f"Bearer {tok}"}
+            k8s.Configuration.set_default(cfg)
+            return k8s.ApiClient(cfg)
+        except Exception as e:
+            log.warning(f"K8s client init failed: {e}")
             return None
 
-    _api_client = _init_k8s_client()
+    _api = _init_k8s()
 
-    # ------------------------------
-    # Environment variables (defaults + overrides)
-    # ------------------------------
-    cache_root = os.path.join(pvc_path, ".cache", "huggingface")
-    default_env: Dict[str, str] = {
+    cache = os.path.join(pvc_path, ".cache", "huggingface")
+    denv: Dict[str, str] = {
         "XDG_CACHE_HOME": "/tmp",
         "TRITON_CACHE_DIR": "/tmp/.triton",
         "HF_HOME": "/tmp/.cache/huggingface",
-        "HF_DATASETS_CACHE": os.path.join(cache_root, "datasets"),
-        "TRANSFORMERS_CACHE": os.path.join(cache_root, "transformers"),
+        "HF_DATASETS_CACHE": os.path.join(cache, "datasets"),
+        "TRANSFORMERS_CACHE": os.path.join(cache, "transformers"),
         "NCCL_DEBUG": "INFO",
     }
 
-    def parse_kv_list(kv_str: str) -> Dict[str, str]:
-        out: Dict[str, str] = {}
-        if not kv_str:
+    def parse_kv(s: str) -> Dict[str, str]:
+        out = {}
+        if not s:
             return out
-        for item in kv_str.split(","):
-            item = item.strip()
-            if not item:
+        for it in s.split(","):
+            it = it.strip()
+            if not it:
                 continue
-            if "=" not in item:
-                raise ValueError(f"Invalid key=value item (expected key=value): {item}")
-            k, v = item.split("=", 1)
-            k = k.strip()
-            v = v.strip()
+            if "=" not in it:
+                raise ValueError(f"Invalid kv: {it}")
+            k, v = it.split("=", 1)
+            k, v = k.strip(), v.strip()
             if not k:
-                raise ValueError(f"Invalid key in key=value pair: {item}")
+                raise ValueError(f"Empty key: {it}")
             out[k] = v
         return out
 
-    def _configure_env(env_csv: str, base_env: Dict[str, str]) -> Dict[str, str]:
-        """Merge base env with CSV overrides and export them to process env; return merged map."""
-        overrides = parse_kv_list(env_csv)
-        merged = {**base_env, **overrides}
-        for ek, ev in merged.items():
-            os.environ[ek] = ev
-        logger.info(f"Env configured (keys): {sorted(list(merged.keys()))}")
-        return merged
+    def _cfg_env(csv: str, base: Dict[str, str]) -> Dict[str, str]:
+        m = {**base, **parse_kv(csv)}
+        for k, v in m.items():
+            os.environ[k] = v
+        log.info(f"Env: {sorted(m.keys())}")
+        return m
 
-    merged_env = _configure_env(training_envs, default_env)
+    menv = _cfg_env(training_envs, denv)
 
-    # Ensure HuggingFace token from environment is propagated into trainer env
-    # (e.g., set via Kubernetes secret at the pipeline level as HF_TOKEN)
-    hf_token_env = os.environ.get("HF_TOKEN", "").strip()
-    if hf_token_env:
-        merged_env["HF_TOKEN"] = hf_token_env
-        os.environ["HF_TOKEN"] = hf_token_env
-        logger.info("HF_TOKEN detected in environment; propagating to TrainingHub runtime")
-    else:
-        # If the base model looks like a Hugging Face Hub reference and no token is provided,
-        # warn that only public, non-gated models will be accessible.
-        if isinstance(training_base_model, str):
-            base_str = training_base_model.strip()
-            looks_like_hf_ref = base_str.startswith("hf://") or (
-                "/" in base_str and not base_str.startswith("oci://") and not os.path.exists(base_str)
-            )
-            if looks_like_hf_ref:
-                logger.warning(
-                    "HF_TOKEN is not set; attempting to load Hugging Face model "
-                    f"'{training_base_model}' without authentication. "
-                    "Only public, non-gated models can be downloaded. "
-                    "If you need access to gated models, configure the 'hf-token' "
-                    "Kubernetes secret."
-                )
+    hf_tok = os.environ.get("HF_TOKEN", "").strip()
+    if hf_tok:
+        menv["HF_TOKEN"] = hf_tok
+        os.environ["HF_TOKEN"] = hf_tok
+        log.info("HF_TOKEN propagated")
+    elif isinstance(training_base_model, str):
+        b = training_base_model.strip()
+        if b.startswith("hf://") or ("/" in b and not b.startswith("oci://") and not os.path.exists(b)):
+            log.warning(f"HF_TOKEN not set; only public models accessible for '{training_base_model}'")
 
-    # ------------------------------
-    # Dataset resolution
-    # ------------------------------
-    from datasets import Dataset, load_dataset, load_from_disk
+    from datasets import load_dataset, load_from_disk
 
-    resolved_dataset_dir = os.path.join(pvc_path, "dataset", "train")
-    os.makedirs(resolved_dataset_dir, exist_ok=True)
+    ds_dir = os.path.join(pvc_path, "dataset", "train")
+    os.makedirs(ds_dir, exist_ok=True)
 
-    def is_local_path(p: str) -> bool:
-        return bool(p) and os.path.exists(p)
-
-    def looks_like_url(p: str) -> bool:
-        return p.startswith("s3://") or p.startswith("http://") or p.startswith("https://")
-
-    def _resolve_dataset(input_dataset: _Optional[dsl.Input[dsl.Dataset]], out_dir: str) -> None:
-        """Resolve dataset with preference order.
-
-        Priority: existing PVC dir > input artifact > remote artifact/HF > default.
-        Remote path is read from input_dataset.metadata['artifact_path'] if present.
-        If metadata['pvc_dir'] exists, prefer it.
-        """
-        # 0) If already present (e.g., staged by prior step), keep it
+    def _resolve_ds(inp, out_dir: str):
         if os.path.isdir(out_dir) and any(os.scandir(out_dir)):
-            logger.info(f"Using existing dataset at {out_dir}")
+            log.info(f"Using existing ds: {out_dir}")
             return
-        # 1) Input artifact (can be a file or directory)
-        if input_dataset and getattr(input_dataset, "path", None) and os.path.exists(input_dataset.path):
-            src_path = input_dataset.path
-            if os.path.isdir(src_path):
-                logger.info(f"Copying input dataset directory from {src_path} to {out_dir}")
-                shutil.copytree(src_path, out_dir, dirs_exist_ok=True)
+        if inp and getattr(inp, "path", None) and os.path.exists(inp.path):
+            src = inp.path
+            if os.path.isdir(src):
+                log.info(f"Copy ds dir: {src}")
+                shutil.copytree(src, out_dir, dirs_exist_ok=True)
             else:
-                # It's a file (e.g., JSONL) - copy to out_dir with appropriate name
-                logger.info(f"Copying input dataset file from {src_path} to {out_dir}")
-                dst_file = os.path.join(out_dir, os.path.basename(src_path))
-                # If basename doesn't have extension, assume it's a jsonl file
-                if not os.path.splitext(dst_file)[1]:
-                    dst_file = os.path.join(out_dir, "train.jsonl")
-                shutil.copy2(src_path, dst_file)
-                logger.info(f"Dataset file copied to {dst_file}")
+                log.info(f"Copy ds file: {src}")
+                dst = os.path.join(out_dir, os.path.basename(src))
+                if not os.path.splitext(dst)[1]:
+                    dst = os.path.join(out_dir, "train.jsonl")
+                shutil.copy2(src, dst)
             return
-        # 2) Remote artifact (S3/HTTP) or HF repo id
         rp = ""
         try:
-            if input_dataset and hasattr(input_dataset, "metadata") and isinstance(input_dataset.metadata, dict):
-                pvc_path_meta = (
-                    input_dataset.metadata.get("pvc_path") or input_dataset.metadata.get("pvc_dir") or ""
-                ).strip()
-                if pvc_path_meta and os.path.exists(pvc_path_meta):
-                    if os.path.isdir(pvc_path_meta) and any(os.scandir(pvc_path_meta)):
-                        logger.info(f"Using pre-staged PVC dataset directory at {pvc_path_meta}")
-                        shutil.copytree(pvc_path_meta, out_dir, dirs_exist_ok=True)
+            if inp and hasattr(inp, "metadata") and isinstance(inp.metadata, dict):
+                pvc_m = (inp.metadata.get("pvc_path") or inp.metadata.get("pvc_dir") or "").strip()
+                if pvc_m and os.path.exists(pvc_m):
+                    if os.path.isdir(pvc_m) and any(os.scandir(pvc_m)):
+                        log.info(f"PVC ds dir: {pvc_m}")
+                        shutil.copytree(pvc_m, out_dir, dirs_exist_ok=True)
                         return
-                    elif os.path.isfile(pvc_path_meta):
-                        logger.info(f"Using pre-staged PVC dataset file at {pvc_path_meta}")
-                        dst_file = os.path.join(out_dir, os.path.basename(pvc_path_meta))
-                        if not os.path.splitext(dst_file)[1]:
-                            dst_file = os.path.join(out_dir, "train.jsonl")
-                        shutil.copy2(pvc_path_meta, dst_file)
+                    elif os.path.isfile(pvc_m):
+                        log.info(f"PVC ds file: {pvc_m}")
+                        dst = os.path.join(out_dir, os.path.basename(pvc_m))
+                        if not os.path.splitext(dst)[1]:
+                            dst = os.path.join(out_dir, "train.jsonl")
+                        shutil.copy2(pvc_m, dst)
                         return
-                rp = (input_dataset.metadata.get("artifact_path") or "").strip()
+                rp = (inp.metadata.get("artifact_path") or "").strip()
         except Exception:
             rp = ""
         if rp:
-            if looks_like_url(rp):
-                logger.info(f"Attempting to load remote dataset from {rp}")
-                # Try a few common formats via datasets library
+            if rp.startswith("s3://") or rp.startswith("http://") or rp.startswith("https://"):
+                log.info(f"Remote ds: {rp}")
                 ext = rp.lower()
-                try:
-                    if ext.endswith(".json") or ext.endswith(".jsonl"):
-                        ds: Dataset = load_dataset("json", data_files=rp, split="train")
-                    elif ext.endswith(".parquet"):
-                        ds: Dataset = load_dataset("parquet", data_files=rp, split="train")
-                    else:
-                        raise ValueError(
-                            "Unsupported remote dataset format. "
-                            "Provide a JSON/JSONL/PARQUET file or a HF dataset repo id."
-                        )
-                    ds.save_to_disk(out_dir)
-                    return
-                except Exception as e:
-                    raise ValueError(f"Failed to load remote dataset from {rp}: {e}")
-            else:
-                # Treat as HF dataset repo id
-                logger.info(f"Assuming HF dataset repo id: {rp}")
-                ds: Dataset = load_dataset(rp, split="train")
+                if ext.endswith(".json") or ext.endswith(".jsonl"):
+                    ds = load_dataset("json", data_files=rp, split="train")
+                elif ext.endswith(".parquet"):
+                    ds = load_dataset("parquet", data_files=rp, split="train")
+                else:
+                    raise ValueError("Unsupported remote format")
                 ds.save_to_disk(out_dir)
                 return
-        # 3) No fallback: require an explicit dataset source
-        raise ValueError(
-            "No dataset provided or resolvable. Please supply an input artifact, a PVC path via metadata "
-            "('pvc_path' or 'pvc_dir'), or a remote source via metadata['artifact_path'] (S3/HTTP/HF repo id)."
-        )
+            else:
+                log.info(f"HF ds: {rp}")
+                load_dataset(rp, split="train").save_to_disk(out_dir)
+                return
+        raise ValueError("No dataset provided")
 
-    _resolve_dataset(dataset, resolved_dataset_dir)
+    _resolve_ds(dataset, ds_dir)
 
-    # Export dataset to JSONL so downstream trainer reads a plain JSONL file
-    jsonl_path = os.path.join(resolved_dataset_dir, "train.jsonl")
+    jsonl = os.path.join(ds_dir, "train.jsonl")
     try:
-        # Try loading from the saved HF dataset on disk and export to JSONL
-        ds_on_disk = load_from_disk(resolved_dataset_dir)
-        # Handle DatasetDict vs Dataset
-        train_split = ds_on_disk["train"] if isinstance(ds_on_disk, dict) else ds_on_disk
+        dsk = load_from_disk(ds_dir)
+        tr = dsk["train"] if isinstance(dsk, dict) else dsk
         try:
-            # Newer datasets supports native JSON export
-            train_split.to_json(jsonl_path, lines=True)
-            logger.info(f"Wrote JSONL to {jsonl_path} via to_json")
+            tr.to_json(jsonl, lines=True)
+            log.info(f"JSONL: {jsonl}")
         except AttributeError:
-            # Manual JSONL write
-            import json as _json
+            with open(jsonl, "w") as f:
+                for r in tr:
+                    f.write(json.dumps(r, ensure_ascii=False) + "\n")
+            log.info(f"JSONL manual: {jsonl}")
+    except Exception as e:
+        log.warning(f"JSONL export failed: {e}")
 
-            with open(jsonl_path, "w") as _f:
-                for _rec in train_split:
-                    _f.write(_json.dumps(_rec, ensure_ascii=False) + "\n")
-            logger.info(f"Wrote JSONL to {jsonl_path} via manual dump")
-    except Exception as _e:
-        logger.warning(f"Failed to export JSONL dataset at {resolved_dataset_dir}: {_e}")
-        # Leave jsonl_path as default; downstream will fallback to directory if file not present
-
-    # ------------------------------
-    # Model resolution (supports HF ID/local path or oci:// registry ref)
-    # ------------------------------
-    def _skopeo_copy_to_dir(oci_ref: str, dest_dir: str, auth_json: str | None = None) -> None:
-        """Use skopeo to copy a registry image to a plain directory ('dir:' transport)."""
-        os.makedirs(dest_dir, exist_ok=True)
-        authfile_path = None
-        try:
-            if auth_json:
-                authfile_path = "/tmp/skopeo-auth.json"
-                with open(authfile_path, "w") as f:
-                    f.write(auth_json)
-        except Exception as e:
-            logger.warning(f"Failed to prepare skopeo auth file: {e}")
-            authfile_path = None
-        # skopeo syntax: skopeo copy [--authfile FILE] docker://REF dir:DESTDIR
+    def _skopeo(ref: str, dest: str, auth: str | None = None):
+        os.makedirs(dest, exist_ok=True)
+        af = None
+        if auth:
+            af = "/tmp/skopeo-auth.json"
+            with open(af, "w") as f:
+                f.write(auth)
         cmd = ["skopeo", "copy"]
-        if authfile_path:
-            cmd.extend(["--authfile", authfile_path])
-        cmd.extend([f"docker://{oci_ref}", f"dir:{dest_dir}"])
-        logger.info(f"Running: {' '.join(cmd)}")
-        res = subprocess.run(cmd, text=True, capture_output=True)
-        if res.returncode != 0:
-            stderr = (res.stderr or "").strip()
-            logger.error(f"skopeo copy failed (exit={res.returncode}): {stderr}")
-            if "unauthorized" in stderr.lower() or "authentication required" in stderr.lower():
-                logger.error(
-                    "Authentication error detected pulling from registry. "
-                    "Provide credentials via --authfile or mounted Docker config."
-                )
-            res.check_returncode()
-        else:
-            out_preview = "\n".join((res.stdout or "").splitlines()[-20:])
-            if out_preview:
-                logger.info(f"skopeo copy output (tail):\n{out_preview}")
+        if af:
+            cmd.extend(["--authfile", af])
+        cmd.extend([f"docker://{ref}", f"dir:{dest}"])
+        log.info(f"Run: {' '.join(cmd)}")
+        r = subprocess.run(cmd, text=True, capture_output=True)
+        if r.returncode != 0:
+            log.error(f"skopeo fail: {r.stderr}")
+            r.check_returncode()
 
-    def _extract_models_from_dir_image(image_dir: str, out_dir: str) -> List[str]:
-        """Extract 'models/' subtree from skopeo dir transport output into out_dir."""
+    def _extract(img_dir: str, out: str) -> List[str]:
         import tarfile
 
-        os.makedirs(out_dir, exist_ok=True)
-        extracted: List[str] = []
-        logger.info(f"Extracting 'models/' from dir image {image_dir} to {out_dir}")
-        try:
-            for fname in os.listdir(image_dir):
-                fpath = os.path.join(image_dir, fname)
-                if not os.path.isfile(fpath):
-                    continue
-                if fname.endswith(".json") or fname in {"manifest", "index.json"}:
-                    continue
-                try:
-                    with tarfile.open(fpath, mode="r:*") as tf:
-                        for member in tf.getmembers():
-                            if member.isfile() and member.name.startswith("models/"):
-                                tf.extract(member, path=out_dir)
-                                extracted.append(member.name)
-                except tarfile.ReadError:
-                    continue
-                except Exception as _e:
-                    logger.warning(f"Failed to extract from {fname}: {_e}")
-        except Exception as e:
-            logger.warning(f"Dir image extraction failed: {e}")
-        logger.info(f"Extraction completed; entries extracted: {len(extracted)}")
-        return extracted
+        os.makedirs(out, exist_ok=True)
+        ext = []
+        for fn in os.listdir(img_dir):
+            fp = os.path.join(img_dir, fn)
+            if not os.path.isfile(fp) or fn.endswith(".json") or fn in {"manifest", "index.json"}:
+                continue
+            try:
+                with tarfile.open(fp, mode="r:*") as tf:
+                    for m in tf.getmembers():
+                        if m.isfile() and m.name.startswith("models/"):
+                            tf.extract(m, path=out)
+                            ext.append(m.name)
+            except Exception:
+                pass
+        log.info(f"Extracted: {len(ext)}")
+        return ext
 
-    def _discover_hf_model_dir(root: str) -> _Optional[str]:
-        """Find a Hugging Face model directory containing config.json, weights, and tokenizer."""
-        weight_candidates = {
-            "pytorch_model.bin",
-            "pytorch_model.bin.index.json",
-            "model.safetensors",
-            "model.safetensors.index.json",
-        }
-        tokenizer_candidates = {"tokenizer.json", "tokenizer.model"}
-        for dirpath, _dirnames, filenames in os.walk(root):
-            fn = set(filenames)
-            if "config.json" in fn and (fn & weight_candidates) and (fn & tokenizer_candidates):
-                return dirpath
+    def _find_hf(root: str) -> _Opt[str]:
+        wt = {"pytorch_model.bin", "pytorch_model.bin.index.json", "model.safetensors", "model.safetensors.index.json"}
+        tk = {"tokenizer.json", "tokenizer.model"}
+        for dp, _, fns in os.walk(root):
+            fn = set(fns)
+            if "config.json" in fn and (fn & wt) and (fn & tk):
+                return dp
         return None
 
-    def _log_dir_tree(root: str, max_depth: int = 3, max_entries: int = 800) -> None:
-        """Compact tree logger for debugging large directories."""
-        try:
-            if not (root and os.path.isdir(root)):
-                logger.info(f"(tree) Path is not a directory: {root}")
-                return
-            logger.info(f"(tree) {root} (max_depth={max_depth}, max_entries={max_entries})")
-            total = 0
-            root_depth = root.rstrip(os.sep).count(os.sep)
-            for dirpath, dirnames, filenames in os.walk(root):
-                depth = dirpath.rstrip(os.sep).count(os.sep) - root_depth
-                if depth >= max_depth:
-                    dirnames[:] = []
-                indent = "  " * depth
-                logger.info(f"(tree){indent}{os.path.basename(dirpath) or dirpath}/")
-                total += 1
-                if total >= max_entries:
-                    logger.info("(tree) ... truncated ...")
-                    return
-                for fname in sorted(filenames)[:50]:
-                    logger.info(f"(tree){indent}  {fname}")
-                    total += 1
-                    if total >= max_entries:
-                        logger.info("(tree) ... truncated ...")
-                        return
-        except Exception as _e:
-            logger.warning(f"Failed to render directory tree for {root}: {_e}")
+    resolved = training_base_model
 
-    resolved_model_path: str = training_base_model
-
-    def _load_oci_auth_json() -> str | None:
-        """Validate and return OCI auth JSON from environment, if provided.
-
-        Expects OCI_PULL_SECRET_MODEL_DOWNLOAD to contain a Docker config.json-style
-        payload with an "auths" object. If the variable is set but invalid, raises
-        a ValueError with a clear message. If it is unset/empty, returns None and
-        skopeo will attempt anonymous access.
-        """
+    def _oci_auth() -> str | None:
         raw = os.environ.get("OCI_PULL_SECRET_MODEL_DOWNLOAD", "").strip()
         if not raw:
-            logger.warning(
-                "OCI_PULL_SECRET_MODEL_DOWNLOAD is not set; attempting OCI model download without "
-                "credentials. If your registry requires authentication, create the "
-                "'oci-pull-secret-model-download' Kubernetes secret with Docker config.json content."
-            )
+            log.warning("OCI_PULL_SECRET_MODEL_DOWNLOAD not set")
             return None
-        try:
-            parsed = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise ValueError(
-                "OCI_PULL_SECRET_MODEL_DOWNLOAD is set but is not valid JSON. "
-                "It must contain Docker config.json content for skopeo authentication."
-            ) from exc
-        if not isinstance(parsed, dict) or not parsed.get("auths"):
-            raise ValueError(
-                "OCI_PULL_SECRET_MODEL_DOWNLOAD is set but does not look like a Docker config.json. "
-                "Expected a JSON object with a non-empty 'auths' field."
-            )
+        p = json.loads(raw)
+        if not isinstance(p, dict) or not p.get("auths"):
+            raise ValueError("Invalid OCI auth")
         return raw
 
     if isinstance(training_base_model, str) and training_base_model.startswith("oci://"):
-        # Strip scheme and perform skopeo copy to a plain directory on PVC
-        ref_no_scheme = training_base_model[len("oci://") :]
-        dir_image = os.path.join(pvc_path, "model-dir")
-        model_out_dir = os.path.join(pvc_path, "model")
-        # Clean output directory for a fresh extraction
-        try:
-            if os.path.isdir(model_out_dir):
-                shutil.rmtree(model_out_dir)
-        except Exception:
-            pass
-        # Use pull secret (Docker config.json content) from environment if present
-        auth_json = _load_oci_auth_json()
-        _skopeo_copy_to_dir(ref_no_scheme, dir_image, auth_json)
-        extracted = _extract_models_from_dir_image(dir_image, model_out_dir)
-        if not extracted:
-            logger.warning("No files extracted from '/models' in the OCI artifact; model discovery may fail.")
-        _log_dir_tree(model_out_dir, max_depth=3, max_entries=800)
-        # Typical extraction path is '<out_dir>/models/...'
-        candidate_root = os.path.join(model_out_dir, "models")
-        hf_dir = _discover_hf_model_dir(candidate_root if os.path.isdir(candidate_root) else model_out_dir)
-        if hf_dir:
-            logger.info(f"Detected HuggingFace model directory: {hf_dir}")
-            resolved_model_path = hf_dir
-        else:
-            logger.warning(
-                "Failed to detect a HuggingFace model directory after extraction; "
-                "continuing with model_out_dir (may fail downstream)."
-            )
-            resolved_model_path = model_out_dir
+        ref = training_base_model[6:]
+        img_dir = os.path.join(pvc_path, "model-dir")
+        mod_out = os.path.join(pvc_path, "model")
+        if os.path.isdir(mod_out):
+            shutil.rmtree(mod_out, ignore_errors=True)
+        _skopeo(ref, img_dir, _oci_auth())
+        _extract(img_dir, mod_out)
+        cand = os.path.join(mod_out, "models")
+        hfd = _find_hf(cand if os.path.isdir(cand) else mod_out)
+        resolved = hfd if hfd else mod_out
 
-    # ------------------------------
-    # Training (placeholder for TrainingHubTrainer)
-    # ------------------------------
-    checkpoints_dir = os.path.join(pvc_path, "checkpoints")
-    os.makedirs(checkpoints_dir, exist_ok=True)
+    ckpt_dir = os.path.join(pvc_path, "checkpoints")
+    os.makedirs(ckpt_dir, exist_ok=True)
 
-    # Wire in TrainingHubTrainer (modularized steps)
     try:
-        from kubeflow_trainer_api import models as _th_models  # noqa: F401
-
         from kubeflow.common.types import KubernetesBackendConfig
         from kubeflow.trainer import TrainerClient
         from kubeflow.trainer.options.kubernetes import (
@@ -617,487 +383,309 @@ def train_model(
         )
         from kubeflow.trainer.rhai import TrainingHubAlgorithms, TrainingHubTrainer
 
-        if _api_client is None:
-            raise RuntimeError("Kubernetes API client is not initialized")
+        if _api is None:
+            raise RuntimeError("K8s API not initialized")
 
-        backend_cfg = KubernetesBackendConfig(client_configuration=_api_client.configuration)
-        client = TrainerClient(backend_cfg)
+        client = TrainerClient(KubernetesBackendConfig(client_configuration=_api.configuration))
 
-        def _select_runtime(_client) -> object:
-            """Return the 'training-hub' runtime from Trainer backend."""
-            for rt in _client.list_runtimes():
-                if getattr(rt, "name", "") == "training-hub":
-                    logger.info(f"Found runtime: {rt}")
-                    return rt
-            raise RuntimeError("Training runtime 'training-hub' not found")
+        def _rt(c):
+            for r in c.list_runtimes():
+                if getattr(r, "name", "") == "training-hub":
+                    log.info(f"Runtime: {r}")
+                    return r
+            raise RuntimeError("Runtime 'training-hub' not found")
 
-        th_runtime = _select_runtime(client)
+        runtime = _rt(client)
 
-        # Build training parameters (aligned to OSFT/SFT)
-        parsed_target_patterns = (
+        tgt = (
             [p.strip() for p in training_target_patterns.split(",") if p.strip()] if training_target_patterns else None
         )
-        parsed_lr_sched_kwargs = None
+        lr_kw = None
         if training_lr_scheduler_kwargs:
-            try:
-                items = [s.strip() for s in training_lr_scheduler_kwargs.split(",") if s.strip()]
-                kv: Dict[str, str] = {}
-                for item in items:
-                    if "=" not in item:
-                        raise ValueError(f"Invalid scheduler kwargs segment '{item}'. Expected key=value.")
-                    key, value = item.split("=", 1)
-                    key = key.strip()
-                    value = value.strip()
-                    if not key:
-                        raise ValueError("Empty key in training_lr_scheduler_kwargs")
-                    kv[key] = value
-                parsed_lr_sched_kwargs = kv
-            except Exception as e:
-                raise ValueError(f"Invalid training_lr_scheduler_kwargs format: {e}")
+            kv = {}
+            for it in [s.strip() for s in training_lr_scheduler_kwargs.split(",") if s.strip()]:
+                if "=" not in it:
+                    raise ValueError(f"Invalid lr kwargs: {it}")
+                k, v = it.split("=", 1)
+                kv[k.strip()] = v.strip()
+            lr_kw = kv
 
-        def _parse_int(value: object, default_val: int) -> int:
-            try:
-                if value is None:
-                    return default_val
-                if isinstance(value, int):
-                    return value
-                s = str(value).strip()
-                if not s:
-                    return default_val
-                return int(s)
-            except Exception:
-                return default_val
+        def _int(v, d: int) -> int:
+            if v is None:
+                return d
+            if isinstance(v, int):
+                return v
+            s = str(v).strip()
+            return int(s) if s else d
 
-        def _compute_nproc_and_nodes() -> Tuple[int, int]:
-            nproc_auto = str(training_resource_num_procs_per_worker).strip().lower() == "auto"
-            nproc = (
-                training_resource_gpu_per_worker
-                if nproc_auto
-                else _parse_int(training_resource_num_procs_per_worker, 1)
-            )
-            if nproc <= 0:
-                nproc = 1
-            nnodes = _parse_int(training_resource_num_workers, 1)
-            if nnodes <= 0:
-                nnodes = 1
-            return nproc, nnodes
+        def _nproc():
+            auto = str(training_resource_num_procs_per_worker).strip().lower() == "auto"
+            np = training_resource_gpu_per_worker if auto else _int(training_resource_num_procs_per_worker, 1)
+            nn = _int(training_resource_num_workers, 1)
+            return max(np, 1), max(nn, 1)
 
-        def _build_params() -> Dict[str, object]:
-            """Build OSFT/SFT parameter set for TrainingHub."""
-            nproc_per_node, nnodes = _compute_nproc_and_nodes()
-            base = {
-                "model_path": resolved_model_path,
-                # Prefer JSONL export when available; fallback to resolved directory
-                "data_path": jsonl_path if os.path.exists(jsonl_path) else resolved_dataset_dir,
-                "effective_batch_size": int(
-                    training_effective_batch_size if training_effective_batch_size is not None else 128
-                ),
+        def _params() -> Dict:
+            np, nn = _nproc()
+            b = {
+                "model_path": resolved,
+                "data_path": jsonl if os.path.exists(jsonl) else ds_dir,
+                "effective_batch_size": int(training_effective_batch_size or 128),
                 "max_tokens_per_gpu": int(training_max_tokens_per_gpu),
-                "max_seq_len": int(training_max_seq_len if training_max_seq_len is not None else 8192),
-                "learning_rate": float(training_learning_rate if training_learning_rate is not None else 5e-6),
+                "max_seq_len": int(training_max_seq_len or 8192),
+                "learning_rate": float(training_learning_rate or 5e-6),
                 "backend": training_backend,
-                "ckpt_output_dir": checkpoints_dir,
-                "data_output_dir": training_data_output_dir
-                or os.path.join(checkpoints_dir, "_internal_data_processing"),
-                "warmup_steps": int(training_lr_warmup_steps) if training_lr_warmup_steps is not None else 0,
+                "ckpt_output_dir": ckpt_dir,
+                "data_output_dir": training_data_output_dir or os.path.join(ckpt_dir, "_internal_data_processing"),
+                "warmup_steps": int(training_lr_warmup_steps) if training_lr_warmup_steps else 0,
                 "checkpoint_at_epoch": bool(training_checkpoint_at_epoch)
                 if training_checkpoint_at_epoch is not None
                 else False,
-                "num_epochs": int(training_num_epochs) if training_num_epochs is not None else 1,
-                "nproc_per_node": int(nproc_per_node),
-                "nnodes": int(nnodes),
+                "num_epochs": int(training_num_epochs) if training_num_epochs else 1,
+                "nproc_per_node": np,
+                "nnodes": nn,
             }
             algo = (training_algorithm or "").strip().upper()
             if algo == "OSFT":
-                base["unfreeze_rank_ratio"] = float(training_unfreeze_rank_ratio)
-                base["osft_memory_efficient_init"] = bool(training_osft_memory_efficient_init)
-                base["target_patterns"] = parsed_target_patterns or []
+                b["unfreeze_rank_ratio"] = float(training_unfreeze_rank_ratio)
+                b["osft_memory_efficient_init"] = bool(training_osft_memory_efficient_init)
+                b["target_patterns"] = tgt or []
                 if training_seed is not None:
-                    base["seed"] = int(training_seed)
+                    b["seed"] = int(training_seed)
                 if training_use_liger is not None:
-                    base["use_liger"] = bool(training_use_liger)
+                    b["use_liger"] = bool(training_use_liger)
                 if training_use_processed_dataset is not None:
-                    base["use_processed_dataset"] = bool(training_use_processed_dataset)
+                    b["use_processed_dataset"] = bool(training_use_processed_dataset)
                 if training_unmask_messages is not None:
-                    base["unmask_messages"] = bool(training_unmask_messages)
+                    b["unmask_messages"] = bool(training_unmask_messages)
                 if training_lr_scheduler:
-                    base["lr_scheduler"] = training_lr_scheduler
-                if parsed_lr_sched_kwargs:
-                    base["lr_scheduler_kwargs"] = parsed_lr_sched_kwargs
+                    b["lr_scheduler"] = training_lr_scheduler
+                if lr_kw:
+                    b["lr_scheduler_kwargs"] = lr_kw
                 if training_save_final_checkpoint is not None:
-                    base["save_final_checkpoint"] = bool(training_save_final_checkpoint)
+                    b["save_final_checkpoint"] = bool(training_save_final_checkpoint)
             elif algo == "SFT":
                 if training_save_samples is not None:
-                    base["save_samples"] = int(training_save_samples)
+                    b["save_samples"] = int(training_save_samples)
                 if training_accelerate_full_state_at_epoch is not None:
-                    base["accelerate_full_state_at_epoch"] = bool(training_accelerate_full_state_at_epoch)
-                # SFT also supports lr_scheduler and warmup_steps
+                    b["accelerate_full_state_at_epoch"] = bool(training_accelerate_full_state_at_epoch)
                 if training_lr_scheduler:
-                    base["lr_scheduler"] = training_lr_scheduler
+                    b["lr_scheduler"] = training_lr_scheduler
                 if training_use_liger is not None:
-                    base["use_liger"] = bool(training_use_liger)
-            # FSDP sharding strategy - stored as string, will be converted to FSDPOptions
-            # in the custom training function below
+                    b["use_liger"] = bool(training_use_liger)
             if training_fsdp_sharding_strategy:
-                base["fsdp_sharding_strategy"] = training_fsdp_sharding_strategy.upper().strip()
-                logger.info(f"Requested FSDP sharding strategy: {training_fsdp_sharding_strategy}")
-            return base
+                b["fsdp_sharding_strategy"] = training_fsdp_sharding_strategy.upper().strip()
+            return b
 
-        params = _build_params()
-
-        # Determine which algorithm to use
+        params = _params()
         algo_str = (training_algorithm or "").strip().upper()
         use_sft = algo_str == "SFT"
-        algo_value = TrainingHubAlgorithms.SFT if use_sft else TrainingHubAlgorithms.OSFT
-
-        # Algorithm selection: include OSFT-only param when applicable
-        if algo_value == TrainingHubAlgorithms.OSFT:
+        algo_val = TrainingHubAlgorithms.SFT if use_sft else TrainingHubAlgorithms.OSFT
+        if algo_val == TrainingHubAlgorithms.OSFT:
             params["unfreeze_rank_ratio"] = float(training_unfreeze_rank_ratio)
-
-        # Store algorithm name in params for the training function
         params["_algorithm"] = "sft" if use_sft else "osft"
 
-        # =======================================================================
-        # Custom training function - handles FSDPOptions conversion
-        # This function is extracted via inspect.getsource() and embedded in the
-        # training pod, similar to how sft.ipynb works with SDK v1
-        # SDK passes func_args as a SINGLE DICT argument (not **kwargs)
-        # =======================================================================
-        def _training_func_with_fsdp(parameters):
-            """Training function that converts fsdp_sharding_strategy to FSDPOptions.
-
-            This function is passed to TrainingHubTrainer and extracted via
-            inspect.getsource(). It runs inside the training pod and can create
-            Python objects like FSDPOptions that can't be serialized through params.
-
-            Args:
-                parameters: Dict of training parameters (passed by SDK as single arg)
-            """
-            # Extract algorithm and fsdp_sharding_strategy from parameters
-            args = dict(parameters or {})
-            algorithm = args.pop("_algorithm", "sft")
-            fsdp_sharding_strategy = args.pop("fsdp_sharding_strategy", None)
-
-            # Import the appropriate training function
-            if algorithm == "sft":
-                from training_hub import sft as train_algo
+        def _train_func(p):
+            a = dict(p or {})
+            algo = a.pop("_algorithm", "sft")
+            fsdp = a.pop("fsdp_sharding_strategy", None)
+            if algo == "sft":
+                from training_hub import sft as tr
             else:
-                from training_hub import osft as train_algo
-
-            # Convert fsdp_sharding_strategy string to FSDPOptions object
-            if fsdp_sharding_strategy:
+                from training_hub import osft as tr
+            if fsdp:
                 try:
                     from instructlab.training.config import FSDPOptions, ShardingStrategies
 
-                    strategy_map = {
+                    sm = {
                         "FULL_SHARD": ShardingStrategies.FULL_SHARD,
                         "HYBRID_SHARD": ShardingStrategies.HYBRID_SHARD,
                         "NO_SHARD": ShardingStrategies.NO_SHARD,
                     }
-                    if fsdp_sharding_strategy.upper() in strategy_map:
-                        args["fsdp_options"] = FSDPOptions(
-                            sharding_strategy=strategy_map[fsdp_sharding_strategy.upper()]
-                        )
-                        print(f"[PY] Using FSDP sharding strategy: {fsdp_sharding_strategy}", flush=True)
-                    else:
-                        print(f"[PY] Warning: Unknown FSDP strategy '{fsdp_sharding_strategy}'", flush=True)
-                except ImportError as e:
-                    print(f"[PY] Warning: Could not import FSDPOptions: {e}", flush=True)
+                    if fsdp.upper() in sm:
+                        a["fsdp_options"] = FSDPOptions(sharding_strategy=sm[fsdp.upper()])
+                except ImportError:
+                    pass
+            return tr(**a)
 
-            # Log and run training
-            print(f"[PY] Launching {algorithm.upper()} training...", flush=True)
-            result = train_algo(**args)
-            print(f"[PY] {algorithm.upper()} training complete.", flush=True)
-            return result
-
-        # Build volumes and mounts (from passthrough only); do not inject env via pod overrides
-        # Cluster policy forbids env in podTemplateOverrides; use trainer.env for container env
-
-        volumes = []
-        volume_mounts = []
+        vols, vmts = [], []
         if kubernetes_config and getattr(kubernetes_config, "volumes", None):
-            volumes.extend(kubernetes_config.volumes)
+            vols.extend(kubernetes_config.volumes)
         if kubernetes_config and getattr(kubernetes_config, "volume_mounts", None):
-            volume_mounts.extend(kubernetes_config.volume_mounts)
+            vmts.extend(kubernetes_config.volume_mounts)
 
-        # Container resources are not overridden here; rely on runtime defaults or future API support
+        tlbl = parse_kv(training_metadata_labels)
+        tann = parse_kv(training_metadata_annotations)
 
-        # Parse metadata labels/annotations for Pod template
-        tpl_labels = parse_kv_list(training_metadata_labels)
-        tpl_annotations = parse_kv_list(training_metadata_annotations)
+        def _pod_spec():
+            return PodSpecOverride(volumes=vols, containers=[ContainerOverride(name="node", volume_mounts=vmts)])
 
-        def _build_pod_spec_override() -> PodSpecOverride:
-            """Return PodSpecOverride with mounts, envs, resources, and scheduling hints."""
-            return PodSpecOverride(
-                volumes=volumes,
-                containers=[
-                    ContainerOverride(
-                        name="node",
-                        volume_mounts=volume_mounts,
-                    )
-                ],
-                # node_selector and tolerations are not yet supported
-            )
-
-        job_name = client.train(
+        job = client.train(
             trainer=TrainingHubTrainer(
-                # Use custom function to handle FSDPOptions conversion
-                func=_training_func_with_fsdp,
-                func_args=params,
-                # Algorithm still needed for progression tracking
-                algorithm=algo_value,
-                packages_to_install=[],
-                # Pass environment variables via Trainer spec (allowed by backend/webhook)
-                env=dict(merged_env),
+                func=_train_func, func_args=params, algorithm=algo_val, packages_to_install=[], env=dict(menv)
             ),
             options=[
                 PodTemplateOverrides(
                     PodTemplateOverride(
                         target_jobs=["node"],
-                        metadata={"labels": tpl_labels, "annotations": tpl_annotations}
-                        if (tpl_labels or tpl_annotations)
-                        else None,
-                        spec=_build_pod_spec_override(),
-                        # numProcsPerWorker=training_resource_num_procs_per_worker,
-                        # numWorkers=training_resource_num_workers,
+                        metadata={"labels": tlbl, "annotations": tann} if (tlbl or tann) else None,
+                        spec=_pod_spec(),
                     )
                 )
             ],
-            runtime=th_runtime,
+            runtime=runtime,
         )
-        logger.info(f"Submitted TrainingHub job: {job_name}")
-        try:
-            # Wait for the job to start running, then wait for completion or failure.
-            client.wait_for_job_status(name=job_name, status={"Running"}, timeout=900)
-            client.wait_for_job_status(name=job_name, status={"Complete", "Failed"}, timeout=1800)
-            job = client.get_job(name=job_name)
-            if getattr(job, "status", None) == "Failed":
-                logger.error("Training job failed")
-                raise RuntimeError(f"Training job failed with status: {job.status}")
-            elif getattr(job, "status", None) == "Complete":
-                logger.info("Training job completed successfully")
-            else:
-                logger.error(f"Unexpected training job status: {job.status}")
-                raise RuntimeError(f"Training job ended with unexpected status: {job.status}")
-        except Exception as e:
-            logger.warning(f"Training job monitoring failed: {e}")
+        log.info(f"Job: {job}")
+        client.wait_for_job_status(name=job, status={"Running"}, timeout=900)
+        client.wait_for_job_status(name=job, status={"Complete", "Failed"}, timeout=1800)
+        j = client.get_job(name=job)
+        if getattr(j, "status", None) == "Failed":
+            raise RuntimeError(f"Job failed: {j.status}")
+        elif getattr(j, "status", None) != "Complete":
+            raise RuntimeError(f"Unexpected status: {j.status}")
+        log.info("Job complete")
     except Exception as e:
-        logger.error(f"TrainingHubTrainer execution failed: {e}")
+        log.error(f"Training failed: {e}")
         raise
 
-    # ------------------------------
-    # Metrics (hyperparameters + training metrics from trainer output)
-    # ------------------------------
-    def _get_training_metrics(search_root: str, algo: str = "osft") -> tuple:
-        """Find and parse TrainingHub metrics file (OSFT/SFT).
-
-        Returns:
-            Tuple of (metrics dict, losses list for plotting)
-        """
-        import math
-
-        # File patterns: OSFT=training_metrics_0.jsonl, SFT=training_params_and_metrics_global0.jsonl
-        patterns = ["training_metrics_0.jsonl", "training_params_and_metrics_global0.jsonl"]
+    def _metrics(root: str, algo: str = "osft"):
+        pats = ["training_metrics_0.jsonl", "training_params_and_metrics_global0.jsonl"]
         if algo.lower() == "sft":
-            patterns = patterns[::-1]
-
-        mfile = None
-        for root, _, files in os.walk(search_root):
-            for p in patterns:
-                if p in files:
-                    mfile = os.path.join(root, p)
+            pats = pats[::-1]
+        mf = None
+        for r, _, fs in os.walk(root):
+            for p in pats:
+                if p in fs:
+                    mf = os.path.join(r, p)
                     break
-            if mfile:
+            if mf:
                 break
-
-        if not mfile or not os.path.exists(mfile):
-            logger.warning(f"No metrics file in {search_root}")
+        if not mf or not os.path.exists(mf):
             return {}, []
-
-        logger.info(f"Reading metrics from: {mfile}")
-        metrics, losses = {}, []
-        try:
-            with open(mfile) as f:
-                for line in f:
-                    if line.strip():
-                        try:
-                            e = json.loads(line)
-                            # Map fields: loss/avg_loss->loss, lr->learning_rate, gradnorm/grad_norm->grad_norm
-                            for src, dst in [
-                                ("loss", "loss"),
-                                ("avg_loss", "loss"),
-                                ("lr", "learning_rate"),
-                                ("grad_norm", "grad_norm"),
-                                ("gradnorm", "grad_norm"),
-                                ("val_loss", "eval_loss"),
-                                ("epoch", "epoch"),
-                                ("step", "step"),
-                            ]:
-                                if src in e and dst not in metrics:
-                                    try:
-                                        metrics[dst] = float(e[src])
-                                    except (ValueError, TypeError):
-                                        pass
-                            lv = e.get("loss") or e.get("avg_loss")
-                            if lv:
+        log.info(f"Metrics: {mf}")
+        met, loss = {}, []
+        with open(mf) as f:
+            for ln in f:
+                if ln.strip():
+                    try:
+                        e = json.loads(ln)
+                        for s, d in [
+                            ("loss", "loss"),
+                            ("avg_loss", "loss"),
+                            ("lr", "learning_rate"),
+                            ("grad_norm", "grad_norm"),
+                            ("gradnorm", "grad_norm"),
+                            ("val_loss", "eval_loss"),
+                            ("epoch", "epoch"),
+                            ("step", "step"),
+                        ]:
+                            if s in e and d not in met:
                                 try:
-                                    losses.append(float(lv))
+                                    met[d] = float(e[s])
                                 except (ValueError, TypeError):
                                     pass
-                        except (ValueError, KeyError):
-                            pass
-            if losses:
-                metrics["final_loss"] = losses[-1]
-                metrics["min_loss"] = min(losses)
-                metrics["final_perplexity"] = math.exp(min(losses[-1], 10))
-            logger.info(f"Extracted {len(metrics)} metrics, {len(losses)} loss values")
-        except Exception as ex:
-            logger.warning(f"Failed to parse metrics: {ex}")
-        return metrics, losses
+                        lv = e.get("loss") or e.get("avg_loss")
+                        if lv:
+                            try:
+                                loss.append(float(lv))
+                            except (ValueError, TypeError):
+                                pass
+                    except Exception:
+                        pass
+        if loss:
+            met["final_loss"], met["min_loss"] = loss[-1], min(loss)
+            met["final_perplexity"] = __import__("math").exp(min(loss[-1], 10))
+        return met, loss
 
-    def _generate_loss_chart(losses: list, output_path: str) -> None:
-        """Generate a loss curve chart and save as HTML."""
+    def _chart(loss: list, path: str):
         import base64
         from io import BytesIO
 
         import matplotlib
 
-        matplotlib.use("Agg")  # Non-interactive backend
+        matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
-        if not losses:
-            logger.warning("No loss data available for chart")
-            with open(output_path, "w") as f:
-                f.write("<html><body><p>No training loss data available.</p></body></html>")
+        if not loss:
+            with open(path, "w") as f:
+                f.write("<html><body><p>No loss data.</p></body></html>")
             return
+        fig, ax = plt.subplots(figsize=(14, 8))
+        ax.plot(range(1, len(loss) + 1), loss, "b-", linewidth=2, label="Loss")
+        ax.set_xlabel("Step")
+        ax.set_ylabel("Loss")
+        ax.set_title("Training Loss")
+        ax.grid(True, alpha=0.3)
+        ax.legend()
+        ml, mi = min(loss), loss.index(min(loss))
+        ax.annotate(
+            f"Min:{ml:.4f}",
+            xy=(mi + 1, ml),
+            xytext=(10, 10),
+            textcoords="offset points",
+            fontsize=9,
+            arrowprops=dict(arrowstyle="->", color="green"),
+            color="green",
+        )
+        ax.annotate(
+            f"Final:{loss[-1]:.4f}",
+            xy=(len(loss), loss[-1]),
+            xytext=(-60, 10),
+            textcoords="offset points",
+            fontsize=9,
+            color="red",
+        )
+        buf = BytesIO()
+        fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
+        buf.seek(0)
+        img = base64.b64encode(buf.read()).decode()
+        plt.close(fig)
+        html = (
+            f"<!DOCTYPE html><html><head><style>*{{margin:0;padding:0}}"
+            f"body{{font-family:sans-serif;padding:5px}}.s{{font-size:10px;margin-bottom:5px}}"
+            f".c{{width:100%}}</style></head><body>"
+            f'<div class="s">Loss:{loss[0]:.4f}-{loss[-1]:.4f}(min {ml:.4f})|{len(loss)} steps</div>'
+            f'<img class="c" src="data:image/png;base64,{img}"/></body></html>'
+        )
+        with open(path, "w") as f:
+            f.write(html)
 
-        try:
-            # Create the plot - larger size for better visibility
-            fig, ax = plt.subplots(figsize=(14, 8))
-            steps = list(range(1, len(losses) + 1))
-            ax.plot(steps, losses, "b-", linewidth=2, label="Training Loss")
-            ax.set_xlabel("Step", fontsize=12)
-            ax.set_ylabel("Loss", fontsize=12)
-            ax.set_title("Training Loss Curve", fontsize=14, fontweight="bold")
-            ax.grid(True, alpha=0.3)
-            ax.legend()
-
-            # Add min/final loss annotations
-            min_loss = min(losses)
-            min_idx = losses.index(min_loss)
-            ax.annotate(
-                f"Min: {min_loss:.4f}",
-                xy=(min_idx + 1, min_loss),
-                xytext=(10, 10),
-                textcoords="offset points",
-                fontsize=9,
-                arrowprops=dict(arrowstyle="->", color="green"),
-                color="green",
-            )
-            ax.annotate(
-                f"Final: {losses[-1]:.4f}",
-                xy=(len(losses), losses[-1]),
-                xytext=(-60, 10),
-                textcoords="offset points",
-                fontsize=9,
-                color="red",
-            )
-
-            # Save to buffer and encode as base64 - higher DPI for crisp display
-            buf = BytesIO()
-            fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
-            buf.seek(0)
-            img_base64 = base64.b64encode(buf.read()).decode("utf-8")
-            plt.close(fig)
-
-            # Write HTML with embedded image
-            # Simple HTML - clickable image opens full size PNG
-            html_content = f"""<!DOCTYPE html>
-<html>
-<head>
-    <title>Training Loss</title>
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: system-ui, sans-serif; padding: 5px; background: #fff; }}
-        .stats {{ font-size: 10px; margin-bottom: 5px; color: #333; }}
-        .chart {{ width: 100%; cursor: pointer; }}
-    </style>
-</head>
-<body>
-    <div class="stats">Loss: {losses[0]:.4f} to {losses[-1]:.4f} (min {min_loss:.4f}) | {len(losses)} steps</div>
-    <img class="chart" src="data:image/png;base64,{img_base64}" alt="Training Loss"
-         onclick="window.open(this.src, '_blank')" title="Click to view full size" />
-</body>
-</html>"""
-            with open(output_path, "w") as f:
-                f.write(html_content)
-            logger.info(f"Generated loss chart at {output_path}")
-        except Exception as ex:
-            logger.warning(f"Failed to generate loss chart: {ex}")
-            with open(output_path, "w") as f:
-                f.write(f"<html><body><p>Failed to generate chart: {ex}</p></body></html>")
-
-    def _log_all_metrics() -> None:
-        """Log hyperparameters and training metrics, and generate loss chart."""
-        # 1. Log hyperparameters
+    def _log_met():
         output_metrics.log_metric("num_epochs", float(params.get("num_epochs") or 1))
         output_metrics.log_metric("effective_batch_size", float(params.get("effective_batch_size") or 128))
         output_metrics.log_metric("learning_rate", float(params.get("learning_rate") or 5e-6))
         output_metrics.log_metric("max_seq_len", float(params.get("max_seq_len") or 8192))
         output_metrics.log_metric("max_tokens_per_gpu", float(params.get("max_tokens_per_gpu") or 0))
         output_metrics.log_metric("unfreeze_rank_ratio", float(params.get("unfreeze_rank_ratio") or 0))
-
-        # 2. Find and parse training metrics file
         algo = (training_algorithm or "osft").strip().lower()
-        training_metrics, losses = _get_training_metrics(checkpoints_dir, algo)
-        for k, v in training_metrics.items():
+        tm, loss = _metrics(ckpt_dir, algo)
+        for k, v in tm.items():
             output_metrics.log_metric(f"training_{k}", v)
+        _chart(loss, output_loss_chart.path)
 
-        # 3. Generate loss chart visualization
-        _generate_loss_chart(losses, output_loss_chart.path)
+    _log_met()
 
-    _log_all_metrics()
-
-    # ------------------------------
-    # Export most recent checkpoint as model artifact (artifact store) and PVC
-    # ------------------------------
-    def _persist_and_annotate() -> None:
-        """Copy latest checkpoint to PVC and artifact store, then annotate output metadata."""
-        latest = find_model_directory(checkpoints_dir)
+    def _persist():
+        latest = find_model_dir(ckpt_dir)
         if not latest:
-            raise RuntimeError(f"No model directory (with config.json) found under {checkpoints_dir}")
-        logger.info(f"Found model directory: {latest}")
-        # PVC copy
-        pvc_dir = os.path.join(pvc_path, "final_model")
-        try:
-            if os.path.exists(pvc_dir):
-                shutil.rmtree(pvc_dir)
-            shutil.copytree(latest, pvc_dir, dirs_exist_ok=True)
-            logger.info(f"Copied checkpoint to PVC dir: {pvc_dir}")
-        except Exception as _e:
-            logger.warning(f"Failed to copy model to PVC dir {pvc_dir}: {_e}")
-        # Artifact copy
+            raise RuntimeError(f"No model found in {ckpt_dir}")
+        log.info(f"Model: {latest}")
+        pvc_out = os.path.join(pvc_path, "final_model")
+        if os.path.exists(pvc_out):
+            shutil.rmtree(pvc_out, ignore_errors=True)
+        shutil.copytree(latest, pvc_out, dirs_exist_ok=True)
+        log.info(f"Copied to {pvc_out}")
         output_model.name = f"{training_base_model}-checkpoint"
         shutil.copytree(latest, output_model.path, dirs_exist_ok=True)
-        logger.info(f"Exported checkpoint from {latest} to artifact path {output_model.path}")
-        # Metadata
-        try:
-            output_model.metadata["model_name"] = training_base_model
-            output_model.metadata["artifact_path"] = output_model.path
-            output_model.metadata["pvc_model_dir"] = pvc_dir
-            logger.info("Annotated output_model metadata with pvc/artifact locations")
-        except Exception as _e:
-            logger.warning(f"Failed to set output_model metadata: {_e}")
+        log.info(f"Artifact: {output_model.path}")
+        output_model.metadata["model_name"] = training_base_model
+        output_model.metadata["artifact_path"] = output_model.path
+        output_model.metadata["pvc_model_dir"] = pvc_out
 
-    _persist_and_annotate()
-
+    _persist()
     return "training completed"
 
 
 if __name__ == "__main__":
     from kfp import compiler
 
-    compiler.Compiler().compile(
-        train_model,
-        package_path=__file__.replace(".py", "_component.yaml"),
-    )
+    compiler.Compiler().compile(train_model, package_path=__file__.replace(".py", "_component.yaml"))
