@@ -23,7 +23,7 @@ from kfp.dsl import graph_component
 from scripts.lib.discovery import get_repo_root
 from scripts.lib.kfp_compilation import (
     compile_and_get_yaml,
-    find_decorated_functions,
+    find_decorated_functions_runtime,
     load_module_from_path,
 )
 from scripts.lib.metadata_utils import (
@@ -119,7 +119,7 @@ def validate_target(target: MetadataTarget) -> ValidationResult:
         result.add_error(f"Failed to load module defined in {target.module_path}.\n{traceback.format_exc()}")
         return result
 
-    objects = find_decorated_functions(module, target.target_kind)
+    objects = find_decorated_functions_runtime(module, target.target_kind)
     if target.target_kind == "pipeline":
         objects = [(name, obj) for name, obj in objects if isinstance(obj, graph_component.GraphComponent)]
     else:
