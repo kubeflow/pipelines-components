@@ -29,6 +29,7 @@ test = [
     "pytest-timeout",
     "docstring-parser",
     "jinja2",
+    "packaging",
     "pyyaml",
     "semver",
     "pip",

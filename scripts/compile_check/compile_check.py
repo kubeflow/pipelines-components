@@ -20,13 +20,13 @@ from typing import Optional
 
 from kfp.dsl import graph_component
 
-from scripts.lib.discovery import get_repo_root
-from scripts.lib.kfp_compilation import (
+from ..lib.discovery import get_repo_root
+from ..lib.kfp_compilation import (
     compile_and_get_yaml,
     find_decorated_functions_runtime,
     load_module_from_path,
 )
-from scripts.lib.metadata_utils import (
+from ..lib.metadata_utils import (
     MetadataTarget,
     create_metadata_targets,
     discover_metadata_files,
@@ -222,5 +222,5 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     return run_validation(args)
 
 
-if __name__ == "__main__":  # pragma: no cover - CLI entry point
+if __name__ == "__main__":
     sys.exit(main())

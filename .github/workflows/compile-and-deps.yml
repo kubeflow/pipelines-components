@@ -9,6 +9,7 @@ on:
       - 'components/**'
       - 'pipelines/**'
       - 'scripts/compile_check/**'
+      - 'scripts/lib/**'
       - '.github/workflows/compile-and-deps.yml'
       - '.github/actions/setup-python-ci/**'
       - 'pyproject.toml'
