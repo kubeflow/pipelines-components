@@ -829,21 +829,21 @@ def my_component(input_path: str) -> str:
 
 ### How CI Handles Base Images
 
-| Event                        | Behavior                                                                           |
-|------------------------------|------------------------------------------------------------------------------------|
-| Pull Request                 | Images are built but **not pushed**. Validation uses locally-loaded `:<sha>` tags. |
-| Push to `main`               | Images are built and pushed with tag: `:main`                                      |
-| Push to tag (e.g., `v1.0.0`) | Images are built and pushed with tag: `:<tag>`                                     |
+| Event                        | Behavior                                                                                                         |
+|------------------------------|------------------------------------------------------------------------------------------------------------------|
+| Pull Request                 | Images are built but **not pushed**. Validation uses locally-loaded `:<sha>` tags (full 40-character commit SHA). |
+| Push to `main`               | Images are built and pushed with tag: `:main`                                                                    |
+| Push to tag (e.g., `v1.0.0`) | Images are built and pushed with tag: `:<tag>`                                                                   |
 
 ### Image Tags
 
 Your image will be available with these tags:
 
-| Tag      | Description                                                | Example                            |
-|----------|------------------------------------------------------------|------------------------------------|
-| `:main`  | Latest build from main branch                              | `...-my-component:main`            |
-| `:<tag>` | Git tag                                                    | `...-my-component:v1.0.0`          |
-| `:<sha>` | PR validation tag (local only; not pushed to the registry) | `...-my-component:abc123def456...` |
+| Tag      | Description                                                                                 | Example                                          |
+|----------|---------------------------------------------------------------------------------------------|--------------------------------------------------|
+| `:main`  | Latest build from main branch                                                               | `...-my-component:main`                          |
+| `:<tag>` | Git tag                                                                                     | `...-my-component:v1.0.0`                        |
+| `:<sha>` | PR validation tag (local only; full 40-character commit SHA; not pushed to the registry)   | `...-my-component:3f5c8e2a9d4b7c1e0f6a3b9d8c2e4f1a6b7c3d9` |
 
 ### Testing Your Image Locally
 
