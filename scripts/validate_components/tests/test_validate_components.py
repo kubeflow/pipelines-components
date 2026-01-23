@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Callable
 
 import pytest
+from pytest import MonkeyPatch
 
 from ...lib.discovery import get_submodules
 from ...lib.kfp_compilation import find_decorated_function_names_ast
@@ -18,8 +19,12 @@ from ..validate_components import (
 TEST_DATA_DIR = Path(__file__).parent / "test_data"
 
 
-def setup_mock_kfp(monkeypatch, tmp_path: Path, compile_func: Callable) -> None:
-    """Set up mock kfp module with a custom compile function."""
+def setup_mock_kfp(monkeypatch: MonkeyPatch, fake_repo: Path, compile_func: Callable) -> None:
+    """Set up mock kfp compiler for controlled, fast testing.
+
+    Replaces the real KFP Compiler with a fake that calls compile_func,
+    allowing tests to control compilation behavior without actually compiling.
+    """
     kfp_mod = types.ModuleType("kfp")
     compiler_mod = types.ModuleType("kfp.compiler")
 
@@ -33,12 +38,14 @@ def setup_mock_kfp(monkeypatch, tmp_path: Path, compile_func: Callable) -> None:
 
     from scripts.validate_components import validate_components as vc
 
-    tmp_tmp = tmp_path / "tmp"
-    tmp_tmp.mkdir(exist_ok=True)
-    monkeypatch.setattr(vc.tempfile, "gettempdir", lambda: str(tmp_tmp))
+    tmp_dir = fake_repo / "tmp"
+    tmp_dir.mkdir(exist_ok=True)
+    monkeypatch.setattr(vc.tempfile, "gettempdir", lambda: str(tmp_dir))
 
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.setattr(vc, "get_repo_root", lambda: fake_repo)
+
+    monkeypatch.chdir(fake_repo)
+    monkeypatch.syspath_prepend(str(fake_repo))
 
 
 def write_component_asset(tmp_path: Path, source_file: Path) -> Path:
@@ -197,7 +204,7 @@ class TestGetSubmodules:
 class TestValidateImports:
     """Tests for validate_imports function."""
 
-    def test_validates_dynamically_discovered_submodules(self, tmp_path: Path, monkeypatch):
+    def test_validates_dynamically_discovered_submodules(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         """Validates imports for dynamically discovered subpackages in components/ and pipelines/."""
         components = tmp_path / "tmp_components"
         components.mkdir()
@@ -226,7 +233,9 @@ class TestValidateImports:
 
         assert success is True
 
-    def test_handles_missing_package_directory(self, tmp_path: Path, monkeypatch, capsys):
+    def test_handles_missing_package_directory(
+        self, tmp_path: Path, monkeypatch: MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
         """Treats missing packages as warnings and still returns success."""
         monkeypatch.chdir(tmp_path)
 
@@ -268,7 +277,7 @@ class TestFindDecoratedFunctions:
         assert decorated["components"] == ["comp_async"]
         assert decorated["pipelines"] == ["pipe_async"]
 
-    def test_syntax_error_returns_empty_and_warns(self, tmp_path: Path, capsys):
+    def test_syntax_error_returns_empty_and_warns(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         """Returns {} and prints a warning when parsing fails."""
         from .test_data.fixture_test_find_decorated_function_names_ast__syntax_error import BROKEN_SOURCE
 
@@ -285,7 +294,7 @@ class TestFindDecoratedFunctions:
 class TestValidateCompilation:
     """Tests for validate_compilation."""
 
-    def test_validates_components_and_pipelines(self, tmp_path: Path, monkeypatch):
+    def test_validates_components_and_pipelines(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         """Returns True when compilation succeeds for detected functions."""
         write_component_asset(
             tmp_path,
@@ -311,7 +320,7 @@ class TestValidateCompilation:
 
         validate_compilation(["components", "pipelines"])
 
-    def test_fails_when_pipeline_compile_raises(self, tmp_path: Path, monkeypatch):
+    def test_fails_when_pipeline_compile_raises(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         """Returns False when pipeline compilation raises."""
         write_pipeline_asset(
             tmp_path,
@@ -326,7 +335,7 @@ class TestValidateCompilation:
         with pytest.raises(CompilationValidationError):
             validate_compilation(["components", "pipelines"])
 
-    def test_fails_when_no_assets_found(self, tmp_path: Path, monkeypatch):
+    def test_fails_when_no_assets_found(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         """Raises when there are no component.py/pipeline.py assets to compile."""
 
         def mock_compile(_self, _func, _path: str) -> None:
@@ -337,7 +346,7 @@ class TestValidateCompilation:
         with pytest.raises(CompilationValidationError, match="No components or pipelines found to compile"):
             validate_compilation(["components", "pipelines"])
 
-    def test_accepts_absolute_directory_paths(self, tmp_path: Path, monkeypatch):
+    def test_accepts_absolute_directory_paths(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         """Validates components when directories are specified as absolute paths."""
         write_component_asset(
             tmp_path,
@@ -355,3 +364,30 @@ class TestValidateCompilation:
                 monkeypatch.delitem(sys.modules, mod_name, raising=False)
 
         validate_compilation([str(tmp_path / "components")])
+
+    def test_matches_requested_roots_resolves_paths_against_repo_root(
+        self, tmp_path: Path, monkeypatch: MonkeyPatch
+    ) -> None:
+        """Path matching normalizes relative paths against repo root, not cwd.
+
+        When absolute paths are passed as roots but asset paths are relative,
+        _matches_requested_roots must resolve relative paths against the
+        repository root, not the current working directory.
+        """
+        from scripts.validate_components import validate_components as vc
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / "components" / "training" / "my_component").mkdir(parents=True)
+
+        monkeypatch.setattr(vc, "get_repo_root", lambda: repo_root)
+
+        different_cwd = tmp_path
+        monkeypatch.chdir(different_cwd)
+
+        asset_dir = Path("components/training/my_component")
+        roots = [repo_root / "components"]
+
+        result = vc._matches_requested_roots(asset_dir, roots)
+
+        assert result is True, "Relative asset path should match absolute root when resolved against repo root"

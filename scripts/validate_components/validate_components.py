@@ -7,7 +7,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from ..lib.discovery import find_assets_with_metadata, get_submodules
+from ..lib.discovery import find_assets_with_metadata, get_repo_root, get_submodules
 from ..lib.kfp_compilation import find_decorated_function_names_ast
 
 
@@ -103,10 +103,17 @@ def _process_file(py_file: Path, tmp_dir: Path, compiler_class) -> bool:
     return True
 
 
+def _normalize_path(path: Path) -> Path:
+    """Normalize relative paths against the repository root."""
+    if path.is_absolute():
+        return path.resolve()
+    return (get_repo_root() / path).resolve()
+
+
 def _matches_requested_roots(asset_dir: Path, roots: list[Path]) -> bool:
-    asset_resolved = asset_dir.resolve()
+    asset_resolved = _normalize_path(asset_dir)
     for root in roots:
-        root_resolved = root.resolve()
+        root_resolved = _normalize_path(root)
         if asset_resolved == root_resolved or asset_resolved.is_relative_to(root_resolved):
             return True
     return False
