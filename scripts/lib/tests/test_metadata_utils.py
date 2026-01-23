@@ -6,7 +6,7 @@ from pathlib import Path
 
 import yaml
 
-from scripts.lib import metadata_utils
+from .. import metadata_utils
 
 
 def _write_metadata(path: Path, data: dict) -> None:

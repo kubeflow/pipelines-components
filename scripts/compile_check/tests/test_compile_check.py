@@ -12,7 +12,7 @@ from typing import Any
 
 import yaml
 
-from scripts.compile_check import compile_check
+from .. import compile_check
 
 
 def _write_file(path: Path, contents: str) -> None:
