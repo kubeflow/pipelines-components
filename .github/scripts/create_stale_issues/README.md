@@ -1,6 +1,6 @@
 # Create Stale Issues
 
-Create GitHub issues for stale components that need re-verification.
+Create GitHub issues for components approaching or past their verification deadline.
 
 ## What it Does
 

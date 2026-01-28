@@ -81,7 +81,7 @@ def issue_exists(repo: str, component_name: str, token: str | None) -> bool:
 
 
 def create_issue(repo: str, component: dict, repo_path: Path, token: str | None, dry_run: bool) -> bool:
-    """Create a GitHub issue for the stale component."""
+    """Create a GitHub issue for a component needing verification."""
     title = get_issue_title(component["name"])
     owners = get_owners(repo_path / component["path"])
     assignees = owners[:MAX_ASSIGNEES]
@@ -112,19 +112,23 @@ def create_issue(repo: str, component: dict, repo_path: Path, token: str | None,
 
 
 def create_issues_for_stale_components(repo: str, token: str | None, dry_run: bool) -> int:
-    """Create GitHub issues for stale components."""
+    """Create GitHub issues for components in warning or stale status."""
     repo_path = REPO_ROOT
     results = scan_repo(repo_path)
-    stale = results.get("stale", [])
+    # Include both warning (270-360 days) and stale (>360 days) components
+    components_needing_attention = results.get("warning", []) + results.get("stale", [])
 
-    if not stale:
-        print("No stale components found.")
+    if not components_needing_attention:
+        print("No components need verification.")
         return 0
 
-    print(f"Found {len(stale)} stale component(s)\n")
+    warning_count = len(results.get("warning", []))
+    stale_count = len(results.get("stale", []))
+    print(f"Found {len(components_needing_attention)} component(s) needing verification")
+    print(f"  🟡 Warning: {warning_count}, 🔴 Stale: {stale_count}\n")
 
     created, skipped = 0, 0
-    for component in stale:
+    for component in components_needing_attention:
         if issue_exists(repo, component["name"], token):
             print(f"⏭️  Skipping {component['name']}: issue already exists")
             skipped += 1
@@ -136,7 +140,7 @@ def create_issues_for_stale_components(repo: str, token: str | None, dry_run: bo
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Create GitHub issues for stale components")
+    parser = argparse.ArgumentParser(description="Create GitHub issues for components needing verification")
     parser.add_argument("--repo", required=True, help="GitHub repo (e.g., owner/repo)")
     parser.add_argument("--token", help="GitHub token (or set GITHUB_TOKEN env var)")
     parser.add_argument("--dry-run", action="store_true", help="Print without creating")
