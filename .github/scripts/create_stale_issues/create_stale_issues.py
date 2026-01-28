@@ -17,11 +17,12 @@ from scripts.check_component_freshness.check_component_freshness import scan_rep
 
 LABEL = "stale-component"
 TEMPLATE_DIR = Path(__file__).parent
-
 ISSUE_BODY_TEMPLATE = "issue_body.md.j2"
 
 # Maximum issues to check when looking for duplicates (GitHub API max is 100)
 MAX_ISSUES_PER_PAGE = 100
+# GitHub API limits assignees to 10 per issue
+MAX_ASSIGNEES = 10
 
 
 def get_issue_title(component_name: str) -> str:
@@ -82,11 +83,12 @@ def issue_exists(repo: str, component_name: str, token: str | None) -> bool:
 def create_issue(repo: str, component: dict, repo_path: Path, token: str | None, dry_run: bool) -> bool:
     """Create a GitHub issue for the stale component."""
     title = get_issue_title(component["name"])
+    owners = get_owners(repo_path / component["path"])
+    assignees = owners[:MAX_ASSIGNEES]
 
     if dry_run:
-        owners = get_owners(repo_path / component["path"])
         print(f"[DRY RUN] Would create: {title}")
-        print(f"  Owners: {owners}")
+        print(f"  Assignees: {assignees}")
         return True
 
     headers = {"Accept": "application/vnd.github.v3+json"}
@@ -98,7 +100,7 @@ def create_issue(repo: str, component: dict, repo_path: Path, token: str | None,
         resp = requests.post(
             f"https://api.github.com/repos/{repo}/issues",
             headers=headers,
-            json={"title": title, "body": body, "labels": [LABEL]},
+            json={"title": title, "body": body, "labels": [LABEL], "assignees": assignees},
             timeout=30,
         )
         resp.raise_for_status()
