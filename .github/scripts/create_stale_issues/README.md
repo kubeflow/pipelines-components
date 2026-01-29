@@ -23,4 +23,3 @@ uv run .github/scripts/create_stale_issues/create_stale_issues.py --repo owner/r
 # Create issues
 GITHUB_TOKEN=ghp_xxx uv run .github/scripts/create_stale_issues/create_stale_issues.py --repo owner/repo
 ```
-

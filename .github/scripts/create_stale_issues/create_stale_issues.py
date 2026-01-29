@@ -13,7 +13,7 @@ from jinja2 import Environment, FileSystemLoader
 # Add repo root to path so we can import from scripts/
 REPO_ROOT = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
-from scripts.check_component_freshness.check_component_freshness import scan_repo
+from scripts.check_component_freshness.check_component_freshness import scan_repo  # noqa: E402
 
 LABEL = "stale-component"
 TEMPLATE_DIR = Path(__file__).parent
@@ -76,7 +76,7 @@ def issue_exists(repo: str, component_name: str, token: str | None) -> bool:
         resp.raise_for_status()
         return any(issue["title"] == expected_title for issue in resp.json())
     except Exception as e:
-        print(f"❌ Failed to check for existing issue: {e}", file=sys.stderr)
+        print(f"Failed to check for existing issue: {e}", file=sys.stderr)
         return False
 
 
@@ -104,10 +104,10 @@ def create_issue(repo: str, component: dict, repo_path: Path, token: str | None,
             timeout=30,
         )
         resp.raise_for_status()
-        print(f"✅ Created: {resp.json().get('html_url')}")
+        print(f"Created: {resp.json().get('html_url')}")
         return True
     except requests.exceptions.RequestException as e:
-        print(f"❌ Failed for {component['name']}: {e}", file=sys.stderr)
+        print(f"Failed to create issue for {component['name']}: {e}", file=sys.stderr)
         return False
 
 
@@ -125,12 +125,12 @@ def create_issues_for_stale_components(repo: str, token: str | None, dry_run: bo
     warning_count = len(results.get("warning", []))
     stale_count = len(results.get("stale", []))
     print(f"Found {len(components_needing_attention)} component(s) needing verification")
-    print(f"  🟡 Warning: {warning_count}, 🔴 Stale: {stale_count}\n")
+    print(f"  Warning: {warning_count}, Stale: {stale_count}\n")
 
     created, skipped = 0, 0
     for component in components_needing_attention:
         if issue_exists(repo, component["name"], token):
-            print(f"⏭️  Skipping {component['name']}: issue already exists")
+            print(f"Skipping {component['name']}: issue already exists")
             skipped += 1
             continue
         if create_issue(repo, component, repo_path, token, dry_run):
@@ -140,6 +140,7 @@ def create_issues_for_stale_components(repo: str, token: str | None, dry_run: bo
 
 
 def main():
+    """Create GitHub issues for components needing staleness or deletion verification."""
     parser = argparse.ArgumentParser(description="Create GitHub issues for components needing verification")
     parser.add_argument("--repo", required=True, help="GitHub repo (e.g., owner/repo)")
     parser.add_argument("--token", help="GitHub token (or set GITHUB_TOKEN env var)")
@@ -152,6 +153,7 @@ def main():
         print("Use --token or set GITHUB_TOKEN environment variable for authenticated requests.", file=sys.stderr)
 
     create_issues_for_stale_components(args.repo, token, args.dry_run)
+
 
 if __name__ == "__main__":
     main()
