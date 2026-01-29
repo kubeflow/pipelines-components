@@ -5,10 +5,10 @@
 """
 
 import argparse
+import json
 import os
 import subprocess
 import sys
-import json
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -187,6 +187,7 @@ def create_removal_pr(repo: str, component: dict, repo_path: Path, dry_run: bool
         print(f"[DRY RUN] Would create removal PR: {title}")
         print(f"  Branch: {branch_name}")
         print(f"  Removes: {path}")
+        print(f"  Updates: {Path(path).parent}/README.md (category index)")
         print(f"  Reviewers: {owners}")
         return True
 
@@ -220,6 +221,18 @@ def create_removal_pr(repo: str, component: dict, repo_path: Path, dry_run: bool
         else:
             print(f"Component directory not found: {component_dir}", file=sys.stderr)
             return False
+
+        # Regenerate category README to remove the component from the index
+        category_dir = component_dir.parent
+        is_component = "components" in path
+        try:
+            index_generator = CategoryIndexGenerator(category_dir, is_component=is_component)
+            category_readme_content = index_generator.generate()
+            category_readme_path = category_dir / "README.md"
+            category_readme_path.write_text(category_readme_content)
+            subprocess.run(["git", "add", str(category_readme_path)], check=True, capture_output=True)
+        except Exception as e:
+            print(f"Warning: Could not regenerate category README: {e}", file=sys.stderr)
 
         # Commit the change
         commit_msg = f"Remove stale component: {name}\n\nComponent has not been verified in {component['age_days']} days."
@@ -258,8 +271,7 @@ def create_removal_pr(repo: str, component: dict, repo_path: Path, dry_run: bool
 
 
 def handle_stale_components(repo: str, token: str | None, dry_run: bool) -> None:
-    """Handle stale components: issues for warnable or stale components,
-    and additionally creates PRs for fully stale components."""
+    """Handle stale components: issues for warnings, removal PRs for stale."""
     repo_path = REPO_ROOT
     results = scan_repo(repo_path)
     # Include both warning (270-360 days) and stale (>360 days) components
