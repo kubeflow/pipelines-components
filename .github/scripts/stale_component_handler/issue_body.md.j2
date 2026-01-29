@@ -1,6 +1,8 @@
 ## Component Verification Required
 
-The component **{{ name }}** has not been verified in {{ age_days }} days and needs attention.
+The component **{{ name }}** has not been verified in {{ age_days }} days and is approaching the staleness threshold.
+
+**If not verified within the next {{ 360 - age_days }} days, a PR will be created to remove this component.**
 
 | Field                   | Value               |
 |-------------------------|---------------------|

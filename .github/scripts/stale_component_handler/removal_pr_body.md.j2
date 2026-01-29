@@ -1,0 +1,29 @@
+## Stale Component Removal
+
+This PR removes the component **{{ name }}** which has not been verified in {{ age_days }} days.
+
+| Field                   | Value               |
+|-------------------------|---------------------|
+| Path                    | `{{ path }}`        |
+| Last Verified           | {{ last_verified }} |
+| Days Since Verification | {{ age_days }}      |
+
+### Maintainers
+
+{{ owners_mention }}
+
+### Why This PR Was Created
+
+Components must be verified at least once per year to ensure they remain functional and compatible with current KFP versions. This component has exceeded the staleness threshold and no verification was performed.
+
+### Before Merging
+
+If this component should be kept:
+1. Close this PR
+2. Verify the component still works
+3. Update `lastVerified` in `{{ path }}/metadata.yaml`
+4. Submit a PR with the updated metadata
+
+If this component should be removed:
+1. Review the changes
+2. Approve and merge this PR
