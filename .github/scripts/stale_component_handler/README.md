@@ -16,6 +16,7 @@ Handles components approaching or past their verification deadline.
 3. For **stale** components:
    - Creates a branch `remove-stale-{component-name}`
    - Removes the component directory
+   - Regenerates the category README to update the index
    - Opens a PR with `stale-component-removal` label
    - Adds component owners as reviewers
 
