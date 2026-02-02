@@ -29,6 +29,27 @@ TEMPLATE_DIR = Path(__file__).parent
 ISSUE_BODY_TEMPLATE = "issue_body.md.j2"
 REMOVAL_PR_BODY_TEMPLATE = "removal_pr_body.md.j2"
 
+
+def sanitize_branch_name(name: str) -> str:
+    """Sanitize a string to be a valid git branch name.
+
+    Git branch names cannot contain spaces, ~, ^, :, ?, *, [, \\, or
+    consecutive dots. They also cannot begin/end with dots or slashes.
+    """
+    import re
+
+    # Replace spaces and invalid characters with hyphens
+    sanitized = re.sub(r"[\s~^:?*\[\]\\@{}'\"]+", "-", name)
+    # Replace consecutive dots with a single dot
+    sanitized = re.sub(r"\.{2,}", ".", sanitized)
+    # Remove leading/trailing dots, slashes, and hyphens
+    sanitized = sanitized.strip(".-/")
+    # Collapse multiple consecutive hyphens into one
+    sanitized = re.sub(r"-{2,}", "-", sanitized)
+    # Convert to lowercase for consistency
+    sanitized = sanitized.lower()
+    return sanitized
+
 # Maximum issues to check when looking for duplicates (GitHub API max is 100)
 MAX_ISSUES_PER_PAGE = 100
 # GitHub API limits assignees to 10 per issue
@@ -180,7 +201,7 @@ def create_removal_pr(repo: str, component: dict, repo_path: Path, dry_run: bool
     name = component["name"]
     path = component["path"]
     title = get_removal_pr_title(name)
-    branch_name = f"remove-stale-{name}"
+    branch_name = f"remove-stale-{sanitize_branch_name(name)}"
     owners = get_owners(repo_path / path)
 
     if dry_run:
