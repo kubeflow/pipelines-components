@@ -37,7 +37,7 @@ MAX_ASSIGNEES = 10
 
 
 def sanitize_branch_name(name: str) -> str:
-    """Sanitize a string to be a valid git branch name.
+    r"""Sanitize a string to be a valid git branch name.
 
     Git branch names cannot contain spaces, ~, ^, :, ?, *, [, \\, or
     consecutive dots. They also cannot begin/end with dots or slashes.
@@ -95,12 +95,11 @@ def create_issue_body(component: dict, repo_path: Path) -> str:
     )
 
 
-def create_removal_pr_body(component: dict, repo_path: Path) -> str:
+def create_removal_pr_body(component: dict, owners: list[str]) -> str:
     """Generate the PR body for component removal using Jinja2 template."""
     env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
     template = env.get_template(REMOVAL_PR_BODY_TEMPLATE)
 
-    owners = get_owners(repo_path / component["path"])
     owners_mention = ", ".join(f"@{o}" for o in owners) if owners else "No owners found"
 
     return template.render(
@@ -255,20 +254,28 @@ def create_removal_pr(repo: str, component: dict, repo_path: Path, dry_run: bool
             print(f"Warning: Could not regenerate category README: {e}", file=sys.stderr)
 
         # Commit the change
-        commit_msg = f"Remove stale component: {name}\n\nComponent has not been verified in {component['age_days']} days."
+        commit_msg = (
+            f"Remove stale component: {name}\n\nComponent has not been verified in {component['age_days']} days."
+        )
         subprocess.run(["git", "commit", "-m", commit_msg], check=True, capture_output=True)
 
         # Push the branch
         subprocess.run(["git", "push", "-u", "origin", branch_name, "--force"], check=True, capture_output=True)
 
-        # Create the PR
-        body = create_removal_pr_body(component, repo_path)
+        # Create the PR (use owners read before component was removed)
+        body = create_removal_pr_body(component, owners)
         pr_cmd = [
-            "gh", "pr", "create",
-            "--repo", repo,
-            "--title", title,
-            "--body", body,
-            "--label", REMOVAL_LABEL,
+            "gh",
+            "pr",
+            "create",
+            "--repo",
+            repo,
+            "--title",
+            title,
+            "--body",
+            body,
+            "--label",
+            REMOVAL_LABEL,
         ]
 
         # Add reviewers if we have owners
@@ -305,7 +312,10 @@ def handle_stale_components(repo: str, token: str | None, dry_run: bool) -> bool
         print("No components need attention.")
         return True
 
-    print(f"Found {len(components_needing_attention)} components needing attention, including {len(fully_stale_components)} fully stale components that should be flagged for removal\n")
+    print(
+        f"Found {len(components_needing_attention)} components needing attention, including "
+        f"{len(fully_stale_components)} fully stale components that should be flagged for removal\n"
+    )
 
     all_succeeded = True
     issues_failed = 0
