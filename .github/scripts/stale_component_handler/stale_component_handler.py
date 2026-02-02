@@ -7,6 +7,7 @@
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -29,6 +30,11 @@ TEMPLATE_DIR = Path(__file__).parent
 ISSUE_BODY_TEMPLATE = "issue_body.md.j2"
 REMOVAL_PR_BODY_TEMPLATE = "removal_pr_body.md.j2"
 
+# Maximum issues to check when looking for duplicates (GitHub API max is 100)
+MAX_ISSUES_PER_PAGE = 100
+# GitHub API limits assignees to 10 per issue
+MAX_ASSIGNEES = 10
+
 
 def sanitize_branch_name(name: str) -> str:
     """Sanitize a string to be a valid git branch name.
@@ -36,8 +42,6 @@ def sanitize_branch_name(name: str) -> str:
     Git branch names cannot contain spaces, ~, ^, :, ?, *, [, \\, or
     consecutive dots. They also cannot begin/end with dots or slashes.
     """
-    import re
-
     # Replace spaces and invalid characters with hyphens
     sanitized = re.sub(r"[\s~^:?*\[\]\\@{}'\"]+", "-", name)
     # Replace consecutive dots with a single dot
@@ -49,11 +53,6 @@ def sanitize_branch_name(name: str) -> str:
     # Convert to lowercase for consistency
     sanitized = sanitized.lower()
     return sanitized
-
-# Maximum issues to check when looking for duplicates (GitHub API max is 100)
-MAX_ISSUES_PER_PAGE = 100
-# GitHub API limits assignees to 10 per issue
-MAX_ASSIGNEES = 10
 
 
 def get_issue_title(component_name: str) -> str:
@@ -291,8 +290,11 @@ def create_removal_pr(repo: str, component: dict, repo_path: Path, dry_run: bool
             subprocess.run(["git", "checkout", original_branch], capture_output=True)
 
 
-def handle_stale_components(repo: str, token: str | None, dry_run: bool) -> None:
-    """Handle stale components: issues for warnings, removal PRs for stale."""
+def handle_stale_components(repo: str, token: str | None, dry_run: bool) -> bool:
+    """Handle stale components: issues for warnings, removal PRs for stale.
+
+    Returns True if all operations succeeded, False if any failed.
+    """
     repo_path = REPO_ROOT
     results = scan_repo(repo_path)
     # Include both warning (270-360 days) and stale (>360 days) components
@@ -301,9 +303,13 @@ def handle_stale_components(repo: str, token: str | None, dry_run: bool) -> None
 
     if not components_needing_attention and not fully_stale_components:
         print("No components need attention.")
-        return
+        return True
 
     print(f"Found {len(components_needing_attention)} components needing attention, including {len(fully_stale_components)} fully stale components that should be flagged for removal\n")
+
+    all_succeeded = True
+    issues_failed = 0
+    prs_failed = 0
 
     # Handle warning components: create removal warning Issues
     if components_needing_attention:
@@ -316,7 +322,10 @@ def handle_stale_components(repo: str, token: str | None, dry_run: bool) -> None
                 continue
             if create_issue(repo, component, repo_path, token, dry_run):
                 issues_created += 1
-        print(f"Issues: {issues_created} created, {issues_skipped} skipped\n")
+            else:
+                issues_failed += 1
+                all_succeeded = False
+        print(f"Issues: {issues_created} created, {issues_skipped} skipped, {issues_failed} failed\n")
 
     # Handle stale components: create stale component removal PRs
     if fully_stale_components:
@@ -329,7 +338,12 @@ def handle_stale_components(repo: str, token: str | None, dry_run: bool) -> None
                 continue
             if create_removal_pr(repo, component, repo_path, dry_run):
                 prs_created += 1
-        print(f"Removal PRs: {prs_created} created, {prs_skipped} skipped")
+            else:
+                prs_failed += 1
+                all_succeeded = False
+        print(f"Removal PRs: {prs_created} created, {prs_skipped} skipped, {prs_failed} failed")
+
+    return all_succeeded
 
 
 def main():
@@ -347,7 +361,9 @@ def main():
         print("Warning: No GitHub token provided. API requests will be subject to rate limiting.", file=sys.stderr)
         print("Use --token or set GITHUB_TOKEN environment variable for authenticated requests.", file=sys.stderr)
 
-    handle_stale_components(args.repo, token, args.dry_run)
+    success = handle_stale_components(args.repo, token, args.dry_run)
+    if not success:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
