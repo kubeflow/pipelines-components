@@ -1,0 +1,7 @@
+# {{ subcategory_name }}
+
+This subcategory contains {{ type_name | lower }} in the **{{ subcategory_name }}** group:
+
+{% for item in items %}
+- [{{ item.name }}]({{ item.link }}): {{ item.overview }}
+{% endfor %}

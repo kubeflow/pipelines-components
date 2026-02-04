@@ -1,0 +1,7 @@
+---
+name: Daily Ingest
+description: A daily data ingestion pipeline
+documentation: https://example.com/daily-ingest
+tags:
+  - testing
+  - subcategory
