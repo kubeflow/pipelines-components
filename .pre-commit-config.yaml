@@ -37,9 +37,20 @@ repos:
         name: validate-readme
         entry: >
           bash -c '
-          changed_dirs=$(echo "$@" | xargs -n1 dirname | grep -E "^(components|pipelines)/[^/]+/[^/]+$" | sort -u);
-          if [ -n "$changed_dirs" ]; then
-            ./.github/scripts/validate_readmes/test-readme-check.sh $changed_dirs || exit 1;
+          asset_dirs="";
+          for file in "$@"; do
+            d=$(dirname "$file");
+            while [[ "$d" == components/* || "$d" == pipelines/* ]]; do
+              if [ -f "$d/component.py" ] || [ -f "$d/pipeline.py" ]; then
+                asset_dirs="$asset_dirs $d";
+                break;
+              fi;
+              d=$(dirname "$d");
+            done;
+          done;
+          asset_dirs=$(echo "$asset_dirs" | xargs -n1 2>/dev/null | sort -u | xargs);
+          if [ -n "$asset_dirs" ]; then
+            ./.github/scripts/validate_readmes/test-readme-check.sh $asset_dirs || exit 1;
           fi
           ' --
         language: system
@@ -53,16 +64,21 @@ repos:
         name: validate-metadata
         entry: >
           bash -c '
-          changed_dirs=$(echo "$@" | xargs -n1 dirname | sort -u);
-          for dir in $changed_dirs; do
-            if [[ -f "$dir/metadata.yaml" && -f "$dir/OWNERS" ]]; then
-              echo "Validating metadata for $dir";
-              uv run python scripts/validate_metadata/validate_metadata.py --dir "$dir" || exit 1;
+          asset_dirs="";
+          for file in "$@"; do
+            dir=$(dirname "$file");
+            if [[ "$dir" == components/*/* || "$dir" == pipelines/*/* ]]; then
+              asset_dirs="$asset_dirs $dir";
             fi;
+          done;
+          asset_dirs=$(echo "$asset_dirs" | xargs -n1 2>/dev/null | sort -u | xargs);
+          for dir in $asset_dirs; do
+            echo "Validating metadata for $dir";
+            uv run python scripts/validate_metadata/validate_metadata.py --dir "$dir" || exit 1;
           done
           ' --
         language: system
-        files: ^(components|pipelines)/[^/]+/(metadata\.yaml|OWNERS)$
+        files: ^(components|pipelines)/[^/]+/[^/]+(/[^/]+)?/(metadata\.yaml|OWNERS)$
       - id: validate-base-images
         name: validate-base-images
         entry: >
@@ -70,11 +86,10 @@ repos:
           components=();
           pipelines=();
           for file in "$@"; do
-            if [[ "$file" =~ ^components/[^/]+/[^/]+/component\.py$ ]]; then
-              dir=$(dirname "$file");
+            dir=$(dirname "$file");
+            if [[ "$file" == components/*/component.py ]]; then
               components+=("--component" "$dir");
-            elif [[ "$file" =~ ^pipelines/[^/]+/[^/]+/pipeline\.py$ ]]; then
-              dir=$(dirname "$file");
+            elif [[ "$file" == pipelines/*/pipeline.py ]]; then
               pipelines+=("--pipeline" "$dir");
             fi;
           done;
@@ -85,4 +100,4 @@ repos:
           fi
           ' --
         language: system
-        files: ^(components|pipelines)/[^/]+/[^/]+/(component|pipeline)\.py$
+        files: ^(components|pipelines)/.+/(component|pipeline)\.py$

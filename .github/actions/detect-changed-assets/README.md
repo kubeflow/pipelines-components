@@ -156,6 +156,8 @@ uv run python .github/scripts/detect_changed_assets/detect.py --help
 3. Gets changed files via `git diff`
 4. Parses paths to identify components/pipelines:
    - `components/<category>/<name>/` → `components/<category>/<name>`
+   - `components/<category>/<subcategory>/<name>/` → `components/<category>/<subcategory>/<name>`
    - `pipelines/<category>/<name>/` → `pipelines/<category>/<name>`
+   - `pipelines/<category>/<subcategory>/<name>/` → `pipelines/<category>/<subcategory>/<name>`
 5. Deduplicates (multiple files in same component = one entry)
 6. Outputs in multiple formats

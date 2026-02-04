@@ -7,13 +7,17 @@ from pathlib import Path
 import pytest
 
 from ..generate_skeleton import (
+    build_skeleton_path,
     create_skeleton,
     create_tests_only,
+    ensure_subcategory_exists,
     generate_core_files,
+    generate_subcategory_files,
     generate_test_files,
     get_existing_categories,
     validate_category,
     validate_name,
+    validate_subcategory,
 )
 
 
@@ -25,7 +29,7 @@ class TestGenerateCoreFiles:
         files = generate_core_files("component", "data_processing", "my_processor")
 
         # Check all expected files are generated
-        expected_files = ["__init__.py", "component.py", "metadata.yaml", "OWNERS"]
+        expected_files = ["__init__.py", "component.py", "metadata.yaml", "OWNERS", "README.md"]
         assert set(files.keys()) == set(expected_files)
 
         # Check content contains expected elements
@@ -39,7 +43,7 @@ class TestGenerateCoreFiles:
         files = generate_core_files("pipeline", "training", "my_pipeline")
 
         # Check all expected files are generated
-        expected_files = ["__init__.py", "pipeline.py", "metadata.yaml", "OWNERS"]
+        expected_files = ["__init__.py", "pipeline.py", "metadata.yaml", "OWNERS", "README.md"]
         assert set(files.keys()) == set(expected_files)
 
         # Check content contains expected elements
@@ -314,3 +318,331 @@ class TestHelperFunctions:
 
         # Check that category underscores are converted to hyphens in tags
         assert "- data-processing" in files["metadata.yaml"]
+
+
+class TestSubcategoryValidation:
+    """Test subcategory validation functions."""
+
+    def test_validate_subcategory_valid_cases(self):
+        """Test validate_subcategory with valid subcategory names."""
+        valid_subcategories = ["sklearn_trainer", "pytorch_models", "utils", "model_v2"]
+        for subcategory in valid_subcategories:
+            validate_subcategory(subcategory)  # Should not raise
+
+    @pytest.mark.parametrize(
+        "invalid_subcategory",
+        [
+            "",  # Empty
+            "../malicious",  # Path traversal
+            "path/traversal",  # Forward slash
+            "windows\\path",  # Backslash
+            "subcategory.with.dots",  # Dots
+            "SklearnTrainer",  # Uppercase
+            "CamelCase",  # Mixed case
+            "subcategory!",  # Invalid character
+            "subcategory-with-hyphens",  # Hyphens
+            "subcategory with spaces",  # Spaces
+            "tests",  # Reserved name
+            "shared",  # Reserved name
+        ],
+    )
+    def test_validate_subcategory_invalid_cases(self, invalid_subcategory):
+        """Test validate_subcategory raises ValueError for invalid names."""
+        with pytest.raises(ValueError):
+            validate_subcategory(invalid_subcategory)
+
+
+class TestBuildSkeletonPath:
+    """Test the build_skeleton_path helper function."""
+
+    def test_path_without_subcategory(self):
+        """Test building path without subcategory."""
+        path = build_skeleton_path("component", "training", "my_trainer")
+        assert path == Path("components/training/my_trainer")
+
+    def test_path_with_subcategory(self):
+        """Test building path with subcategory."""
+        path = build_skeleton_path("component", "training", "logistic_regression", "sklearn_trainer")
+        assert path == Path("components/training/sklearn_trainer/logistic_regression")
+
+    def test_pipeline_path_without_subcategory(self):
+        """Test building pipeline path without subcategory."""
+        path = build_skeleton_path("pipeline", "ml_workflows", "training_pipeline")
+        assert path == Path("pipelines/ml_workflows/training_pipeline")
+
+    def test_pipeline_path_with_subcategory(self):
+        """Test building pipeline path with subcategory."""
+        path = build_skeleton_path("pipeline", "training", "batch_training", "ml_workflows")
+        assert path == Path("pipelines/training/ml_workflows/batch_training")
+
+
+class TestGenerateSubcategoryFiles:
+    """Test subcategory file generation."""
+
+    def test_generates_required_files(self):
+        """Test that OWNERS and README.md are generated for subcategory."""
+        files = generate_subcategory_files("sklearn_trainer")
+
+        assert "OWNERS" in files
+        assert "README.md" in files
+
+    def test_readme_contains_subcategory_name(self):
+        """Test that README contains the subcategory name."""
+        files = generate_subcategory_files("sklearn_trainer")
+
+        assert "Sklearn Trainer" in files["README.md"]
+
+
+class TestEnsureSubcategoryExists:
+    """Test the ensure_subcategory_exists function."""
+
+    def test_creates_new_subcategory(self):
+        """Test creating a new subcategory directory with required files."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            original_cwd = Path.cwd()
+            os.chdir(temp_dir)
+
+            try:
+                # Create category directory first
+                Path("components/training").mkdir(parents=True)
+
+                # Ensure subcategory exists
+                subcategory_dir = ensure_subcategory_exists("component", "training", "sklearn_trainer")
+
+                # Check directory was created
+                assert subcategory_dir.exists()
+                assert (subcategory_dir / "OWNERS").exists()
+                assert (subcategory_dir / "README.md").exists()
+                assert (subcategory_dir / "__init__.py").exists()
+
+            finally:
+                os.chdir(original_cwd)
+
+    def test_creates_shared_package_when_requested(self):
+        """Test creating shared package in subcategory."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            original_cwd = Path.cwd()
+            os.chdir(temp_dir)
+
+            try:
+                Path("components/training").mkdir(parents=True)
+
+                subcategory_dir = ensure_subcategory_exists(
+                    "component", "training", "sklearn_trainer", create_shared=True
+                )
+
+                # Check shared directory was created
+                shared_dir = subcategory_dir / "shared"
+                assert shared_dir.exists()
+                assert (shared_dir / "__init__.py").exists()
+                assert (shared_dir / "sklearn_trainer_utils.py").exists()
+
+            finally:
+                os.chdir(original_cwd)
+
+    def test_does_not_overwrite_existing_files(self):
+        """Test that existing subcategory files are not overwritten."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            original_cwd = Path.cwd()
+            os.chdir(temp_dir)
+
+            try:
+                # Create subcategory with custom OWNERS
+                subcategory_dir = Path("components/training/sklearn_trainer")
+                subcategory_dir.mkdir(parents=True)
+                custom_owners = "approvers:\n  - custom_owner\n"
+                (subcategory_dir / "OWNERS").write_text(custom_owners)
+
+                # Call ensure_subcategory_exists
+                ensure_subcategory_exists("component", "training", "sklearn_trainer")
+
+                # Verify OWNERS was not overwritten
+                assert (subcategory_dir / "OWNERS").read_text() == custom_owners
+
+            finally:
+                os.chdir(original_cwd)
+
+    def test_creates_pipeline_subcategory(self):
+        """Test creating a new pipeline subcategory directory with required files."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            original_cwd = Path.cwd()
+            os.chdir(temp_dir)
+
+            try:
+                Path("pipelines/training").mkdir(parents=True)
+
+                subcategory_dir = ensure_subcategory_exists("pipeline", "training", "ml_workflows")
+
+                assert subcategory_dir.exists()
+                assert subcategory_dir == Path("pipelines/training/ml_workflows")
+                assert (subcategory_dir / "OWNERS").exists()
+                assert (subcategory_dir / "README.md").exists()
+                assert (subcategory_dir / "__init__.py").exists()
+
+            finally:
+                os.chdir(original_cwd)
+
+
+class TestCreateSkeletonWithSubcategory:
+    """Test create_skeleton with subcategory support."""
+
+    def test_create_component_with_subcategory(self):
+        """Test creating a component within a subcategory."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            original_cwd = Path.cwd()
+            os.chdir(temp_dir)
+
+            try:
+                # Create category directory
+                Path("components/training").mkdir(parents=True)
+
+                # Create skeleton with subcategory
+                result_dir = create_skeleton(
+                    "component", "training", "logistic_regression", subcategory="sklearn_trainer", create_tests=True
+                )
+
+                # Check component directory structure
+                assert result_dir.exists()
+                assert result_dir == Path("components/training/sklearn_trainer/logistic_regression")
+                assert (result_dir / "component.py").exists()
+                assert (result_dir / "metadata.yaml").exists()
+                assert (result_dir / "OWNERS").exists()
+                assert (result_dir / "tests").exists()
+
+                # Check subcategory files were created
+                subcategory_dir = Path("components/training/sklearn_trainer")
+                assert (subcategory_dir / "OWNERS").exists()
+                assert (subcategory_dir / "README.md").exists()
+                assert (subcategory_dir / "__init__.py").exists()
+
+            finally:
+                os.chdir(original_cwd)
+
+    def test_create_component_with_subcategory_and_shared(self):
+        """Test creating a component with subcategory and shared package."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            original_cwd = Path.cwd()
+            os.chdir(temp_dir)
+
+            try:
+                Path("components/training").mkdir(parents=True)
+
+                create_skeleton(
+                    "component",
+                    "training",
+                    "logistic_regression",
+                    subcategory="sklearn_trainer",
+                    create_tests=False,
+                    create_shared=True,
+                )
+
+                # Check shared package was created
+                shared_dir = Path("components/training/sklearn_trainer/shared")
+                assert shared_dir.exists()
+                assert (shared_dir / "__init__.py").exists()
+                assert (shared_dir / "sklearn_trainer_utils.py").exists()
+
+            finally:
+                os.chdir(original_cwd)
+
+    def test_create_pipeline_with_subcategory(self):
+        """Test creating a pipeline within a subcategory."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            original_cwd = Path.cwd()
+            os.chdir(temp_dir)
+
+            try:
+                Path("pipelines/training").mkdir(parents=True)
+
+                result_dir = create_skeleton(
+                    "pipeline", "training", "batch_training", subcategory="ml_workflows", create_tests=True
+                )
+
+                # Check pipeline directory structure
+                assert result_dir.exists()
+                assert result_dir == Path("pipelines/training/ml_workflows/batch_training")
+                assert (result_dir / "pipeline.py").exists()
+                assert (result_dir / "metadata.yaml").exists()
+                assert (result_dir / "OWNERS").exists()
+                assert (result_dir / "tests").exists()
+
+                # Check subcategory files were created
+                subcategory_dir = Path("pipelines/training/ml_workflows")
+                assert (subcategory_dir / "OWNERS").exists()
+                assert (subcategory_dir / "README.md").exists()
+                assert (subcategory_dir / "__init__.py").exists()
+
+            finally:
+                os.chdir(original_cwd)
+
+
+class TestCreateTestsOnlyWithSubcategory:
+    """Test create_tests_only with subcategory support."""
+
+    def test_create_tests_for_subcategory_component(self):
+        """Test creating tests for a component in a subcategory."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            original_cwd = Path.cwd()
+            os.chdir(temp_dir)
+
+            try:
+                # First create skeleton without tests
+                Path("components/training").mkdir(parents=True)
+                create_skeleton(
+                    "component", "training", "logistic_regression", subcategory="sklearn_trainer", create_tests=False
+                )
+
+                # Now create tests
+                tests_dir = create_tests_only(
+                    "component", "training", "logistic_regression", subcategory="sklearn_trainer"
+                )
+
+                # Check tests were created
+                assert tests_dir.exists()
+                assert (tests_dir / "__init__.py").exists()
+                assert (tests_dir / "test_component_unit.py").exists()
+                assert (tests_dir / "test_component_local.py").exists()
+
+            finally:
+                os.chdir(original_cwd)
+
+    def test_create_tests_only_missing_subcategory_component(self):
+        """Test error when trying to create tests for non-existent subcategory component."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            original_cwd = Path.cwd()
+            os.chdir(temp_dir)
+
+            try:
+                with pytest.raises(ValueError) as exc_info:
+                    create_tests_only("component", "training", "nonexistent", subcategory="sklearn_trainer")
+
+                assert "does not exist" in str(exc_info.value)
+                assert "sklearn_trainer" in str(exc_info.value)
+
+            finally:
+                os.chdir(original_cwd)
+
+    def test_create_tests_for_subcategory_pipeline(self):
+        """Test creating tests for a pipeline in a subcategory."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            original_cwd = Path.cwd()
+            os.chdir(temp_dir)
+
+            try:
+                # First create pipeline skeleton without tests
+                Path("pipelines/training").mkdir(parents=True)
+                create_skeleton(
+                    "pipeline", "training", "batch_training", subcategory="ml_workflows", create_tests=False
+                )
+
+                # Now create tests
+                tests_dir = create_tests_only("pipeline", "training", "batch_training", subcategory="ml_workflows")
+
+                # Check tests were created
+                assert tests_dir.exists()
+                assert (tests_dir / "__init__.py").exists()
+                assert (tests_dir / "test_pipeline_unit.py").exists()
+                assert (tests_dir / "test_pipeline_local.py").exists()
+
+            finally:
+                os.chdir(original_cwd)

@@ -294,16 +294,10 @@ def test_validate_owners_yaml_failure(test_data):
         ValidateMetadataTestDir(
             dir_name="dir_is_not_dir.txt", expected_exception=argparse.ArgumentTypeError, expected_exception_msg=None
         ),
-        ValidateMetadataTestDir(
-            dir_name="missing_owners_file", expected_exception=argparse.ArgumentTypeError, expected_exception_msg=None
-        ),
-        ValidateMetadataTestDir(
-            dir_name="missing_metadata_file", expected_exception=argparse.ArgumentTypeError, expected_exception_msg=None
-        ),
     ],
 )
-def test_validate_metadata_files_in_dir_failure(test_data):
-    """Test that directories with missing or invalid files raise appropriate errors."""
+def test_validate_dir_failure(test_data):
+    """Test that non-existent or non-directory paths raise appropriate errors."""
     with pytest.raises(test_data.expected_exception, match=test_data.expected_exception_msg):
         validate_metadata.validate_dir(path=TEST_DIRS + test_data.dir_name)
 
@@ -311,7 +305,62 @@ def test_validate_metadata_files_in_dir_failure(test_data):
 @pytest.mark.parametrize(
     "test_data", [ValidateMetadataTestDir(dir_name="valid", expected_exception=None, expected_exception_msg=None)]
 )
-def test_validate_metadata_files_in_dir_success(test_data):
-    """Test that valid directories with proper OWNERS and metadata.yaml files pass validation."""
+def test_validate_dir_success(test_data):
+    """Test that valid directories pass validation."""
     files_present = validate_metadata.validate_dir(path=TEST_DIRS + test_data.dir_name)
     assert files_present == Path("scripts/validate_metadata/test_data/directories_metadata/valid")
+
+
+class TestFindDirsToValidate:
+    """Tests for find_dirs_to_validate function (subcategory handling)."""
+
+    def test_direct_component_returns_self(self):
+        """When dir has metadata.yaml, return itself."""
+        result = validate_metadata.find_dirs_to_validate(Path(TEST_DIRS + "valid"))
+        assert result == [Path(TEST_DIRS + "valid")]
+
+    def test_subcategory_returns_child_dirs(self):
+        """When dir is a subcategory, return child dirs with metadata.yaml."""
+        result = validate_metadata.find_dirs_to_validate(Path(TEST_DIRS + "subcategory_valid"))
+        assert len(result) == 1
+        assert result[0].name == "comp_a"
+
+    def test_missing_owners_file_no_children_returns_self(self):
+        """Dir with only metadata.yaml (no children with metadata) is returned as-is for validation."""
+        result = validate_metadata.find_dirs_to_validate(Path(TEST_DIRS + "missing_owners_file"))
+        assert result == [Path(TEST_DIRS + "missing_owners_file")]
+
+    def test_missing_metadata_file_no_children_raises(self):
+        """Dir with only OWNERS and no metadata.yaml or children raises error."""
+        with pytest.raises(argparse.ArgumentTypeError, match="does not contain a metadata.yaml"):
+            validate_metadata.find_dirs_to_validate(Path(TEST_DIRS + "missing_metadata_file"))
+
+
+class TestSubcategoryOwnersValidation:
+    """Tests that subcategory-level OWNERS are validated in main()."""
+
+    def test_subcategory_valid_owners_passes(self, monkeypatch):
+        """A subcategory with valid OWNERS should not flag errors for the subcategory itself."""
+        subcategory_dir = Path(TEST_DIRS + "subcategory_valid")
+        monkeypatch.setattr("sys.argv", ["prog", "--dir", str(subcategory_dir)])
+
+        # main() returns normally on success (no sys.exit call)
+        validate_metadata.main()
+
+    def test_subcategory_invalid_owners_fails(self, monkeypatch):
+        """A subcategory with invalid OWNERS should cause a validation error."""
+        subcategory_dir = Path(TEST_DIRS + "subcategory_invalid_owners")
+        monkeypatch.setattr("sys.argv", ["prog", "--dir", str(subcategory_dir)])
+
+        with pytest.raises(SystemExit) as exc_info:
+            validate_metadata.main()
+        assert exc_info.value.code == 1
+
+    def test_subcategory_missing_owners_fails(self, monkeypatch):
+        """A subcategory with no OWNERS file should cause a validation error."""
+        subcategory_dir = Path(TEST_DIRS + "subcategory_missing_owners")
+        monkeypatch.setattr("sys.argv", ["prog", "--dir", str(subcategory_dir)])
+
+        with pytest.raises(SystemExit) as exc_info:
+            validate_metadata.main()
+        assert exc_info.value.code == 1

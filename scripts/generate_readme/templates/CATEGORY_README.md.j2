@@ -5,3 +5,10 @@ This directory contains {{ type_name | lower }} in the **{{ category_name }}** c
 {% for item in items %}
 - [{{ item.name }}]({{ item.link }}): {{ item.overview }}
 {% endfor %}
+{% if subcategories %}
+## Subcategories
+
+{% for sub in subcategories %}
+- [{{ sub.name }}]({{ sub.link }})
+{% endfor %}
+{% endif %}

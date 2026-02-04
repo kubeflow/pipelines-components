@@ -33,6 +33,7 @@ test = [
     "pyyaml",
     "semver",
     "pip",
+    "setuptools",
 ]
 # Local development (extends test with additional tools)
 dev = [
@@ -50,16 +51,16 @@ Issues = "https://github.com/kubeflow/pipelines-components/issues"
 packages = [
     "kfp_components",
     "kfp_components.components",
-    "kfp_components.components.training",
-    "kfp_components.components.evaluation",
     "kfp_components.components.data_processing",
     "kfp_components.components.data_processing.yoda_data_processor",
     "kfp_components.components.deployment",
+    "kfp_components.components.evaluation",
+    "kfp_components.components.training",
     "kfp_components.pipelines",
-    "kfp_components.pipelines.training",
-    "kfp_components.pipelines.evaluation",
     "kfp_components.pipelines.data_processing",
     "kfp_components.pipelines.deployment",
+    "kfp_components.pipelines.evaluation",
+    "kfp_components.pipelines.training",
 ]
 
 [tool.setuptools.package-dir]

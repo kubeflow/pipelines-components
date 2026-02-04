@@ -1,0 +1,9 @@
+# This file lists the maintainers and reviewers for the Kubeflow Pipelines Components repository
+# Following the Kubernetes OWNERS format
+# See https://go.k8s.io/owners for more details
+
+# Approvers are responsible for approving code changes
+# These are the KFP maintainers who have write access
+approvers:
+  - nsingla
+  - hbelmiro

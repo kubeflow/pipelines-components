@@ -62,20 +62,20 @@ def parse_args() -> argparse.Namespace:
         "--dir",
         type=validate_dir,
         required=True,
-        help="Path to the component or pipeline directory (must contain OWNERS and metadata.yaml files)",
+        help="Path to a component/pipeline directory or a subcategory containing multiple components/pipelines",
     )
 
     return parser.parse_args()
 
 
 def validate_dir(path: str) -> Path:
-    """Validate that the input path is a valid directory and contains required files.
+    """Validate that the input path is a valid directory.
 
     Args:
-        path: String representation of the path to the component or pipeline directory.
+        path: String representation of the path to the component, pipeline, or subcategory directory.
 
     Returns:
-        Path: Validated Path object to the component or pipeline directory.
+        Path: Validated Path object to the directory.
 
     Raises:
         argparse.ArgumentTypeError: If validation fails.
@@ -87,15 +87,38 @@ def validate_dir(path: str) -> Path:
     if not path.is_dir():
         raise argparse.ArgumentTypeError(f"'{path}' is not a directory")
 
-    file_path = path / OWNERS
-    if not file_path.exists():
-        raise argparse.ArgumentTypeError(f"{path} does not contain an {OWNERS} file")
-
-    metadata_file = path / METADATA
-    if not metadata_file.exists():
-        raise argparse.ArgumentTypeError(f"'{path}' does not contain a {METADATA} file")
-
     return path
+
+
+def find_dirs_to_validate(input_dir: Path) -> list[Path]:
+    """Find all directories that need validation (handles both components and subcategories).
+
+    Args:
+        input_dir: Path to a component/pipeline directory or a subcategory directory.
+
+    Returns:
+        List of Path objects to directories containing metadata.yaml files.
+
+    Raises:
+        argparse.ArgumentTypeError: If no valid directories are found.
+    """
+    # Check if this directory has metadata.yaml
+    if (input_dir / METADATA).exists():
+        return [input_dir]
+
+    # This might be a subcategory - find subdirectories with metadata.yaml
+    dirs_to_validate = []
+    for subdir in input_dir.iterdir():
+        if subdir.is_dir() and (subdir / METADATA).exists():
+            dirs_to_validate.append(subdir)
+
+    if not dirs_to_validate:
+        raise argparse.ArgumentTypeError(
+            f"'{input_dir}' does not contain a {METADATA} file and has no subdirectories with one. "
+            f"If this is a subcategory, ensure it contains component directories."
+        )
+
+    return dirs_to_validate
 
 
 def validate_owners_file(filepath: Path):
@@ -353,25 +376,60 @@ def main():
     args = parse_args()
     input_dir = args.dir
 
-    # Validate OWNERS
+    # Find all directories to validate (handles subcategories)
     try:
-        owners_file_path = input_dir / OWNERS
-        validate_owners_file(owners_file_path)
-    except ValidationError as e:
-        logging.error("Validation Error: %s", e)
+        dirs_to_validate = find_dirs_to_validate(input_dir)
+    except argparse.ArgumentTypeError as e:
+        logging.error("Error: %s", e)
         sys.exit(1)
 
-    # Validate metadata.yaml
-    try:
-        metadata_file_path = input_dir / METADATA
-        validate_metadata_yaml(metadata_file_path)
-    except ValidationError as e:
-        logging.error("Validation Error: %s", e)
-        sys.exit(1)
+    has_errors = False
 
-    # Validation successful.
-    logging.info(f"Validation successful for {input_dir}.")
-    print(f"Validation successful for {input_dir}.")
+    # If input_dir is a subcategory (no metadata.yaml), validate its OWNERS file
+    if not (input_dir / METADATA).exists():
+        subcategory_owners = input_dir / OWNERS
+        if subcategory_owners.is_file():
+            try:
+                validate_owners_file(subcategory_owners)
+            except ValidationError as e:
+                logging.error("Validation Error: %s", e)
+                has_errors = True
+        else:
+            logging.error(
+                "Subcategory directory '%s' is missing a required %s file.",
+                input_dir,
+                OWNERS,
+            )
+            has_errors = True
+
+    for dir_path in dirs_to_validate:
+        print(f"Validating {dir_path}...")
+        dir_has_errors = False
+
+        # Validate OWNERS
+        try:
+            owners_file_path = dir_path / OWNERS
+            validate_owners_file(owners_file_path)
+        except ValidationError as e:
+            logging.error("Validation Error: %s", e)
+            dir_has_errors = True
+
+        # Validate metadata.yaml
+        try:
+            metadata_file_path = dir_path / METADATA
+            validate_metadata_yaml(metadata_file_path)
+        except ValidationError as e:
+            logging.error("Validation Error: %s", e)
+            dir_has_errors = True
+
+        if dir_has_errors:
+            has_errors = True
+        else:
+            logging.info(f"Validation successful for {dir_path}.")
+            print(f"Validation successful for {dir_path}.")
+
+    if has_errors:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

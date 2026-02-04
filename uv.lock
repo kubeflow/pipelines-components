@@ -435,6 +435,7 @@ dev = [
     { name = "pyyaml" },
     { name = "ruff" },
     { name = "semver" },
+    { name = "setuptools" },
     { name = "yamllint" },
 ]
 lint = [
@@ -452,6 +453,7 @@ test = [
     { name = "pytest-timeout" },
     { name = "pyyaml" },
     { name = "semver" },
+    { name = "setuptools" },
 ]
 
 [package.metadata]
@@ -470,6 +472,7 @@ requires-dist = [
     { name = "pyyaml", marker = "extra == 'test'" },
     { name = "ruff", marker = "extra == 'lint'", specifier = "==0.14.12" },
     { name = "semver", marker = "extra == 'test'" },
+    { name = "setuptools", marker = "extra == 'test'" },
     { name = "yamllint", marker = "extra == 'lint'", specifier = "==1.38.0" },
 ]
 provides-extras = ["lint", "test", "dev"]
@@ -908,6 +911,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/72/d1/d3159231aec234a59dd7d601e9dd9fe96f3afff15efd33c1070019b26132/semver-3.0.4.tar.gz", hash = "sha256:afc7d8c584a5ed0a11033af086e8af226a9c0b206f313e0301f8dd7b6b589602", size = 269730, upload-time = "2025-01-24T13:19:27.617Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a6/24/4d91e05817e92e3a61c8a21e08fd0f390f5301f1c448b137c57c4bc6e543/semver-3.0.4-py3-none-any.whl", hash = "sha256:9c824d87ba7f7ab4a1890799cec8596f15c1241cb473404ea1cb0c55e4b04746", size = 17912, upload-time = "2025-01-24T13:19:24.949Z" },
+]
+
+[[package]]
+name = "setuptools"
+version = "82.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/82/f3/748f4d6f65d1756b9ae577f329c951cda23fb900e4de9f70900ced962085/setuptools-82.0.0.tar.gz", hash = "sha256:22e0a2d69474c6ae4feb01951cb69d515ed23728cf96d05513d36e42b62b37cb", size = 1144893, upload-time = "2026-02-08T15:08:40.206Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e1/c6/76dc613121b793286a3f91621d7b75a2b493e0390ddca50f11993eadf192/setuptools-82.0.0-py3-none-any.whl", hash = "sha256:70b18734b607bd1da571d097d236cfcfacaf01de45717d59e6e04b96877532e0", size = 1003468, upload-time = "2026-02-08T15:08:38.723Z" },
 ]
 
 [[package]]
