@@ -128,17 +128,14 @@ Components must be organized by category under `components/<category>/`.
 
 Pipelines must be organized by category under `pipelines/<category>/`.
 
-### Subcategories
+### Subcategories (Components Only)
 
-For better organization of related components or pipelines, you can create **subcategories** within a category.
+For better organization of related components, you can create **subcategories** within a category.
 Subcategories provide:
 
-- **Logical grouping** of related assets (e.g., all sklearn-based trainers, related ML workflows)
+- **Logical grouping** of related components (e.g., all sklearn-based trainers)
 - **Dedicated ownership** via subcategory-level OWNERS file
 - **Shared utilities** via an optional `shared/` package
-
-**Component subcategory structure:**
-
 ```text
 components/<category>/<subcategory>/
 ├── __init__.py            # Subcategory package
@@ -155,26 +152,6 @@ components/<category>/<subcategory>/
     ├── README.md
     └── tests/
 ```
-
-**Pipeline subcategory structure:**
-
-```text
-pipelines/<category>/<subcategory>/
-├── __init__.py            # Subcategory package
-├── OWNERS                 # Subcategory maintainers
-├── README.md              # Subcategory documentation
-├── shared/                # Optional shared utilities package
-│   ├── __init__.py
-│   └── workflow_utils.py  # Common code for pipelines in this subcategory
-└── <pipeline_name>/       # Individual pipeline
-    ├── __init__.py
-    ├── pipeline.py
-    ├── metadata.yaml
-    ├── OWNERS
-    ├── README.md
-    └── tests/
-```
-
 ## Naming Conventions
 
 - **Components and pipelines** use `snake_case` (e.g., `data_preprocessing`, `model_trainer`)
@@ -322,20 +299,14 @@ For rapid development, this repository provides convenient make commands that au
 
 The following make targets simplify the development workflow:
 
-| Command | Description |
-|---------|-------------|
-| `make component CATEGORY=<cat> NAME=<name>` | Create a new component skeleton |
-| `make pipeline CATEGORY=<cat> NAME=<name>` | Create a new pipeline skeleton |
-| `make tests TYPE=<type> CATEGORY=<cat> NAME=<name>` | Add tests to existing component/pipeline |
-| `make readme TYPE=<type> CATEGORY=<cat> NAME=<name>` | Generate/update README from code |
-| `make format` | Auto-fix code formatting and linting issues |
-| `make lint` | Check code quality (formatting, linting, imports) |
-
-**Optional flags** (append to component/pipeline commands):
-
-- `SUBCATEGORY=<sub>` - Create asset in a subcategory
-- `NO_TESTS=true` - Skip test file generation
-- `CREATE_SHARED=true` - Create shared utilities package (requires SUBCATEGORY)
+| Command                                                                            | Description                                       |
+|------------------------------------------------------------------------------------|---------------------------------------------------|
+| `make component CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>] [NO_TESTS] [CREATE_SHARED]` | Create a new component skeleton           |
+| `make pipeline CATEGORY=<cat> NAME=<name> [NO_TESTS]`                              | Create a new pipeline skeleton                    |
+| `make tests TYPE=<type> CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>]`            | Add tests to existing component/pipeline          |
+| `make readme TYPE=<type> CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>]`           | Generate/update README from code                  |
+| `make format`                                                                      | Auto-fix code formatting and linting issues       |
+| `make lint`                                                                        | Check code quality (formatting, linting, imports) |
 
 </details>
 
@@ -380,61 +351,24 @@ components/data_processing/my_data_processor/
 make component CATEGORY=training SUBCATEGORY=sklearn_trainer NAME=logistic_regression
 
 # Create component in subcategory with shared utilities package
-make component CATEGORY=training SUBCATEGORY=sklearn_trainer NAME=random_forest CREATE_SHARED=true
+make component CATEGORY=training SUBCATEGORY=sklearn_trainer NAME=random_forest CREATE_SHARED
 ```
 
 This generates a nested structure:
 
 ```text
 components/training/sklearn_trainer/
-├── __init__.py                    # Subcategory package
-├── OWNERS                         # Subcategory maintainers
-├── README.md                      # Subcategory documentation
-├── shared/                        # (if CREATE_SHARED=true) Shared utilities
-│   ├── __init__.py
-│   └── sklearn_trainer_utils.py   # Placeholder utility file
-└── logistic_regression/           # Your component
+├── __init__.py            # Subcategory package
+├── OWNERS                 # Subcategory maintainers
+├── README.md              # Subcategory documentation
+├── shared/                # (if CREATE_SHARED) Shared utilities
+│   └── __init__.py
+└── logistic_regression/   # Your component
     ├── __init__.py
     ├── component.py
     ├── metadata.yaml
     ├── OWNERS
-    ├── README.md
     └── tests/
-        ├── __init__.py
-        ├── test_component_local.py
-        └── test_component_unit.py
-```
-
-**Create a pipeline within a subcategory:**
-
-```bash
-# Create pipeline in a subcategory (subcategory files created automatically)
-make pipeline CATEGORY=training SUBCATEGORY=ml_workflows NAME=batch_training
-
-# Create pipeline in subcategory with shared utilities package
-make pipeline CATEGORY=training SUBCATEGORY=ml_workflows NAME=inference CREATE_SHARED=true
-```
-
-This generates a nested structure:
-
-```text
-pipelines/training/ml_workflows/
-├── __init__.py                  # Subcategory package
-├── OWNERS                       # Subcategory maintainers
-├── README.md                    # Subcategory documentation
-├── shared/                      # (if CREATE_SHARED=true) Shared utilities
-│   ├── __init__.py
-│   └── ml_workflows_utils.py    # Placeholder utility file
-└── batch_training/              # Your pipeline
-    ├── __init__.py
-    ├── pipeline.py
-    ├── metadata.yaml
-    ├── OWNERS
-    ├── README.md
-    └── tests/
-        ├── __init__.py
-        ├── test_pipeline_local.py
-        └── test_pipeline_unit.py
 ```
 
 <details>
