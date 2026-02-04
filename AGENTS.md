@@ -34,10 +34,10 @@ Agents typically interact with this repository in three modes. Use the mode to d
 - **Reuse-first**: search `components/<category>/` and `pipelines/<category>/` for similar functionality; prefer
   extending/composing instead of duplicating.
 - **Create scaffolding**: use the Make targets in `Makefile`:
-  - `make component CATEGORY=<cat> NAME=<name> [NO_TESTS]`
+  - `make component CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>] [NO_TESTS] [CREATE_SHARED]`
   - `make pipeline CATEGORY=<cat> NAME=<name> [NO_TESTS]`
-  - `make tests TYPE=component|pipeline CATEGORY=<cat> NAME=<name>`
-  - `make readme TYPE=component|pipeline CATEGORY=<cat> NAME=<name>`
+  - `make tests TYPE=component|pipeline CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>]`
+  - `make readme TYPE=component|pipeline CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>]`
 - **Validate like CI**: follow [`CONTRIBUTING.md` (Testing and Quality)](docs/CONTRIBUTING.md#testing-and-quality) and
   reference the workflows under `.github/workflows/` (example: [`.github/workflows/python-lint.yml`](.github/workflows/python-lint.yml)).
 - **New assets require approval**: for initial contributions (introducing a new component/pipeline to the catalog),
@@ -66,7 +66,8 @@ Good places to look:
 #### Establish the target location and naming
 
 - Components live under `components/<category>/<component_name>/`.
-- Pipelines live under `pipelines/<category>/<pipeline_name>/`.
+- Components can optionally use subcategories: `components/<category>/<subcategory>/<component_name>/`.
+- Pipelines live under `pipelines/<category>/<pipeline_name>/` (subcategories not supported for pipelines).
 - Use `snake_case` directory names (per `CONTRIBUTING.md`).
 
 ### Required files
@@ -102,6 +103,15 @@ the metadata schema defined in [`CONTRIBUTING.md`](docs/CONTRIBUTING.md#metadata
 LocalRunner test using `setup_and_teardown_subprocess_runner` (you can generate tests via
 `make tests TYPE=component CATEGORY=<cat> NAME=<name>`). Reference an existing component like
 `components/data_processing/yoda_data_processor/` for patterns."
+
+#### Add a component in a subcategory
+
+Use this prompt pattern when creating related components that should share ownership or utilities:
+
+"Create a component in a subcategory using `make component CATEGORY=<cat> SUBCATEGORY=<sub> NAME=<name>`. This
+automatically creates the subcategory structure with OWNERS and README.md if it doesn't exist. For shared utilities,
+add `CREATE_SHARED` to create a `shared/` package. Update the subcategory OWNERS and README.md with appropriate
+maintainers and documentation. Follow the same component implementation patterns as above."
 
 #### Add a new pipeline (reuse-first, compliant)
 
