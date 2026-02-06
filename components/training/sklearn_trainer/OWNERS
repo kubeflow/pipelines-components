@@ -1,0 +1,7 @@
+approvers:
+  # TODO: Add your GitHub username here (must be a Kubeflow community member)
+  # - your-github-username
+reviewers:
+  # TODO: Add reviewers' GitHub usernames here
+  # - reviewer1
+  # - reviewer2
