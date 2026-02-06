@@ -128,6 +128,32 @@ Components must be organized by category under `components/<category>/`.
 
 Pipelines must be organized by category under `pipelines/<category>/`.
 
+### Subcategories (Components Only)
+
+For better organization of related components, you can create **subcategories** within a category.
+Subcategories provide:
+
+- **Logical grouping** of related components (e.g., all sklearn-based trainers)
+- **Dedicated ownership** via subcategory-level OWNERS file
+- **Shared utilities** via an optional `shared/` package
+
+```text
+components/<category>/<subcategory>/
+├── __init__.py            # Subcategory package
+├── OWNERS                 # Subcategory maintainers
+├── README.md              # Subcategory documentation
+├── shared/                # Optional shared utilities package
+│   ├── __init__.py
+│   └── training_utils.py  # Common code for components in this subcategory
+└── <component_name>/      # Individual component
+    ├── __init__.py
+    ├── component.py
+    ├── metadata.yaml
+    ├── OWNERS
+    ├── README.md
+    └── tests/
+```
+
 ## Naming Conventions
 
 - **Components and pipelines** use `snake_case` (e.g., `data_preprocessing`, `model_trainer`)
@@ -275,14 +301,20 @@ For rapid development, this repository provides convenient make commands that au
 
 The following make targets simplify the development workflow:
 
-| Command                                                | Description                                       |
-|--------------------------------------------------------|---------------------------------------------------|
-| `make component CATEGORY=<cat> NAME=<name> [NO_TESTS]` | Create a new component skeleton                   |
-| `make pipeline CATEGORY=<cat> NAME=<name> [NO_TESTS]`  | Create a new pipeline skeleton                    |
-| `make tests TYPE=<type> CATEGORY=<cat> NAME=<name>`    | Add tests to existing component/pipeline          |
-| `make readme TYPE=<type> CATEGORY=<cat> NAME=<name>`   | Generate/update README from code                  |
-| `make format`                                          | Auto-fix code formatting and linting issues       |
-| `make lint`                                            | Check code quality (formatting, linting, imports) |
+| Command | Description |
+|---------|-------------|
+| `make component CATEGORY=<cat> NAME=<name>` | Create a new component skeleton |
+| `make pipeline CATEGORY=<cat> NAME=<name>` | Create a new pipeline skeleton |
+| `make tests TYPE=<type> CATEGORY=<cat> NAME=<name>` | Add tests to existing component/pipeline |
+| `make readme TYPE=<type> CATEGORY=<cat> NAME=<name>` | Generate/update README from code |
+| `make format` | Auto-fix code formatting and linting issues |
+| `make lint` | Check code quality (formatting, linting, imports) |
+
+**Optional flags** (append to component/pipeline commands):
+
+- `SUBCATEGORY=<sub>` - Create component in a subcategory (components only)
+- `NO_TESTS=true` - Skip test file generation
+- `CREATE_SHARED=true` - Create shared utilities package (requires SUBCATEGORY)
 
 </details>
 
@@ -301,8 +333,8 @@ make pipeline CATEGORY=training NAME=my_training_pipeline
 **Create without tests (for rapid prototyping):**
 
 ```bash
-make component CATEGORY=data_processing NAME=my_prototype NO_TESTS
-make pipeline CATEGORY=training NAME=my_prototype NO_TESTS
+make component CATEGORY=data_processing NAME=my_prototype NO_TESTS=true
+make pipeline CATEGORY=training NAME=my_prototype NO_TESTS=true
 ```
 
 This generates the complete directory structure:
@@ -318,6 +350,33 @@ components/data_processing/my_data_processor/
     ├── __init__.py
     ├── test_component_unit.py     # Unit test template
     └── test_component_local.py    # Integration test template
+```
+
+**Create a component within a subcategory:**
+
+```bash
+# Create component in a subcategory (subcategory files created automatically)
+make component CATEGORY=training SUBCATEGORY=sklearn_trainer NAME=logistic_regression
+
+# Create component in subcategory with shared utilities package
+make component CATEGORY=training SUBCATEGORY=sklearn_trainer NAME=random_forest CREATE_SHARED=true
+```
+
+This generates a nested structure:
+
+```text
+components/training/sklearn_trainer/
+├── __init__.py            # Subcategory package
+├── OWNERS                 # Subcategory maintainers
+├── README.md              # Subcategory documentation
+├── shared/                # (if CREATE_SHARED) Shared utilities
+│   └── __init__.py
+└── logistic_regression/   # Your component
+    ├── __init__.py
+    ├── component.py
+    ├── metadata.yaml
+    ├── OWNERS
+    └── tests/
 ```
 
 <details>
@@ -476,6 +535,35 @@ git push origin component/csv-cleaner
 ```
 
 This workflow typically takes just a few minutes to set up the complete component structure with documentation and tests.
+
+#### Example Workflow with Subcategory
+
+When creating related components that share ownership or utilities:
+
+```bash
+# 1. Create feature branch
+git checkout -b component/sklearn-logistic-regression upstream/main
+
+# 2. Create component in subcategory (first component also creates subcategory structure)
+make component CATEGORY=training SUBCATEGORY=sklearn_trainer NAME=logistic_regression
+
+# 3. Edit the component and subcategory files:
+#    - components/training/sklearn_trainer/logistic_regression/component.py (your logic)
+#    - components/training/sklearn_trainer/OWNERS (subcategory maintainers)
+#    - components/training/sklearn_trainer/README.md (subcategory docs)
+
+# 4. Generate documentation
+make readme TYPE=component CATEGORY=training SUBCATEGORY=sklearn_trainer NAME=logistic_regression
+
+# 5. Format, lint, test, and submit (same as above)
+make format
+make lint
+pytest components/training/sklearn_trainer/logistic_regression/tests/ -v
+pre-commit run
+git add .
+git commit -m "feat(training): add logistic_regression component in sklearn_trainer subcategory"
+git push origin component/sklearn-logistic-regression
+```
 
 ## Testing and Quality
 
