@@ -30,11 +30,17 @@ jobs:
 
 ## Inputs
 
-| Input | Description | Default |
-|-------|-------------|---------|
-| `base-ref` | Base git reference to compare against | `origin/main` |
-| `head-ref` | Head git reference | `HEAD` |
-| `filter` | Grep pattern to filter changed components, pipelines, and files | _(empty)_ |
+| Input      | Description                                                     | Default   |
+|------------|-----------------------------------------------------------------|-----------|
+| `base-ref` | Base git reference to compare against                           | Dynamic   |
+| `head-ref` | Head git reference                                              | `HEAD`    |
+| `filter`   | Grep pattern to filter changed components, pipelines, and files | _(empty)_ |
+
+### Default behavior details
+
+- `base-ref` (Dynamic):
+  - For pull requests: `origin/{PR base}`
+  - For other events: `origin/{default branch}`
 
 ## Outputs
 
@@ -131,13 +137,13 @@ Detect changes only in specific file types:
 
 ```bash
 # Test the detection script directly
-python3 .github/scripts/detect_changed_assets/detect.py --base-ref origin/main --head-ref HEAD
+uv run python .github/scripts/detect_changed_assets/detect.py --base-ref origin/HEAD --head-ref HEAD
 
 # With pattern filter
-python3 .github/scripts/detect_changed_assets/detect.py --base-ref origin/main --filter '\.py$'
+uv run python .github/scripts/detect_changed_assets/detect.py --base-ref origin/HEAD --filter '\.py$'
 
 # Show help
-python3 .github/scripts/detect_changed_assets/detect.py --help
+uv run python .github/scripts/detect_changed_assets/detect.py --help
 
 # Or run the full test suite
 .github/actions/detect-changed-assets/test.sh

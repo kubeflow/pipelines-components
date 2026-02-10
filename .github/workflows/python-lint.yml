@@ -3,6 +3,9 @@ name: Python Lint
 
 on:
   pull_request:
+    branches:
+      - 'main'
+      - 'release-*'
     paths:
       - '**/*.py'
       - 'pyproject.toml'
@@ -12,8 +15,8 @@ on:
       - '.github/scripts/check_imports/**'
   push:
     branches:
-      - main
-      - release-*
+      - 'main'
+      - 'release-*'
 
 jobs:
   python-lint:
