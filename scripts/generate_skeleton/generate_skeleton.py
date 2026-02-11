@@ -11,6 +11,8 @@ Usage:
         --category=training --subcategory=sklearn_trainer --name=logistic_regression
     python scripts/generate_skeleton/generate_skeleton.py --type=pipeline \\
         --category=ml_workflows --name=my_training_pipeline
+    python scripts/generate_skeleton/generate_skeleton.py --type=pipeline \\
+        --category=training --subcategory=ml_workflows --name=batch_training
 """
 
 import argparse
@@ -178,15 +180,15 @@ def generate_subcategory_files(subcategory: str) -> dict[str, str]:
     # Generate a simple README for subcategory
     readme_content = f"""# {subcategory.replace("_", " ").title()}
 
-This subcategory contains related components.
+This subcategory contains related assets.
 
 ## Overview
 
 TODO: Add description of what this subcategory contains.
 
-## Components
+## Assets
 
-TODO: List components in this subcategory.
+TODO: List components/pipelines in this subcategory.
 
 ## Shared Utilities
 
@@ -213,31 +215,36 @@ def ensure_subcategory_exists(skeleton_type: str, category: str, subcategory: st
     """
     subcategory_dir = Path(f"{skeleton_type}s/{category}/{subcategory}")
 
-    # Check if this is a new subcategory
-    is_new_subcategory = not subcategory_dir.exists()
-
     subcategory_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create subcategory-level files only if this is a new subcategory
-    if is_new_subcategory:
-        subcategory_files = generate_subcategory_files(subcategory)
-        for filename, content in subcategory_files.items():
-            file_path = subcategory_dir / filename
-            if not file_path.exists():
-                file_path.write_text(content)
+    # Create any missing subcategory-level files
+    subcategory_files = generate_subcategory_files(subcategory)
+    for filename, content in subcategory_files.items():
+        file_path = subcategory_dir / filename
+        if not file_path.exists():
+            file_path.write_text(content)
 
-        # Create __init__.py for the subcategory package
-        init_path = subcategory_dir / "__init__.py"
-        if not init_path.exists():
-            init_path.write_text(f'"""Components in the {subcategory} subcategory."""\n')
+    # Create __init__.py for the subcategory package
+    init_path = subcategory_dir / "__init__.py"
+    if not init_path.exists():
+        init_path.write_text(f'"""Assets in the {subcategory} subcategory."""\n')
 
-        # Optionally create shared/ package
-        if create_shared:
-            shared_dir = subcategory_dir / "shared"
-            shared_dir.mkdir(exist_ok=True)
-            shared_init = shared_dir / "__init__.py"
-            if not shared_init.exists():
-                shared_init.write_text(f'"""Shared utilities for {subcategory} components."""\n')
+    # Optionally create shared/ package
+    if create_shared:
+        shared_dir = subcategory_dir / "shared"
+        shared_dir.mkdir(exist_ok=True)
+        shared_init = shared_dir / "__init__.py"
+        if not shared_init.exists():
+            shared_init.write_text(f'"""Shared utilities for the {subcategory} subcategory."""\n')
+        # Create a placeholder utility file
+        utils_file = shared_dir / f"{subcategory}_utils.py"
+        if not utils_file.exists():
+            utils_file.write_text(
+                f'"""Shared utility functions for the {subcategory} subcategory."""\n'
+                "\n"
+                "\n"
+                "# TODO: Add shared utility functions, classes, or constants here.\n"
+            )
 
     return subcategory_dir
 
@@ -283,6 +290,19 @@ def generate_core_files(skeleton_type: str, category: str, name: str) -> dict[st
     # Generate OWNERS
     template = env.get_template("OWNERS.j2")
     files["OWNERS"] = template.render(context)
+
+    # Generate placeholder README.md
+    title = name.replace("_", " ").title()
+    files["README.md"] = f"""# {title}
+
+## Overview
+
+TODO: Add description of this {skeleton_type}.
+
+## Usage
+
+TODO: Add usage examples.
+"""
 
     return files
 
@@ -465,6 +485,7 @@ Examples:
 With subcategory:
   %(prog)s --type=component --category=training --subcategory=sklearn_trainer --name=logistic_regression
   %(prog)s --type=component --category=training --subcategory=sklearn_trainer --name=random_forest --create-shared
+  %(prog)s --type=pipeline --category=training --subcategory=ml_workflows --name=batch_training
         """,
     )
 
@@ -480,7 +501,7 @@ With subcategory:
         "--subcategory",
         required=False,
         default=None,
-        help="Optional subcategory within the category (components only, e.g., 'sklearn_trainer')",
+        help="Optional subcategory within the category (e.g., 'sklearn_trainer')",
     )
 
     parser.add_argument(
@@ -514,11 +535,6 @@ With subcategory:
     # Validate --create-shared requires --subcategory
     if args.create_shared and not args.subcategory:
         print("Error: --create-shared requires --subcategory to be specified")
-        sys.exit(1)
-
-    # Validate --subcategory is only allowed for components (not pipelines)
-    if args.subcategory and args.type == "pipeline":
-        print("Error: --subcategory is only supported for components, not pipelines")
         sys.exit(1)
 
     # Validate that category exists (for new skeletons) or provide helpful guidance

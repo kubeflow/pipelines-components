@@ -35,7 +35,7 @@ Agents typically interact with this repository in three modes. Use the mode to d
   extending/composing instead of duplicating.
 - **Create scaffolding**: use the Make targets in `Makefile`:
   - `make component CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>] [NO_TESTS=true] [CREATE_SHARED=true]`
-  - `make pipeline CATEGORY=<cat> NAME=<name> [NO_TESTS=true]`
+  - `make pipeline CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>] [NO_TESTS=true] [CREATE_SHARED=true]`
   - `make tests TYPE=component|pipeline CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>]`
   - `make readme TYPE=component|pipeline CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>]`
 - **Validate like CI**: follow [`CONTRIBUTING.md` (Testing and Quality)](docs/CONTRIBUTING.md#testing-and-quality) and
@@ -67,7 +67,8 @@ Good places to look:
 
 - Components live under `components/<category>/<component_name>/`.
 - Components can optionally use subcategories: `components/<category>/<subcategory>/<component_name>/`.
-- Pipelines live under `pipelines/<category>/<pipeline_name>/` (subcategories not supported for pipelines).
+- Pipelines live under `pipelines/<category>/<pipeline_name>/`.
+- Pipelines can optionally use subcategories: `pipelines/<category>/<subcategory>/<pipeline_name>/`.
 - Use `snake_case` directory names (per `CONTRIBUTING.md`).
 
 ### Required files
@@ -123,6 +124,15 @@ Use this prompt pattern:
 metadata schema defined in [`CONTRIBUTING.md`](docs/CONTRIBUTING.md#metadatayaml-schema) (required field order, fresh
 `lastVerified`). Generate/validate `README.md` using `make readme TYPE=pipeline CATEGORY=<cat> NAME=<name>`. Add tests
 (you can generate tests via `make tests TYPE=pipeline CATEGORY=<cat> NAME=<name>`)."
+
+#### Add a pipeline in a subcategory
+
+Use this prompt pattern when creating related pipelines that should share ownership or utilities:
+
+"Create a pipeline in a subcategory using `make pipeline CATEGORY=<cat> SUBCATEGORY=<sub> NAME=<name>`. This
+automatically creates the subcategory structure with OWNERS and README.md if it doesn't exist. For shared utilities,
+add `CREATE_SHARED=true` to create a `shared/` package. Update the subcategory OWNERS and README.md with appropriate
+maintainers and documentation. Follow the same pipeline implementation patterns as above."
 
 #### Update an existing component safely
 

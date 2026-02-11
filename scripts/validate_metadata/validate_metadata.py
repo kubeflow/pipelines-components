@@ -62,7 +62,7 @@ def parse_args() -> argparse.Namespace:
         "--dir",
         type=validate_dir,
         required=True,
-        help="Path to the component or pipeline directory (must contain OWNERS and metadata.yaml files)",
+        help="Path to a component/pipeline directory or a subcategory containing multiple components/pipelines",
     )
 
     return parser.parse_args()

@@ -128,14 +128,16 @@ Components must be organized by category under `components/<category>/`.
 
 Pipelines must be organized by category under `pipelines/<category>/`.
 
-### Subcategories (Components Only)
+### Subcategories
 
-For better organization of related components, you can create **subcategories** within a category.
+For better organization of related components or pipelines, you can create **subcategories** within a category.
 Subcategories provide:
 
-- **Logical grouping** of related components (e.g., all sklearn-based trainers)
+- **Logical grouping** of related assets (e.g., all sklearn-based trainers, related ML workflows)
 - **Dedicated ownership** via subcategory-level OWNERS file
 - **Shared utilities** via an optional `shared/` package
+
+**Component subcategory structure:**
 
 ```text
 components/<category>/<subcategory>/
@@ -148,6 +150,25 @@ components/<category>/<subcategory>/
 └── <component_name>/      # Individual component
     ├── __init__.py
     ├── component.py
+    ├── metadata.yaml
+    ├── OWNERS
+    ├── README.md
+    └── tests/
+```
+
+**Pipeline subcategory structure:**
+
+```text
+pipelines/<category>/<subcategory>/
+├── __init__.py            # Subcategory package
+├── OWNERS                 # Subcategory maintainers
+├── README.md              # Subcategory documentation
+├── shared/                # Optional shared utilities package
+│   ├── __init__.py
+│   └── workflow_utils.py  # Common code for pipelines in this subcategory
+└── <pipeline_name>/       # Individual pipeline
+    ├── __init__.py
+    ├── pipeline.py
     ├── metadata.yaml
     ├── OWNERS
     ├── README.md
@@ -312,7 +333,7 @@ The following make targets simplify the development workflow:
 
 **Optional flags** (append to component/pipeline commands):
 
-- `SUBCATEGORY=<sub>` - Create component in a subcategory (components only)
+- `SUBCATEGORY=<sub>` - Create asset in a subcategory
 - `NO_TESTS=true` - Skip test file generation
 - `CREATE_SHARED=true` - Create shared utilities package (requires SUBCATEGORY)
 
@@ -366,17 +387,54 @@ This generates a nested structure:
 
 ```text
 components/training/sklearn_trainer/
-├── __init__.py            # Subcategory package
-├── OWNERS                 # Subcategory maintainers
-├── README.md              # Subcategory documentation
-├── shared/                # (if CREATE_SHARED) Shared utilities
-│   └── __init__.py
-└── logistic_regression/   # Your component
+├── __init__.py                    # Subcategory package
+├── OWNERS                         # Subcategory maintainers
+├── README.md                      # Subcategory documentation
+├── shared/                        # (if CREATE_SHARED=true) Shared utilities
+│   ├── __init__.py
+│   └── sklearn_trainer_utils.py   # Placeholder utility file
+└── logistic_regression/           # Your component
     ├── __init__.py
     ├── component.py
     ├── metadata.yaml
     ├── OWNERS
+    ├── README.md
     └── tests/
+        ├── __init__.py
+        ├── test_component_local.py
+        └── test_component_unit.py
+```
+
+**Create a pipeline within a subcategory:**
+
+```bash
+# Create pipeline in a subcategory (subcategory files created automatically)
+make pipeline CATEGORY=training SUBCATEGORY=ml_workflows NAME=batch_training
+
+# Create pipeline in subcategory with shared utilities package
+make pipeline CATEGORY=training SUBCATEGORY=ml_workflows NAME=inference CREATE_SHARED=true
+```
+
+This generates a nested structure:
+
+```text
+pipelines/training/ml_workflows/
+├── __init__.py                  # Subcategory package
+├── OWNERS                       # Subcategory maintainers
+├── README.md                    # Subcategory documentation
+├── shared/                      # (if CREATE_SHARED=true) Shared utilities
+│   ├── __init__.py
+│   └── ml_workflows_utils.py    # Placeholder utility file
+└── batch_training/              # Your pipeline
+    ├── __init__.py
+    ├── pipeline.py
+    ├── metadata.yaml
+    ├── OWNERS
+    ├── README.md
+    └── tests/
+        ├── __init__.py
+        ├── test_pipeline_local.py
+        └── test_pipeline_unit.py
 ```
 
 <details>
@@ -840,21 +898,6 @@ pytest tests/ --cov=. --cov-report=html
 - **Resource considerations**: Local runner tests require adequate system resources for your component's workload
 - **Dependencies**: Mock external services in unit tests; use real dependencies in local runner tests
 - **Cleanup**: Use provided fixtures to ensure proper test environment cleanup
-
-### Package Validation
-
-The validation script ensures the `packages` list in `pyproject.toml` stays in sync with the actual
-Python package structure. It discovers all packages in `components/` and `pipelines/` and compares
-them with the declared packages in `pyproject.toml`.
-
-Run the validation locally:
-
-```bash
-uv run python -m scripts.validate_package_entries.validate_package_entries
-```
-
-If validation fails, update the `packages` list in `pyproject.toml` under `[tool.setuptools]` to
-include any missing packages. The script will report exactly which packages are missing or extra.
 
 ### Building Custom Container Images
 
