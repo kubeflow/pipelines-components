@@ -5,7 +5,10 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from scripts.generate_readme.category_index_generator import CategoryIndexGenerator
+from scripts.generate_readme.category_index_generator import (
+    CategoryIndexGenerator,
+    SubcategoryIndexGenerator,
+)
 from scripts.generate_readme.constants import CUSTOM_CONTENT_MARKER, EXIT_ERROR
 from scripts.generate_readme.content_generator import ReadmeContentGenerator
 from scripts.generate_readme.metadata_parser import MetadataParser
@@ -48,8 +51,21 @@ class ReadmeWriter:
             self.source_file = pipeline_dir / "pipeline.py"
             self.function_type = "pipeline"
 
-        self.category_dir = self.source_dir.parent
+        self.subcategory_dir = None
+        parent = self.source_dir.parent
+        try:
+            if parent.parent.parent.name in {"components", "pipelines"}:
+                # 3-level: components/<category>/<subcategory>/<item>/
+                self.subcategory_dir = parent
+                self.category_dir = parent.parent
+            else:
+                # 2-level: components/<category>/<item>/
+                self.category_dir = parent
+        except (AttributeError, ValueError):
+            self.category_dir = parent
+
         self.category_index_file = self.category_dir / "README.md"
+        self.subcategory_index_file = self.subcategory_dir / "README.md" if self.subcategory_dir else None
 
         self.parser = MetadataParser(self.source_file, self.function_type)
         self.metadata_file = self.source_dir / "metadata.yaml"
@@ -111,6 +127,22 @@ class ReadmeWriter:
             return True
         return expected != actual
 
+    def _check_index_file(self, index_file: Path, expected_content: str) -> bool:
+        """Check if an index README matches expected content.
+
+        Args:
+            index_file: Path to the index README file.
+            expected_content: The expected content.
+
+        Returns:
+            True if there's a diff, False if content matches.
+        """
+        actual_content = self._read_file_content(index_file)
+        has_diff = self._has_diff(expected_content, actual_content)
+        if has_diff:
+            logger.warning(f"Out of sync: {index_file}")
+        return has_diff
+
     def _check_category_index(self, category_content: str) -> bool:
         """Check if category index matches expected content.
 
@@ -120,11 +152,41 @@ class ReadmeWriter:
         Returns:
             True if there's a diff, False if content matches.
         """
-        actual_content = self._read_file_content(self.category_index_file)
-        has_diff = self._has_diff(category_content, actual_content)
-        if has_diff:
-            logger.warning(f"Out of sync: {self.category_index_file}")
-        return has_diff
+        return self._check_index_file(self.category_index_file, category_content)
+
+    def _check_subcategory_index(self, subcategory_content: str) -> bool:
+        """Check if subcategory index matches expected content.
+
+        Args:
+            subcategory_content: The expected subcategory index content.
+
+        Returns:
+            True if there's a diff, False if content matches.
+        """
+        if self.subcategory_index_file is None:
+            return False
+        return self._check_index_file(self.subcategory_index_file, subcategory_content)
+
+    def _write_index_file(self, index_file: Path, content: str, label: str) -> None:
+        """Write an index README file.
+
+        Args:
+            index_file: Path to the index README file.
+            content: The generated content to write.
+            label: Human-readable label for log messages (e.g., "Category index").
+        """
+        if index_file.exists():
+            logger.info(f"{label} exists at {index_file}, regenerating entries.")
+        else:
+            logger.info(f"{label} does not exist yet at {index_file}, creating new file")
+
+        try:
+            with open(index_file, "w", encoding="utf-8") as f:
+                f.write(content)
+            logger.info(f"{label} generated at {index_file}")
+        except Exception as e:
+            logger.error(f"Could not write {label.lower()}: {e}")
+            sys.exit(EXIT_ERROR)
 
     def _write_category_index(self, category_content: str) -> None:
         """Write the category-level README index.
@@ -132,20 +194,17 @@ class ReadmeWriter:
         Args:
             category_content: The generated category index content to write.
         """
-        if self.category_index_file.exists():
-            logger.info(f"Category index exists at {self.category_index_file}, regenerating entries.")
-        else:
-            logger.info(f"Category index does not exist yet at {self.category_index_file}, creating new file")
+        self._write_index_file(self.category_index_file, category_content, "Category index")
 
-        try:
-            with open(self.category_index_file, "w", encoding="utf-8") as f:
-                f.write(category_content)
+    def _write_subcategory_index(self, subcategory_content: str) -> None:
+        """Write the subcategory-level README index.
 
-            logger.info(f"Category index generated at {self.category_index_file}")
-
-        except Exception as e:
-            logger.error(f"Could not write category index: {e}")
-            sys.exit(EXIT_ERROR)
+        Args:
+            subcategory_content: The generated subcategory index content to write.
+        """
+        if self.subcategory_index_file is None:
+            return
+        self._write_index_file(self.subcategory_index_file, subcategory_content, "Subcategory index")
 
     def _check_readme_file(self, readme_content: str) -> bool:
         """Check if README matches expected content.
@@ -195,6 +254,11 @@ class ReadmeWriter:
     def generate(self, fix: bool = False) -> bool:
         """Generate the README documentation.
 
+        Generates up to 3 README files:
+        1. The component/pipeline README (always)
+        2. The subcategory index README (if in a subcategory)
+        3. The category index README (always)
+
         Args:
             fix: If True, write/update README files.
                  If False, only check for diffs without writing files.
@@ -227,19 +291,30 @@ class ReadmeWriter:
         readme_content_generator = ReadmeContentGenerator(metadata, self.source_dir)
         readme_content = readme_content_generator.generate_readme()
 
-        # Generate category index content
-        index_generator = CategoryIndexGenerator(self.category_dir, self.is_component)
-        index_content = index_generator.generate()
-
-        # Check for diffs (in both modes)
+        # Check component/pipeline README for diffs
         readme_has_diff = self._check_readme_file(readme_content)
-        category_has_diff = self._check_category_index(index_content)
-        has_diff = readme_has_diff or category_has_diff
+        has_diff = readme_has_diff
+
+        # Generate subcategory index if we're in a subcategory
+        subcategory_content = None
+        if self.subcategory_dir:
+            subcategory_generator = SubcategoryIndexGenerator(self.subcategory_dir, self.is_component)
+            subcategory_content = subcategory_generator.generate()
+            subcategory_has_diff = self._check_subcategory_index(subcategory_content)
+            has_diff = has_diff or subcategory_has_diff
+
+        # Generate category index content
+        category_generator = CategoryIndexGenerator(self.category_dir, self.is_component)
+        category_content = category_generator.generate()
+        category_has_diff = self._check_category_index(category_content)
+        has_diff = has_diff or category_has_diff
 
         if has_diff and fix:
             # Fix mode: write files
             self._write_readme_file(readme_content)
-            self._write_category_index(index_content)
+            if subcategory_content is not None:
+                self._write_subcategory_index(subcategory_content)
+            self._write_category_index(category_content)
 
             # Log metadata statistics
             logger.debug(f"README content length: {len(readme_content)} characters")

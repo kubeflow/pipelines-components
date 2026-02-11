@@ -29,7 +29,7 @@ class TestGenerateCoreFiles:
         files = generate_core_files("component", "data_processing", "my_processor")
 
         # Check all expected files are generated
-        expected_files = ["__init__.py", "component.py", "metadata.yaml", "OWNERS"]
+        expected_files = ["__init__.py", "component.py", "metadata.yaml", "OWNERS", "README.md"]
         assert set(files.keys()) == set(expected_files)
 
         # Check content contains expected elements
@@ -43,7 +43,7 @@ class TestGenerateCoreFiles:
         files = generate_core_files("pipeline", "training", "my_pipeline")
 
         # Check all expected files are generated
-        expected_files = ["__init__.py", "pipeline.py", "metadata.yaml", "OWNERS"]
+        expected_files = ["__init__.py", "pipeline.py", "metadata.yaml", "OWNERS", "README.md"]
         assert set(files.keys()) == set(expected_files)
 
         # Check content contains expected elements
@@ -368,6 +368,11 @@ class TestBuildSkeletonPath:
         path = build_skeleton_path("pipeline", "ml_workflows", "training_pipeline")
         assert path == Path("pipelines/ml_workflows/training_pipeline")
 
+    def test_pipeline_path_with_subcategory(self):
+        """Test building pipeline path with subcategory."""
+        path = build_skeleton_path("pipeline", "training", "batch_training", "ml_workflows")
+        assert path == Path("pipelines/training/ml_workflows/batch_training")
+
 
 class TestGenerateSubcategoryFiles:
     """Test subcategory file generation."""
@@ -454,6 +459,26 @@ class TestEnsureSubcategoryExists:
             finally:
                 os.chdir(original_cwd)
 
+    def test_creates_pipeline_subcategory(self):
+        """Test creating a new pipeline subcategory directory with required files."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            original_cwd = Path.cwd()
+            os.chdir(temp_dir)
+
+            try:
+                Path("pipelines/training").mkdir(parents=True)
+
+                subcategory_dir = ensure_subcategory_exists("pipeline", "training", "ml_workflows")
+
+                assert subcategory_dir.exists()
+                assert subcategory_dir == Path("pipelines/training/ml_workflows")
+                assert (subcategory_dir / "OWNERS").exists()
+                assert (subcategory_dir / "README.md").exists()
+                assert (subcategory_dir / "__init__.py").exists()
+
+            finally:
+                os.chdir(original_cwd)
+
 
 class TestCreateSkeletonWithSubcategory:
     """Test create_skeleton with subcategory support."""
@@ -516,6 +541,36 @@ class TestCreateSkeletonWithSubcategory:
             finally:
                 os.chdir(original_cwd)
 
+    def test_create_pipeline_with_subcategory(self):
+        """Test creating a pipeline within a subcategory."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            original_cwd = Path.cwd()
+            os.chdir(temp_dir)
+
+            try:
+                Path("pipelines/training").mkdir(parents=True)
+
+                result_dir = create_skeleton(
+                    "pipeline", "training", "batch_training", subcategory="ml_workflows", create_tests=True
+                )
+
+                # Check pipeline directory structure
+                assert result_dir.exists()
+                assert result_dir == Path("pipelines/training/ml_workflows/batch_training")
+                assert (result_dir / "pipeline.py").exists()
+                assert (result_dir / "metadata.yaml").exists()
+                assert (result_dir / "OWNERS").exists()
+                assert (result_dir / "tests").exists()
+
+                # Check subcategory files were created
+                subcategory_dir = Path("pipelines/training/ml_workflows")
+                assert (subcategory_dir / "OWNERS").exists()
+                assert (subcategory_dir / "README.md").exists()
+                assert (subcategory_dir / "__init__.py").exists()
+
+            finally:
+                os.chdir(original_cwd)
+
 
 class TestCreateTestsOnlyWithSubcategory:
     """Test create_tests_only with subcategory support."""
@@ -559,6 +614,31 @@ class TestCreateTestsOnlyWithSubcategory:
 
                 assert "does not exist" in str(exc_info.value)
                 assert "sklearn_trainer" in str(exc_info.value)
+
+            finally:
+                os.chdir(original_cwd)
+
+    def test_create_tests_for_subcategory_pipeline(self):
+        """Test creating tests for a pipeline in a subcategory."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            original_cwd = Path.cwd()
+            os.chdir(temp_dir)
+
+            try:
+                # First create pipeline skeleton without tests
+                Path("pipelines/training").mkdir(parents=True)
+                create_skeleton(
+                    "pipeline", "training", "batch_training", subcategory="ml_workflows", create_tests=False
+                )
+
+                # Now create tests
+                tests_dir = create_tests_only("pipeline", "training", "batch_training", subcategory="ml_workflows")
+
+                # Check tests were created
+                assert tests_dir.exists()
+                assert (tests_dir / "__init__.py").exists()
+                assert (tests_dir / "test_pipeline_unit.py").exists()
+                assert (tests_dir / "test_pipeline_local.py").exists()
 
             finally:
                 os.chdir(original_cwd)

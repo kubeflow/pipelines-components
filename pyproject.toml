@@ -46,21 +46,10 @@ Documentation = "https://github.com/kubeflow/pipelines-components/tree/main/docs
 Repository = "https://github.com/kubeflow/pipelines-components"
 Issues = "https://github.com/kubeflow/pipelines-components/issues"
 
-[tool.setuptools]
-packages = [
-    "kfp_components",
-    "kfp_components.components",
-    "kfp_components.components.training",
-    "kfp_components.components.evaluation",
-    "kfp_components.components.data_processing",
-    "kfp_components.components.data_processing.yoda_data_processor",
-    "kfp_components.components.deployment",
-    "kfp_components.pipelines",
-    "kfp_components.pipelines.training",
-    "kfp_components.pipelines.evaluation",
-    "kfp_components.pipelines.data_processing",
-    "kfp_components.pipelines.deployment",
-]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["kfp_components", "kfp_components.*"]
+exclude = ["tests", "tests.*", "scripts", "scripts.*", "test_data", "test_data.*"]
 
 [tool.setuptools.package-dir]
 "kfp_components" = "."
