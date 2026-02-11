@@ -1,9 +1,9 @@
-"""Local runner tests for the logistic_regression component."""
+"""Local runner tests for the text_classifier component."""
 
-from ..component import logistic_regression
+from ..component import text_classifier
 
 
-class TestLogisticRegressionLocalRunner:
+class TestTextClassifierLocalRunner:
     """Test component with LocalRunner (subprocess execution)."""
 
     def test_local_execution(self, setup_and_teardown_subprocess_runner):  # noqa: F811
@@ -11,7 +11,7 @@ class TestLogisticRegressionLocalRunner:
         # TODO: Implement local runner tests for your component
 
         # Example test structure:
-        result = logistic_regression(
+        result = text_classifier(
             input_param="test_value"
         )
 

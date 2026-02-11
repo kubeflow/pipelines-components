@@ -1,1 +1,1 @@
-"""Shared utilities for ml_workflows components."""
+"""Shared utilities for ml_workflows pipelines."""

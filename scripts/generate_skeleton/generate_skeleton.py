@@ -239,7 +239,16 @@ def ensure_subcategory_exists(skeleton_type: str, category: str, subcategory: st
             shared_dir.mkdir(exist_ok=True)
             shared_init = shared_dir / "__init__.py"
             if not shared_init.exists():
-                shared_init.write_text(f'"""Shared utilities for {subcategory} components."""\n')
+                shared_init.write_text(f'"""Shared utilities for {subcategory} {skeleton_type}s."""\n')
+            # Create a placeholder utility file
+            utils_file = shared_dir / f"{subcategory}_utils.py"
+            if not utils_file.exists():
+                utils_file.write_text(
+                    f'"""Shared utility functions for {subcategory} {skeleton_type}s."""\n'
+                    "\n"
+                    "\n"
+                    "# TODO: Add shared utility functions, classes, or constants here.\n"
+                )
 
     return subcategory_dir
 
