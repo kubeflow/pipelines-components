@@ -531,12 +531,6 @@ With subcategory:
         print("Error: --create-shared requires --subcategory to be specified")
         sys.exit(1)
 
-    # Validate --subcategory is only allowed for components (not pipelines)
-    if args.subcategory and args.type == "pipeline":
-        print("Error: --subcategory is only supported for components, not pipelines")
-        sys.exit(1)
-
-
     # Validate that category exists (for new skeletons) or provide helpful guidance
     if not args.tests_only:
         existing_categories = get_existing_categories(args.type)

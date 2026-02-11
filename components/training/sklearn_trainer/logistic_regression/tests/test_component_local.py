@@ -11,7 +11,9 @@ class TestLogisticRegressionLocalRunner:
         # TODO: Implement local runner tests for your component
 
         # Example test structure:
-        result = logistic_regression(input_param="test_value")
+        result = logistic_regression(
+            input_param="test_value"
+        )
 
         # Add assertions about expected outputs if needed
         assert result is not None

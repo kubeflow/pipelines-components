@@ -1,17 +1,18 @@
 ---
-name: logistic_regression
-stability: alpha  # New component without proven track record
+name: batch_training
+stability: alpha  # New pipeline without proven track record
 dependencies:
   kubeflow:
     - name: Pipelines
       version: '>=2.15.2'
-  # external_services:  # Add if component uses external services
+  # external_services:  # Add if pipeline uses external services
   #   - name: Example Service
   #     version: ">=1.0.0"
 tags:
   - training
+  - pipeline
   # Add more relevant tags here
-lastVerified: 2026-02-11T06:07:01Z
+lastVerified: 2026-02-11T06:09:42Z
 # links:  # Add relevant links
 #   documentation: https://your-docs-url.com
 #   issue_tracker: https://github.com/kubeflow/pipelines-components/issues
