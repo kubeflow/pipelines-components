@@ -74,6 +74,8 @@ def get_owners(component_path: Path) -> list[str]:
         owners = yaml.safe_load(owners_file.read_text())
         return owners.get("approvers", []) if owners else []
     except Exception:
+        print(f"::warning:: Error: Could not read OWNERS file for component {component_path}. ", file=sys.stderr)
+        print(f"::warning:: No owners will be assigned to the issue for {component_path}.", file=sys.stderr)
         return []
 
 
@@ -127,8 +129,13 @@ def issue_exists(repo: str, component_name: str, token: str | None) -> bool:
         resp.raise_for_status()
         return any(issue["title"] == expected_title for issue in resp.json())
     except Exception as e:
-        print(f"Failed to check for existing issue: {e}", file=sys.stderr)
-        return False
+        print(f"::error::Failed to check for existing issue: {e}", file=sys.stderr)
+        print(
+            "::error:: Cannot verify if issue already exists or not. Will assume it does to prevent "
+            "creating duplicate issues and skip this component.",
+            file=sys.stderr,
+        )
+        return True
 
 
 def removal_pr_exists(repo: str, component_name: str) -> bool:
@@ -144,8 +151,13 @@ def removal_pr_exists(repo: str, component_name: str) -> bool:
         prs = json.loads(result.stdout)
         return any(pr["title"] == expected_title for pr in prs)
     except subprocess.CalledProcessError as e:
-        print(f"Failed to check for existing PR: {e}", file=sys.stderr)
-        return False
+        print(f"::error::Failed to check for existing PR: {e}", file=sys.stderr)
+        print(
+            "::error:: Cannot verify if PR already exists or not. Will assume it does to prevent "
+            "creating duplicate PRs and skip this component.",
+            file=sys.stderr,
+        )
+        return True
 
 
 def create_issue(repo: str, component: dict, repo_path: Path, token: str | None, dry_run: bool) -> bool:
@@ -213,6 +225,7 @@ def create_removal_pr(repo: str, component: dict, repo_path: Path, dry_run: bool
     # Save original branch to restore later
     original_branch = get_current_branch()
 
+    branch_pushed = False
     try:
         # Fetch latest from origin
         subprocess.run(["git", "fetch", "origin"], check=True, capture_output=True)
@@ -261,6 +274,7 @@ def create_removal_pr(repo: str, component: dict, repo_path: Path, dry_run: bool
 
         # Push the branch
         subprocess.run(["git", "push", "-u", "origin", branch_name, "--force"], check=True, capture_output=True)
+        branch_pushed = True
 
         # Create the PR (use owners read before component was removed)
         body = create_removal_pr_body(component, owners)
@@ -290,6 +304,17 @@ def create_removal_pr(repo: str, component: dict, repo_path: Path, dry_run: bool
         print(f"Failed to create removal PR for {name}: {e}", file=sys.stderr)
         if e.stderr:
             print(f"  stderr: {e.stderr}", file=sys.stderr)
+        # Clean up the remote branch if it was pushed but PR creation failed
+        if branch_pushed:
+            try:
+                subprocess.run(
+                    ["git", "push", "origin", "--delete", branch_name],
+                    check=True,
+                    capture_output=True,
+                )
+                print(f"Cleaned up orphaned remote branch: {branch_name}")
+            except subprocess.CalledProcessError:
+                print(f"::warning:: Failed to clean up remote branch: {branch_name}", file=sys.stderr)
         return False
     finally:
         # Always restore original branch
@@ -297,11 +322,54 @@ def create_removal_pr(repo: str, component: dict, repo_path: Path, dry_run: bool
             subprocess.run(["git", "checkout", original_branch], capture_output=True)
 
 
+def ensure_labels_exist(repo: str, token: str | None, dry_run: bool) -> bool:
+    """Verify that required GitHub labels exist in the repo.
+
+    Checks for ISSUE_LABEL and REMOVAL_LABEL. Returns True if both
+    exist (or if running in dry-run mode), False otherwise.
+    """
+    required_labels = [ISSUE_LABEL, REMOVAL_LABEL]
+    headers = {"Accept": "application/vnd.github.v3+json"}
+    if token:
+        headers["Authorization"] = f"token {token}"
+
+    missing = []
+    for label in required_labels:
+        try:
+            resp = requests.get(
+                f"https://api.github.com/repos/{repo}/labels/{label}",
+                headers=headers,
+                timeout=30,
+            )
+            if resp.status_code == 404:
+                missing.append(label)
+            else:
+                resp.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            print(f"::error:: Failed to check for label '{label}': {e}", file=sys.stderr)
+            return False
+
+    if missing:
+        msg = ", ".join(f"'{label}'" for label in missing)
+        if dry_run:
+            print(f"::warning:: Labels {msg} do not exist in {repo}. They would need to be created before a real run.")
+            return True
+        print(f"::error:: Required labels {msg} do not exist in {repo}.", file=sys.stderr)
+        print("::error:: Create the missing labels and re-run.", file=sys.stderr)
+        return False
+
+    print(f"Preflight: all required labels exist ({', '.join(required_labels)})")
+    return True
+
+
 def handle_stale_components(repo: str, token: str | None, dry_run: bool) -> bool:
     """Handle stale components: issues for warnings, removal PRs for stale.
 
     Returns True if all operations succeeded, False if any failed.
     """
+    if not ensure_labels_exist(repo, token, dry_run):
+        return False
+
     repo_path = REPO_ROOT
     results = scan_repo(repo_path)
     # Include both warning (270-360 days) and stale (>360 days) components
@@ -368,8 +436,27 @@ def main():
 
     token = args.token or os.environ.get("GITHUB_TOKEN")
     if not token:
-        print("Warning: No GitHub token provided. API requests will be subject to rate limiting.", file=sys.stderr)
-        print("Use --token or set GITHUB_TOKEN environment variable for authenticated requests.", file=sys.stderr)
+        if args.dry_run:
+            print(
+                "::warning:: Warning: No GitHub token provided. API requests will be subject to rate limiting.",
+                file=sys.stderr,
+            )
+            print(
+                "::warning:: Use --token or set GITHUB_TOKEN environment variable for authenticated requests.",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                "::error:: Error: Required GitHub token not provided. "
+                "Will not be able to create staleness Issues and PRs.",
+                file=sys.stderr,
+            )
+            print(
+                "::error:: Use --token or set GITHUB_TOKEN environment variable for authenticated requests.",
+                file=sys.stderr,
+            )
+            print("::error:: Stopping...", file=sys.stderr)
+            sys.exit(1)
 
     success = handle_stale_components(args.repo, token, args.dry_run)
     if not success:
