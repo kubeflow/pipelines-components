@@ -50,16 +50,22 @@ Issues = "https://github.com/kubeflow/pipelines-components/issues"
 packages = [
     "kfp_components",
     "kfp_components.components",
-    "kfp_components.components.training",
-    "kfp_components.components.evaluation",
     "kfp_components.components.data_processing",
     "kfp_components.components.data_processing.yoda_data_processor",
     "kfp_components.components.deployment",
+    "kfp_components.components.evaluation",
+    "kfp_components.components.training",
+    "kfp_components.components.training.sklearn_models",
+    "kfp_components.components.training.sklearn_models.logistic_regression",
+    "kfp_components.components.training.sklearn_models.shared",
     "kfp_components.pipelines",
-    "kfp_components.pipelines.training",
-    "kfp_components.pipelines.evaluation",
     "kfp_components.pipelines.data_processing",
     "kfp_components.pipelines.deployment",
+    "kfp_components.pipelines.evaluation",
+    "kfp_components.pipelines.training",
+    "kfp_components.pipelines.training.ml_workflows",
+    "kfp_components.pipelines.training.ml_workflows.batch_training",
+    "kfp_components.pipelines.training.ml_workflows.shared",
 ]
 
 [tool.setuptools.package-dir]

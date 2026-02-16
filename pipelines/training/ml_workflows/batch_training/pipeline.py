@@ -1,0 +1,31 @@
+from kfp import dsl
+
+
+@dsl.pipeline(
+    name="batch-training",
+    description="TODO: Add a brief description of this pipeline",
+)
+def batch_training(
+    # Add your pipeline parameters here
+    input_param: str = "default_value",
+):
+    """TODO: Add pipeline description.
+
+    TODO: Add a detailed description of what this pipeline does.
+
+    Args:
+        input_param: Description of the pipeline parameter.
+
+    Returns:
+        Pipeline outputs or None if no outputs are needed.
+    """
+    # TODO: Implement your pipeline logic here
+
+
+if __name__ == "__main__":
+    from kfp.compiler import Compiler
+
+    Compiler().compile(
+        batch_training,
+        package_path=__file__.replace(".py", "_pipeline.yaml"),
+    )

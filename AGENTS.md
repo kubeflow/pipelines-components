@@ -34,10 +34,10 @@ Agents typically interact with this repository in three modes. Use the mode to d
 - **Reuse-first**: search `components/<category>/` and `pipelines/<category>/` for similar functionality; prefer
   extending/composing instead of duplicating.
 - **Create scaffolding**: use the Make targets in `Makefile`:
-  - `make component CATEGORY=<cat> NAME=<name> [NO_TESTS]`
-  - `make pipeline CATEGORY=<cat> NAME=<name> [NO_TESTS]`
-  - `make tests TYPE=component|pipeline CATEGORY=<cat> NAME=<name>`
-  - `make readme TYPE=component|pipeline CATEGORY=<cat> NAME=<name>`
+  - `make component CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>] [NO_TESTS=true] [CREATE_SHARED=true]`
+  - `make pipeline CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>] [NO_TESTS=true] [CREATE_SHARED=true]`
+  - `make tests TYPE=component|pipeline CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>]`
+  - `make readme TYPE=component|pipeline CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>]`
 - **Validate like CI**: follow [`CONTRIBUTING.md` (Testing and Quality)](docs/CONTRIBUTING.md#testing-and-quality) and
   reference the workflows under `.github/workflows/` (example: [`.github/workflows/python-lint.yml`](.github/workflows/python-lint.yml)).
 - **New assets require approval**: for initial contributions (introducing a new component/pipeline to the catalog),
@@ -66,7 +66,9 @@ Good places to look:
 #### Establish the target location and naming
 
 - Components live under `components/<category>/<component_name>/`.
+- Components can optionally use subcategories: `components/<category>/<subcategory>/<component_name>/`.
 - Pipelines live under `pipelines/<category>/<pipeline_name>/`.
+- Pipelines can optionally use subcategories: `pipelines/<category>/<subcategory>/<pipeline_name>/`.
 - Use `snake_case` directory names (per `CONTRIBUTING.md`).
 
 ### Required files
@@ -95,7 +97,7 @@ Process (expected for agents):
 Use this prompt pattern:
 
 "Search `components/` for similar functionality and reuse if possible. If a new component is needed, create it under
-`components/<category>/<name>/` using `make component CATEGORY=<cat> NAME=<name> [NO_TESTS]`, then implement
+`components/<category>/<name>/` using `make component CATEGORY=<cat> NAME=<name> [NO_TESTS=true]`, then implement
 `component.py` following repository lint rules (including import guard). Create `metadata.yaml` that conforms to
 the metadata schema defined in [`CONTRIBUTING.md`](docs/CONTRIBUTING.md#metadatayaml-schema) (required field order, fresh `lastVerified`). Generate/validate
 `README.md` using `make readme TYPE=component CATEGORY=<cat> NAME=<name>`. Add unit tests using `.python_func()` and a
@@ -103,16 +105,34 @@ LocalRunner test using `setup_and_teardown_subprocess_runner` (you can generate 
 `make tests TYPE=component CATEGORY=<cat> NAME=<name>`). Reference an existing component like
 `components/data_processing/yoda_data_processor/` for patterns."
 
+#### Add a component in a subcategory
+
+Use this prompt pattern when creating related components that should share ownership or utilities:
+
+"Create a component in a subcategory using `make component CATEGORY=<cat> SUBCATEGORY=<sub> NAME=<name>`. This
+automatically creates the subcategory structure with OWNERS and README.md if it doesn't exist. For shared utilities,
+add `CREATE_SHARED=true` to create a `shared/` package. Update the subcategory OWNERS and README.md with appropriate
+maintainers and documentation. Follow the same component implementation patterns as above."
+
 #### Add a new pipeline (reuse-first, compliant)
 
 Use this prompt pattern:
 
 "Search `pipelines/` for similar functionality and reuse if possible. If a new pipeline is needed, create it under
-`pipelines/<category>/<name>/` using `make pipeline CATEGORY=<cat> NAME=<name> [NO_TESTS]`, then implement
+`pipelines/<category>/<name>/` using `make pipeline CATEGORY=<cat> NAME=<name> [NO_TESTS=true]`, then implement
 `pipeline.py` following repository lint rules (including import guard). Create `metadata.yaml` that conforms to the
 metadata schema defined in [`CONTRIBUTING.md`](docs/CONTRIBUTING.md#metadatayaml-schema) (required field order, fresh
 `lastVerified`). Generate/validate `README.md` using `make readme TYPE=pipeline CATEGORY=<cat> NAME=<name>`. Add tests
 (you can generate tests via `make tests TYPE=pipeline CATEGORY=<cat> NAME=<name>`)."
+
+#### Add a pipeline in a subcategory
+
+Use this prompt pattern when creating related pipelines that should share ownership or utilities:
+
+"Create a pipeline in a subcategory using `make pipeline CATEGORY=<cat> SUBCATEGORY=<sub> NAME=<name>`. This
+automatically creates the subcategory structure with OWNERS and README.md if it doesn't exist. For shared utilities,
+add `CREATE_SHARED=true` to create a `shared/` package. Update the subcategory OWNERS and README.md with appropriate
+maintainers and documentation. Follow the same pipeline implementation patterns as above."
 
 #### Update an existing component safely
 

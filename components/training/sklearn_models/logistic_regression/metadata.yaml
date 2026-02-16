@@ -1,0 +1,17 @@
+---
+name: logistic_regression
+stability: alpha  # New component without proven track record
+dependencies:
+  kubeflow:
+    - name: Pipelines
+      version: '>=2.15.2'
+  # external_services:  # Add if component uses external services
+  #   - name: Example Service
+  #     version: ">=1.0.0"
+tags:
+  - training
+  # Add more relevant tags here
+lastVerified: 2026-02-11T20:18:36Z
+# links:  # Add relevant links
+#   documentation: https://your-docs-url.com
+#   issue_tracker: https://github.com/kubeflow/pipelines-components/issues
