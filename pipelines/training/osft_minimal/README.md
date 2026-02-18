@@ -8,10 +8,9 @@ OSFT Minimal Training Pipeline - Continual learning without catastrophic forgett
 
 A minimal 4-stage ML pipeline for fine-tuning language models with OSFT:
 
-1) Dataset Download - Prepares training data from HuggingFace, S3, or HTTP
-2) OSFT Training - Fine-tunes using mini-trainer backend (orthogonal subspace)
-3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.)
-4) Model Registry - Registers trained model to Kubeflow Model Registry
+1) Dataset Download - Prepares training data from HuggingFace, S3, or HTTP 2) OSFT Training - Fine-tunes using
+mini-trainer backend (orthogonal subspace) 3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.) 4) Model
+Registry - Registers trained model to Kubeflow Model Registry
 
 ## Inputs 📥
 
@@ -27,7 +26,7 @@ A minimal 4-stage ML pipeline for fine-tuning language models with OSFT:
 | `phase_02_train_man_train_unfreeze` | `float` | `0.25` | [OSFT] Fraction to unfreeze (0.1=minimal, 0.25=balanced, 0.5=strong) |
 | `phase_02_train_man_train_workers` | `int` | `1` | Number of training pods. OSFT efficient single-node (1) |
 | `phase_03_eval_man_eval_tasks` | `list` | `['arc_easy']` | lm-eval tasks (arc_easy, mmlu, gsm8k, hellaswag, etc.) |
-| `phase_04_registry_man_address` | `str` | `` | Model Registry address (empty = skip registration) |
+| `phase_04_registry_man_address` | `str` | `""` | Model Registry address (empty = skip registration) |
 | `phase_04_registry_man_reg_name` | `str` | `osft-model` | Model name in registry |
 | `phase_04_registry_man_reg_version` | `str` | `1.0.0` | Semantic version (major.minor.patch) |
 | `phase_01_dataset_opt_subset` | `int` | `0` | Limit to first N examples (0 = all) |

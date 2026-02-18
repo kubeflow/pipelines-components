@@ -6,9 +6,8 @@
 
 Prepare the training and evaluation datasets by downloading and preprocessing.
 
-Downloads the yoda_sentences dataset from HuggingFace, renames columns to match
-the expected format for training (prompt/completion), splits into train/eval sets,
-and saves them as output artifacts.
+Downloads the yoda_sentences dataset from HuggingFace, renames columns to match the expected format for training
+(prompt/completion), splits into train/eval sets, and saves them as output artifacts.
 
 ## Inputs 📥
 

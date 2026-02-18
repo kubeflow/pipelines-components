@@ -8,10 +8,9 @@ SFT Training Pipeline - Standard supervised fine-tuning with instructlab-trainin
 
 A 4-stage ML pipeline for fine-tuning language models:
 
-1) Dataset Download - Prepares training data from HuggingFace, S3, or HTTP
-2) SFT Training - Fine-tunes using instructlab-training backend
-3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.)
-4) Model Registry - Registers trained model to Kubeflow Model Registry
+1) Dataset Download - Prepares training data from HuggingFace, S3, or HTTP 2) SFT Training - Fine-tunes using
+instructlab-training backend 3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.) 4) Model Registry -
+Registers trained model to Kubeflow Model Registry
 
 ## Inputs 📥
 
@@ -26,7 +25,7 @@ A 4-stage ML pipeline for fine-tuning language models:
 | `phase_02_train_man_tokens` | `int` | `10000` | Max tokens per GPU (memory cap). 10000 for SFT |
 | `phase_02_train_man_workers` | `int` | `4` | Number of training pods. 4 pods × 1 GPU = 4 total GPUs |
 | `phase_03_eval_man_tasks` | `list` | `['arc_easy']` | lm-eval tasks (arc_easy, mmlu, gsm8k, hellaswag, etc.) |
-| `phase_04_registry_man_address` | `str` | `` | Model Registry address (empty = skip registration) |
+| `phase_04_registry_man_address` | `str` | `""` | Model Registry address (empty = skip registration) |
 | `phase_04_registry_man_reg_name` | `str` | `sft-model` | Model name in registry |
 | `phase_04_registry_man_version` | `str` | `1.0.0` | Semantic version (major.minor.patch) |
 | `phase_01_dataset_opt_subset` | `int` | `0` | Limit to first N examples (0 = all) |

@@ -8,10 +8,9 @@ SFT Training Pipeline - Standard supervised fine-tuning with instructlab-trainin
 
 A 4-stage ML pipeline for fine-tuning language models:
 
-1) Dataset Download - Prepares training data from HuggingFace, S3, or HTTP
-2) SFT Training - Fine-tunes using instructlab-training backend
-3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.)
-4) Model Registry - Registers trained model to Kubeflow Model Registry
+1) Dataset Download - Prepares training data from HuggingFace, S3, or HTTP 2) SFT Training - Fine-tunes using
+instructlab-training backend 3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.) 4) Model Registry -
+Registers trained model to Kubeflow Model Registry
 
 ## Inputs 📥
 
@@ -26,15 +25,15 @@ A 4-stage ML pipeline for fine-tuning language models:
 | `phase_02_train_man_tokens` | `int` | `10000` | Max tokens per GPU (memory cap). |
 | `phase_02_train_man_workers` | `int` | `4` | Number of training pods. |
 | `phase_03_eval_man_tasks` | `list` | `['arc_easy']` | lm-eval tasks (arc_easy, mmlu, gsm8k, etc.). |
-| `phase_04_registry_man_address` | `str` | `` | Model Registry address (empty = skip). |
+| `phase_04_registry_man_address` | `str` | `""` | Model Registry address (empty = skip). |
 | `phase_04_registry_man_author` | `str` | `pipeline` | Author name for the registered model. |
 | `phase_04_registry_man_name` | `str` | `sft-model` | Model name in registry. |
 | `phase_04_registry_man_version` | `str` | `1.0.0` | Semantic version (major.minor.patch). |
 | `phase_01_dataset_opt_subset` | `int` | `0` | Limit dataset to N samples (0 = all). |
-| `phase_02_train_opt_annotations` | `str` | `` | Pod annotations as key=value,key=value. |
+| `phase_02_train_opt_annotations` | `str` | `""` | Pod annotations as key=value,key=value. |
 | `phase_02_train_opt_cpu` | `str` | `4` | CPU cores per worker. |
 | `phase_02_train_opt_env_vars` | `str` | `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True,NCCL_DEBUG=INFO,INSTRUCTLAB_NCCL_TIMEOUT_MS=600000` | Environment variables as KEY=VAL,KEY=VAL. |
-| `phase_02_train_opt_labels` | `str` | `` | Pod labels as key=value,key=value. |
+| `phase_02_train_opt_labels` | `str` | `""` | Pod labels as key=value,key=value. |
 | `phase_02_train_opt_learning_rate` | `float` | `5e-06` | Learning rate for training. |
 | `phase_02_train_opt_lr_warmup` | `int` | `0` | Learning rate warmup steps. |
 | `phase_02_train_opt_lr_scheduler` | `str` | `cosine` | LR scheduler type (cosine, linear). |
@@ -53,7 +52,7 @@ A 4-stage ML pipeline for fine-tuning language models:
 | `phase_03_eval_opt_log_samples` | `bool` | `True` | Log individual evaluation samples. |
 | `phase_03_eval_opt_model_args` | `dict` | `{}` | Model initialization arguments. |
 | `phase_03_eval_opt_verbosity` | `str` | `INFO` | Logging verbosity (DEBUG, INFO, etc.). |
-| `phase_04_registry_opt_description` | `str` | `` | Model description for registry. |
+| `phase_04_registry_opt_description` | `str` | `""` | Model description for registry. |
 | `phase_04_registry_opt_format_name` | `str` | `pytorch` | Model format (pytorch, onnx). |
 | `phase_04_registry_opt_format_version` | `str` | `1.0` | Model format version. |
 | `phase_04_registry_opt_port` | `int` | `8080` | Model Registry server port. |
