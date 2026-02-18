@@ -3,6 +3,9 @@ name: Python Lint
 
 on:
   pull_request:
+    branches:
+      - 'main'
+      - 'release-*'
     paths:
       - '**/*.py'
       - 'pyproject.toml'
@@ -12,8 +15,8 @@ on:
       - '.github/scripts/check_imports/**'
   push:
     branches:
-      - main
-      - release-*
+      - 'main'
+      - 'release-*'
 
 jobs:
   python-lint:
@@ -50,14 +53,14 @@ jobs:
         env:
           CHANGED_FILES: ${{ steps.changed-python.outputs.filtered-changed-files }}
         run: |
-          uv run ruff format --check $CHANGED_FILES
+          uv run ruff format --force-exclude --check $CHANGED_FILES
 
       - name: Run ruff lint (changed files)
         if: steps.changed-python.outputs.filtered-changed-files != ''
         env:
           CHANGED_FILES: ${{ steps.changed-python.outputs.filtered-changed-files }}
         run: |
-          uv run ruff check $CHANGED_FILES
+          uv run ruff check --force-exclude $CHANGED_FILES
 
       - name: Determine changed components/pipelines Python files
         id: changed-components-pipelines

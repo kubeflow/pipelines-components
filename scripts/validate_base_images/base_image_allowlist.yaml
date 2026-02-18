@@ -1,8 +1,7 @@
 # Base image allowlist for scripts/validate_base_images/validate_base_images.py
 #
-# This file defines non-ghcr.io/kubeflow base images that are permitted when
-# validating components/pipelines. If an image does not start with
-# "ghcr.io/kubeflow/" and does not match this allowlist, validation will fail.
+# This file defines base images that are permitted when validating
+# components/pipelines.
 #
 # Keep patterns anchored (use ^ and $) where possible to avoid overly-broad
 # matches.
@@ -14,4 +13,5 @@ allowed_images:
   - 'quay.io/opendatahub/odh-training-th04-cpu-torch29-py312-rhel9:cpu-3.3'
   - 'registry.access.redhat.com/ubi9/python-311:latest'
 allowed_image_patterns:
+  - '^ghcr\.io/kubeflow/.*$'
   - '^python:\d+\.\d+.*$'

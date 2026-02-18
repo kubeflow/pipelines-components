@@ -7,15 +7,11 @@ from typing import Dict, List, Optional
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
-from scripts.generate_readme.constants import CATEGORY_README_TEMPLATE
+from scripts.generate_readme.constants import CATEGORY_README_TEMPLATE, MAX_LINE_LENGTH
 from scripts.generate_readme.metadata_parser import MetadataParser
 from scripts.generate_readme.utils import format_title
 
 logger = logging.getLogger(__name__)
-
-
-# Maximum length of the overview string in the category index README.md
-MAX_OVERVIEW_LENGTH = 120
 
 
 class CategoryIndexGenerator:
@@ -126,7 +122,7 @@ class CategoryIndexGenerator:
 
             return {
                 "name": formatted_name,
-                "overview": overview[:MAX_OVERVIEW_LENGTH],
+                "overview": overview[:MAX_LINE_LENGTH],
                 "link": link,
             }
 

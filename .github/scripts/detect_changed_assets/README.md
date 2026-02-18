@@ -14,10 +14,10 @@ Core detection logic for the `detect-changed-assets` composite action.
 
 ```bash
 # Basic usage
-.github/scripts/detect-changed-assets/detect.sh origin/main HEAD true
+.github/scripts/detect-changed-assets/detect.sh origin/HEAD HEAD true
 
 # Arguments:
-# 1. BASE_REF (default: origin/main)
+# 1. BASE_REF (default: origin/HEAD)
 # 2. HEAD_REF (default: HEAD)
 # 3. INCLUDE_THIRD_PARTY (default: true)
 # 4. FILTER (default: empty - no filtering)

@@ -3,7 +3,8 @@
 # See https://go.k8s.io/owners for more details
 
 # Approvers are responsible for approving code changes
-# These are the KFP maintainers who have write access
+# These are the KFP contributors/maintainers who have write access
 approvers:
   - HumairAK
   - mprahl
+  - nsingla

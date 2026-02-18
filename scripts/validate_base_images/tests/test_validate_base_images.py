@@ -6,7 +6,12 @@ from unittest.mock import patch
 
 import pytest
 
-from ...lib.base_image import extract_base_images, load_base_image_allowlist
+from ...lib.base_image import (
+    extract_base_images,
+    is_valid_base_image,
+    load_base_image_allowlist,
+    validate_base_images,
+)
 from ...lib.discovery import (
     build_component_asset,
     build_pipeline_asset,
@@ -14,22 +19,27 @@ from ...lib.discovery import (
     resolve_component_path,
     resolve_pipeline_path,
 )
-from ...lib.kfp_compilation import compile_and_get_yaml, load_module_from_path
+from ...lib.kfp_compilation import compile_and_get_yaml, find_decorated_functions_runtime, load_module_from_path
 from ..validate_base_images import (
     ValidationConfig,
     _collect_violations,
     _print_summary,
     _process_assets,
     get_repo_root,
-    is_valid_base_image,
     main,
     parse_args,
     process_asset,
     set_config,
-    validate_base_images,
 )
 
 RESOURCES_DIR = Path(__file__).parent / "resources"
+
+
+@pytest.fixture
+def default_allowlist():
+    """Load the default allowlist for tests that need it."""
+    allowlist_path = Path(__file__).parent.parent / "base_image_allowlist.yaml"
+    return load_base_image_allowlist(allowlist_path)
 
 
 @pytest.fixture(autouse=True)
@@ -46,7 +56,7 @@ class TestValidationConfig:
     def test_default_config(self):
         """Test default configuration values."""
         config = ValidationConfig()
-        assert config.allowed_prefix == "ghcr.io/kubeflow/"
+        assert config.allowlist_path.name == "base_image_allowlist.yaml"
 
 
 class TestIsPythonImage:
@@ -60,6 +70,7 @@ class TestIsPythonImage:
                 [
                     "allowed_images: []",
                     "allowed_image_patterns:",
+                    "  - '^ghcr\\.io/kubeflow/.*$'",
                     "  - '^python:\\d+\\.\\d+.*$'",
                     "",
                 ]
@@ -69,15 +80,15 @@ class TestIsPythonImage:
         config.allowlist_path = allowlist_file
         config.allowlist = load_base_image_allowlist(allowlist_file)
 
-        assert is_valid_base_image("python:3.11", config)
-        assert is_valid_base_image("python:3.11-slim", config)
-        assert is_valid_base_image("python:3.10-alpine", config)
-        assert is_valid_base_image("python:3.9-bullseye", config)
+        assert is_valid_base_image("python:3.11", allowlist=config.allowlist)
+        assert is_valid_base_image("python:3.11-slim", allowlist=config.allowlist)
+        assert is_valid_base_image("python:3.10-alpine", allowlist=config.allowlist)
+        assert is_valid_base_image("python:3.9-bullseye", allowlist=config.allowlist)
 
-        assert not is_valid_base_image("python:latest", config)
-        assert not is_valid_base_image("docker.io/python:3.11", config)
-        assert is_valid_base_image("ghcr.io/kubeflow/python:3.11", config)
-        assert not is_valid_base_image("ubuntu:22.04", config)
+        assert not is_valid_base_image("python:latest", allowlist=config.allowlist)
+        assert not is_valid_base_image("docker.io/python:3.11", allowlist=config.allowlist)
+        assert is_valid_base_image("ghcr.io/kubeflow/python:3.11", allowlist=config.allowlist)
+        assert not is_valid_base_image("ubuntu:22.04", allowlist=config.allowlist)
 
     def test_python_images_rejected_without_allowlist_entry(self, tmp_path: Path):
         """Test that Python images are rejected when not in allowlist."""
@@ -87,7 +98,7 @@ class TestIsPythonImage:
         config.allowlist_path = allowlist_file
         config.allowlist = load_base_image_allowlist(allowlist_file)
 
-        assert not is_valid_base_image("python:3.11", config)
+        assert not is_valid_base_image("python:3.11", allowlist=config.allowlist)
 
     def test_allowlist_invalid_regex_fails_fast(self, tmp_path: Path):
         """Test that invalid regex patterns in allowlist raise ValueError."""
@@ -255,6 +266,30 @@ class TestLoadModuleFromPath:
             load_module_from_path("/nonexistent/module.py", "nonexistent")
 
 
+class TestFindDecoratedFunctions:
+    """Tests for find_decorated_functions function."""
+
+    def test_find_component_functions(self):
+        """Test finding @dsl.component decorated functions."""
+        module_path = str(RESOURCES_DIR / "components/training/custom_image_component/component.py")
+        module = load_module_from_path(module_path, "test_find_component")
+
+        functions = find_decorated_functions_runtime(module, "component")
+
+        assert len(functions) == 1
+        assert functions[0][0] == "train_model"
+
+    def test_find_pipeline_functions(self):
+        """Test finding @dsl.pipeline decorated functions."""
+        module_path = str(RESOURCES_DIR / "pipelines/training/multi_image_pipeline/pipeline.py")
+        module = load_module_from_path(module_path, "test_find_pipeline")
+
+        functions = find_decorated_functions_runtime(module, "pipeline")
+
+        func_names = [f[0] for f in functions]
+        assert "training_pipeline" in func_names
+
+
 class TestCompileAndGetYaml:
     """Tests for compile_and_get_yaml function."""
 
@@ -407,41 +442,44 @@ class TestProcessAsset:
 class TestIsValidBaseImage:
     """Tests for is_valid_base_image function."""
 
-    def test_valid_kubeflow_image(self):
+    def test_valid_kubeflow_image(self, default_allowlist):
         """Test that ghcr.io/kubeflow images are valid."""
-        assert is_valid_base_image("ghcr.io/kubeflow/pipelines-components-example:v1.0.0")
-        assert is_valid_base_image("ghcr.io/kubeflow/ml-training:latest")
-        assert is_valid_base_image("ghcr.io/kubeflow/evaluation:v2.0.0")
+        assert is_valid_base_image(
+            "ghcr.io/kubeflow/pipelines-components-example:v1.0.0",
+            allowlist=default_allowlist,
+        )
+        assert is_valid_base_image("ghcr.io/kubeflow/ml-training:latest", allowlist=default_allowlist)
+        assert is_valid_base_image("ghcr.io/kubeflow/evaluation:v2.0.0", allowlist=default_allowlist)
 
     def test_valid_empty_image(self):
         """Test that empty/unset images are valid."""
         assert is_valid_base_image("")
 
-    def test_valid_python_images(self):
-        """Test that standard Python images are valid."""
-        assert is_valid_base_image("python:3.11")
-        assert is_valid_base_image("python:3.11-slim")
-        assert is_valid_base_image("python:3.10")
+    def test_valid_python_images(self, default_allowlist):
+        """Test that standard Python images are valid with allowlist."""
+        assert is_valid_base_image("python:3.11", allowlist=default_allowlist)
+        assert is_valid_base_image("python:3.11-slim", allowlist=default_allowlist)
+        assert is_valid_base_image("python:3.10", allowlist=default_allowlist)
 
-    def test_invalid_dockerhub_image(self):
+    def test_invalid_dockerhub_image(self, default_allowlist):
         """Test that Docker Hub images are invalid."""
-        assert not is_valid_base_image("docker.io/custom:latest")
-        assert not is_valid_base_image("docker.io/library/python:3.11")
+        assert not is_valid_base_image("docker.io/custom:latest", allowlist=default_allowlist)
+        assert not is_valid_base_image("docker.io/library/python:3.11", allowlist=default_allowlist)
 
-    def test_invalid_gcr_image(self):
+    def test_invalid_gcr_image(self, default_allowlist):
         """Test that GCR images are invalid."""
-        assert not is_valid_base_image("gcr.io/project/image:v1.0")
-        assert not is_valid_base_image("gcr.io/my-project/my-image:latest")
+        assert not is_valid_base_image("gcr.io/project/image:v1.0", allowlist=default_allowlist)
+        assert not is_valid_base_image("gcr.io/my-project/my-image:latest", allowlist=default_allowlist)
 
-    def test_invalid_other_registries(self):
+    def test_invalid_other_registries(self, default_allowlist):
         """Test that other registry images are invalid."""
-        assert not is_valid_base_image("quay.io/some/image:tag")
-        assert not is_valid_base_image("registry.example.com/image:v1")
+        assert not is_valid_base_image("quay.io/some/image:tag", allowlist=default_allowlist)
+        assert not is_valid_base_image("registry.example.com/image:v1", allowlist=default_allowlist)
 
-    def test_invalid_python_variants(self):
+    def test_invalid_python_variants(self, default_allowlist):
         """Test that Python images without version are invalid."""
-        assert not is_valid_base_image("python:latest")
-        assert not is_valid_base_image("python")
+        assert not is_valid_base_image("python:latest", allowlist=default_allowlist)
+        assert not is_valid_base_image("python", allowlist=default_allowlist)
 
     def test_invalid_partial_kubeflow_prefix(self):
         """Test that partial kubeflow prefix is invalid."""
@@ -452,43 +490,43 @@ class TestIsValidBaseImage:
 class TestValidateBaseImages:
     """Tests for validate_base_images function."""
 
-    def test_all_valid_images(self):
+    def test_all_valid_images(self, default_allowlist):
         """Test validation with all valid images returns empty list."""
         images = {
             "ghcr.io/kubeflow/pipelines-components-example:v1.0.0",
             "ghcr.io/kubeflow/ml-training:latest",
         }
-        invalid = validate_base_images(images)
-        assert invalid == []
+        invalid = validate_base_images(images, allowlist=default_allowlist)
+        assert invalid == set()
 
-    def test_all_invalid_images(self):
+    def test_all_invalid_images(self, default_allowlist):
         """Test validation with all invalid images returns all."""
         images = {
             "docker.io/custom:latest",
             "gcr.io/project/image:v1.0",
         }
-        invalid = validate_base_images(images)
+        invalid = validate_base_images(images, allowlist=default_allowlist)
         assert len(invalid) == 2
         assert "docker.io/custom:latest" in invalid
         assert "gcr.io/project/image:v1.0" in invalid
 
-    def test_mixed_valid_invalid_images(self):
+    def test_mixed_valid_invalid_images(self, default_allowlist):
         """Test validation with mixed images returns only invalid."""
         images = {
             "ghcr.io/kubeflow/valid:v1.0.0",
             "docker.io/custom:latest",
             "gcr.io/project/image:v1.0",
         }
-        invalid = validate_base_images(images)
+        invalid = validate_base_images(images, allowlist=default_allowlist)
         assert len(invalid) == 2
         assert "ghcr.io/kubeflow/valid:v1.0.0" not in invalid
         assert "docker.io/custom:latest" in invalid
         assert "gcr.io/project/image:v1.0" in invalid
 
-    def test_empty_set(self):
+    def test_empty_set(self, default_allowlist):
         """Test validation with empty set returns empty list."""
-        invalid = validate_base_images(set())
-        assert invalid == []
+        invalid = validate_base_images(set(), allowlist=default_allowlist)
+        assert invalid == set()
 
 
 class TestBaseImageValidationIntegration:
@@ -518,19 +556,10 @@ class TestBaseImageValidationIntegration:
 
 
 class TestEdgeCases:
-    """Tests for edge cases that demonstrate why compilation is needed.
-
-    These tests verify that the validation correctly handles patterns
-    that would be missed by simple AST parsing of source code.
-    """
+    """Tests for edge cases that demonstrate why compilation is needed."""
 
     def test_variable_reference_base_image(self):
-        """Test component with base_image set via variable reference.
-
-        AST parsing would only see the variable name 'MY_CUSTOM_IMAGE',
-        not the actual value 'docker.io/myorg/custom-python:3.11'.
-        Compilation resolves this correctly.
-        """
+        """Test component with base_image set via variable reference."""
         asset = {
             "path": RESOURCES_DIR / "components/edge_cases/variable_base_image/component.py",
             "category": "edge_cases",
@@ -547,12 +576,7 @@ class TestEdgeCases:
             assert "docker.io/myorg/custom-python:3.11" in result["invalid_base_images"]
 
     def test_functools_partial_wrapper_base_image(self):
-        """Test component with base_image set via functools.partial wrapper.
-
-        The decorator @custom_component doesn't show any base_image argument,
-        but functools.partial pre-applies it. AST parsing wouldn't find this.
-        Compilation resolves the actual image correctly.
-        """
+        """Test component with base_image set via functools.partial wrapper."""
         asset = {
             "path": RESOURCES_DIR / "components/edge_cases/functools_partial_image/component.py",
             "category": "edge_cases",
@@ -568,23 +592,15 @@ class TestEdgeCases:
             assert "quay.io/myorg/python:3.11" in result["base_images"]
             assert "quay.io/myorg/python:3.11" in result["invalid_base_images"]
 
-    def test_edge_case_images_flagged_as_violations(self):
-        """Test that edge case images are correctly flagged as violations.
+    def test_edge_case_images_flagged_as_violations(self, default_allowlist):
+        """Test that edge case images are correctly flagged as violations."""
+        assert not is_valid_base_image("docker.io/myorg/custom-python:3.11", allowlist=default_allowlist)
+        assert not is_valid_base_image("quay.io/myorg/python:3.11", allowlist=default_allowlist)
 
-        Both variable reference and functools.partial patterns result in
-        non-kubeflow images that should be flagged.
-        """
-        config = ValidationConfig()
-
-        assert not is_valid_base_image("docker.io/myorg/custom-python:3.11", config)
-        assert not is_valid_base_image("quay.io/myorg/python:3.11", config)
-
-    def test_edge_case_with_valid_kubeflow_image(self):
+    def test_edge_case_with_valid_kubeflow_image(self, default_allowlist):
         """Test that edge case patterns work with valid Kubeflow images too."""
-        config = ValidationConfig()
-
-        assert is_valid_base_image("ghcr.io/kubeflow/ml-training:v1.0.0", config)
-        assert is_valid_base_image("ghcr.io/kubeflow/custom-runtime:latest", config)
+        assert is_valid_base_image("ghcr.io/kubeflow/ml-training:v1.0.0", allowlist=default_allowlist)
+        assert is_valid_base_image("ghcr.io/kubeflow/custom-runtime:latest", allowlist=default_allowlist)
 
 
 class TestCollectViolations:
@@ -741,7 +757,6 @@ class TestMainFunction:
 
     def test_main_with_resources(self, capsys):
         """Test main function running against resources directory."""
-        # Patch get_repo_root to return resources directory
         with patch("scripts.validate_base_images.validate_base_images.get_repo_root") as mock_root:
             mock_root.return_value = RESOURCES_DIR
 
@@ -750,8 +765,7 @@ class TestMainFunction:
             captured = capsys.readouterr()
             assert "Kubeflow Pipelines Base Image Validator" in captured.out
             assert "Discovered" in captured.out
-            # Should find violations in resources (invalid images)
-            assert exit_code == 1  # Resources contain invalid images
+            assert exit_code == 1
 
     def test_main_with_selected_component_only(self, capsys):
         """Test main function with a specific component selected via CLI."""
@@ -763,7 +777,6 @@ class TestMainFunction:
             captured = capsys.readouterr()
             assert "Selected 1 component(s)" in captured.out
             assert "Selected 0 pipeline(s)" in captured.out
-            # Valid kubeflow image, no violations
             assert exit_code == 0
 
     def test_main_empty_directory(self, capsys):
@@ -783,7 +796,7 @@ class TestCompilationFailure:
     """Tests for compilation failure handling."""
 
     def test_compile_invalid_function(self):
-        """Test compile_and_get_yaml raises exception for invalid function."""
+        """Test compile_and_get_yaml raises for invalid function."""
 
         def invalid_func():
             """Not a valid KFP component - will fail compilation."""

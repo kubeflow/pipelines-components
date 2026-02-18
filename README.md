@@ -130,11 +130,9 @@ Each component includes standardized metadata:
 
 ### Repository Documentation
 
-- [Onboarding Guide](docs/ONBOARDING.md): Getting started for new contributors
 - [Contributing Guidelines](docs/CONTRIBUTING.md): How to contribute components and pipelines
-- [Best Practices](docs/BESTPRACTICES.md): Component authoring best practices
 - [Governance](docs/GOVERNANCE.md): Repository governance and ownership model
-- [Agent Guidelines](docs/AGENTS.md): Guidance for code-generation agents
+- [Agent Guidelines](AGENTS.md): Guidance for code-generation agents
 
 ## 🤝 Contributing
 
@@ -159,6 +157,15 @@ All contributions must:
 - Compile successfully with `kfp.compiler`
 - Include metadata with fresh `lastVerified` date
 - Pass automated CI/CD checks
+
+## 📦 Custom Base Images
+
+Components can use custom base images with pre-installed dependencies. These images are
+automatically built and pushed to `ghcr.io/kubeflow/pipelines-components-<name>`.
+
+See [Contributing Guidelines](docs/CONTRIBUTING.md#adding-a-custom-base-image) for instructions on
+adding new base images, and [`docs/examples/Containerfile`](docs/examples/Containerfile) for a complete
+example.
 
 ## 🔧 Maintenance
 

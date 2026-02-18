@@ -88,13 +88,6 @@ def discover_assets(base_dir: Path, asset_type: str) -> list[dict[str, Any]]:
     return assets
 
 
-def get_all_assets() -> list[dict[str, Any]]:
-    """Get all assets from the repository."""
-    return discover_assets(get_repo_root() / "components", "component") + discover_assets(
-        get_repo_root() / "pipelines", "pipeline"
-    )
-
-
 def find_assets_with_metadata(asset_type: str, base_path: Path | None = None) -> list[str]:
     """Find all asset directories that have metadata.yaml.
 
@@ -130,6 +123,27 @@ def find_assets_with_metadata(asset_type: str, base_path: Path | None = None) ->
 def get_all_assets_with_metadata(base_path: Path | None = None) -> list[str]:
     """Get all assets with metadata from the repository."""
     return find_assets_with_metadata("components", base_path) + find_assets_with_metadata("pipelines", base_path)
+
+
+def get_submodules(package_name: str) -> list[str]:
+    """Dynamically discover submodules in a package directory.
+
+    Args:
+        package_name: Path to the package directory
+
+    Returns:
+        Sorted list of submodule names
+    """
+    package_path = Path(package_name)
+    if not package_path.exists():
+        return []
+
+    submodules = []
+    for item in package_path.iterdir():
+        if item.is_dir() and (item / "__init__.py").exists() and not item.name.startswith("_"):
+            submodules.append(item.name)
+
+    return sorted(submodules)
 
 
 def resolve_component_path(repo_root: Path, raw: str) -> Path:

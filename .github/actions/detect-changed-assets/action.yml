@@ -1,3 +1,4 @@
+---
 name: 'Detect Changed Components and Pipelines'
 description: 'Detects changed components and pipelines in the repository'
 author: 'Kubeflow Pipelines Components Team'
@@ -58,12 +59,15 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+
     - name: Detect changed assets
       id: detect
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
-        python3 .github/scripts/detect_changed_assets/detect.py \
+        uv run python .github/scripts/detect_changed_assets/detect.py \
           --base-ref "${{ inputs.base-ref }}" \
           --head-ref "${{ inputs.head-ref }}" \
           --filter "${{ inputs.filter }}" \

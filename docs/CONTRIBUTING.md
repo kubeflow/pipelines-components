@@ -12,6 +12,7 @@ Welcome! This guide covers everything you need to know to contribute components 
 - [Development Workflow](#development-workflow)
 - [Testing and Quality](#testing-and-quality)
   - [Component Testing Guide](#component-testing-guide)
+- [Adding a Custom Base Image](#adding-a-custom-base-image)
 - [Submitting Your Contribution](#submitting-your-contribution)
 - [Getting Help](#getting-help)
 
@@ -82,6 +83,35 @@ uv pip install dist/kfp_components-*.whl
 
 # Test imports work correctly
 python -c "from kfp_components import components, pipelines; print('Core package imports OK')"
+```
+
+### Dependency management (`uv.lock`)
+
+This repository uses `uv` with a committed lockfile:
+
+- Dependency definitions live in `pyproject.toml`
+- Resolved dependency graph lives in `uv.lock`
+
+Prefer leaving dependency versions unpinned/unrestricted in `pyproject.toml` unless you have a concrete reason
+(e.g., known incompatibility, security issue, or a required feature/behavior). If you restrict a dependency, add a
+short comment explaining why (and link an issue if applicable). Use `uv.lock` to lock the resolved versions for
+reproducible local development and CI.
+
+If you change dependencies (e.g., edit `pyproject.toml`), update the lockfile and ensure it is in sync:
+
+```bash
+uv lock
+uv lock --check
+```
+
+CI also verifies that `uv.lock` is in sync (see `.github/workflows/python-lint.yml`).
+
+### Pre-commit validation
+
+Before opening a PR, run pre-commit locally so you catch formatting/lint/validation issues early:
+
+```bash
+pre-commit run
 ```
 
 ## What We Accept
@@ -186,6 +216,39 @@ The `OWNERS` file enables code review automation by leveraging PROW commands:
 
 See [full Prow documentation](https://docs.prow.k8s.io/docs/components/plugins/approve/approvers/#lgtm-label)
 for usage details.
+
+## Branching Strategy
+
+This repository follows a branch naming convention aligned with Kubeflow Pipelines:
+
+| Branch                    | Purpose                                    | Base Image Tag                 |
+|---------------------------|--------------------------------------------|--------------------------------|
+| `main`                    | Active development                         | `:main`                        |
+| `release-<major>.<minor>` | Release maintenance (e.g., `release-1.11`) | `:v<major>.<minor>.<z-stream>` |
+
+### Release Branches
+
+Release branches are created for each minor version release:
+
+- **Naming:** `release-<major>.<minor>` (e.g., `release-1.11`, `release-2.0`)
+- **Purpose:** Maintain stable releases and backport critical fixes
+- **Base images:** Components on release branches should reference the appropriate release tag (e.g., `:v1.11.0`, `:v1.11.1`, ...)
+
+When working on a release branch:
+
+```python
+# For release-1.11, components should use the appropriate patch tag:
+@dsl.component(base_image="ghcr.io/kubeflow/pipelines-components-example:v1.11.0")
+```
+
+### Z-stream (patch) releases
+
+In addition to the initial `x.y.0` release for a given `release-x.y` branch, we may cut one or more patch (z-stream) releases (`x.y.1`, `x.y.2`, ...).
+
+Typical characteristics:
+
+- **Contents**: Backported bug fixes, security fixes, dependency/base-image updates, and other low-risk changes needed to keep the release usable.
+- **Triggers**: Critical regressions, CVEs, or other issues that require updates on a maintained `release-x.y` branch.
 
 ## Development Workflow
 
@@ -483,6 +546,27 @@ uv run scripts/validate_base_images/validate_base_images.py
 The script allows any standard Python image matching `python:<version>` (e.g., `python:3.11`,
 `python:3.10-slim`) in addition to Kubeflow registry images.
 
+### Compile & Dependency Validation
+
+Every component and pipeline that sets `ci.compile_check: true` in its `metadata.yaml` must compile
+successfully and declare well-formed dependency metadata. The compile-check CLI discovers
+metadata-backed assets, validates their `dependencies` block, and compiles the exposed
+`@dsl.component`/`@dsl.pipeline` functions.
+
+Run it locally with:
+
+```bash
+# Run against all metadata-backed targets
+uv run python -m scripts.compile_check.compile_check
+
+# Limit to one directory (can be repeated)
+uv run python -m scripts.compile_check.compile_check \
+  --path components/training/my_component
+```
+
+The script exits non-zero if any dependency metadata is malformed or if compilation fails, matching
+the behaviour enforced by CI (`.github/workflows/compile-and-deps.yml`).
+
 **Import Guard**: This repository enforces that top-level imports must be limited to Python's
 standard library. Heavy dependencies (like `kfp`, `pandas`, etc.) should be imported within
 function/pipeline bodies. Exceptions can be added to
@@ -494,6 +578,10 @@ Note: `kfp` is allowlisted at module scope; `kfp_components` is allowlisted at m
 
 This often happens in modules under `components/` or `pipelines/`.
 Keep top-level imports to a bare minimum for compilation, and place imports needed at runtime inside pipeline/component bodies.
+
+**Scripts tests (relative imports)**: For tests under `scripts/**/tests/` and `.github/scripts/**/tests/`, use relative
+imports from the parent module so imports work consistently in both IDEs and pytest. Canonical guidance:
+[`scripts/README.md` (Import Conventions)](../scripts/README.md#import-conventions).
 
 ### Component Testing Guide
 
@@ -714,6 +802,144 @@ This repository uses Dependabot to keep:
 - GitHub Actions versions in workflow files up to date
 
 Configuration lives in `.github/dependabot.yml`.
+
+## Adding a Custom Base Image
+
+Components that require specific dependencies beyond what's available in standard KFP images can use
+custom base images. This section explains how to add and maintain custom base images for your
+components.
+
+### Overview
+
+Custom base images are:
+
+- Built automatically by CI on every push to `main` and on tags
+- Published to `ghcr.io/kubeflow/pipelines-components-<name>`
+- Tagged with `:main` for the latest main branch build, or `:v<version>` for releases
+
+### Step 1: Create the Containerfile
+
+Create a `Containerfile` in your component's directory:
+
+```text
+components/
+└── training/
+    └── my_component/
+        ├── Containerfile      # Your custom base image
+        ├── component.py
+        ├── metadata.yaml
+        └── README.md
+```
+
+See [`examples/Containerfile`](examples/Containerfile) for a complete example with recommended patterns
+(labels, environment settings, non-root user, etc.).
+
+**Guidelines:**
+
+- Keep images minimal - only include dependencies your component needs
+- Pin dependency versions for reproducibility
+- Use official base images when possible
+- Avoid including secrets or credentials
+
+### Step 2: Add Entry to the Workflow Matrix
+
+Edit `.github/workflows/container-build.yml` and add your image to the `strategy.matrix.include`
+array in the `build` job:
+
+```yaml
+strategy:
+  fail-fast: false
+  matrix:
+    include:
+      - name: example
+        context: docs/examples
+      # Add your new image:
+      - name: my-training-image
+        context: components/training/my_component
+```
+
+**Matrix fields:**
+
+- `name`: Unique identifier for your image. The final image will be
+  `ghcr.io/kubeflow/pipelines-components-<name>`.
+- `context`: Build context directory containing your `Containerfile`.
+
+**Naming convention:**
+
+- Use lowercase with hyphens: `my-training-component`
+- Be descriptive: `sklearn-preprocessing`, `pytorch-training`
+- The full image path will be: `ghcr.io/kubeflow/pipelines-components-my-training-component`
+
+### Step 3: Reference the Image in Your Component
+
+In your `component.py`, use the `base_image` parameter with the `:main` tag:
+
+```python
+from kfp import dsl
+
+@dsl.component(
+    base_image="ghcr.io/kubeflow/pipelines-components-my-training-image:main"
+)
+def my_component(input_path: str) -> str:
+    import pandas as pd
+    from sklearn import preprocessing
+    
+    # Your component logic here
+    ...
+```
+
+**Important:** Always use the `:main` tag during development. This ensures:
+
+- Your component uses the latest image from the main branch
+- PR validation can override the tag to test against PR-built images
+
+### How CI Handles Base Images
+
+| Event                        | Behavior                                                                                                         |
+|------------------------------|------------------------------------------------------------------------------------------------------------------|
+| Pull Request                 | Images are built but **not pushed**. Validation uses locally-loaded `:<sha>` tags (full 40-character commit SHA). |
+| Push to `main`               | Images are built and pushed with tag: `:main`                                                                    |
+| Push to tag (e.g., `v1.0.0`) | Images are built and pushed with tag: `:<tag>`                                                                   |
+
+### Image Tags
+
+Your image will be available with these tags:
+
+| Tag      | Description                                                                                 | Example                                          |
+|----------|---------------------------------------------------------------------------------------------|--------------------------------------------------|
+| `:main`  | Latest build from main branch                                                               | `...-my-component:main`                          |
+| `:<tag>` | Git tag                                                                                     | `...-my-component:v1.0.0`                        |
+| `:<sha>` | PR validation tag (local only; full 40-character commit SHA; not pushed to the registry)   | `...-my-component:3f5c8e2a9d4b7c1e0f6a3b9d8c2e4f1a6b7c3d9` |
+
+### Testing Your Image Locally
+
+Before submitting a PR, test your image locally:
+
+<details>
+<summary>Docker</summary>
+
+```bash
+# Build the image
+docker build -t my-component:test -f components/training/my_component/Containerfile components/training/my_component
+
+# Test it
+docker run --rm my-component:test python -c "import pandas; print(pandas.__version__)"
+```
+
+</details>
+
+<details>
+<summary>Podman</summary>
+
+```bash
+# Build the image
+podman build -t my-component:test -f components/training/my_component/Containerfile components/training/my_component
+
+# Test it
+podman run --rm my-component:test python -c "import pandas; print(pandas.__version__)"
+```
+
+</details>
 
 ## Submitting Your Contribution
 

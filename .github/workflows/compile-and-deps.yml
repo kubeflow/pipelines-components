@@ -1,0 +1,34 @@
+---
+name: Compile and Validate Components
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'components/**'
+      - 'pipelines/**'
+      - 'scripts/compile_check/**'
+      - 'scripts/lib/**'
+      - '.github/workflows/compile-and-deps.yml'
+      - '.github/actions/setup-python-ci/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+  workflow_dispatch:
+
+jobs:
+  compile-check:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Python CI
+        uses: ./.github/actions/setup-python-ci
+        with:
+          python-version: "3.11"
+
+      - name: Run compile check
+        run: |
+          uv run python -m scripts.compile_check.compile_check
