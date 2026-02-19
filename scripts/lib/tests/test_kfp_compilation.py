@@ -4,7 +4,6 @@ from pathlib import Path
 
 from ..kfp_compilation import (
     _merge_ir_docs,
-    compile_and_get_yaml,
     find_decorated_functions_runtime,
     load_module_from_path,
 )
@@ -73,13 +72,16 @@ class TestMergeIrDocs:
     """Tests for _merge_ir_docs: same behavior as pre-refactor merge."""
 
     def test_empty_docs_returns_empty_dict(self):
+        """Empty doc list returns empty dict."""
         assert _merge_ir_docs([]) == {}
 
     def test_single_doc_returns_that_doc(self):
+        """Single doc is returned unchanged."""
         doc = {"deploymentSpec": {"executors": {"e1": {"container": {"image": "img:1"}}}}}
         assert _merge_ir_docs([doc]) is doc
 
     def test_two_docs_merge_executors_root_components(self):
+        """Two docs merge executors, root.dag.tasks, and components."""
         doc1 = {
             "deploymentSpec": {"executors": {"e1": {"container": {"image": "img1"}}}},
             "root": {"dag": {"tasks": {"t1": {"componentRef": {"name": "c1"}}}}},
@@ -99,6 +101,7 @@ class TestMergeIrDocs:
         assert "c2" in merged["components"]
 
     def test_non_dict_doc_skipped(self):
+        """Non-dict entries in doc list are skipped."""
         doc1 = {"components": {"a": {}}}
         merged = _merge_ir_docs([doc1, "not a dict", {"components": {"b": {}}}])
         assert merged["components"]["a"] == {}
