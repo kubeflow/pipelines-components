@@ -14,6 +14,43 @@ COMPONENT_DECORATORS = {"component", "container_component", "notebook_component"
 PIPELINE_DECORATORS = {"pipeline"}
 
 
+def _merge_ir_docs(docs: list[dict[str, Any]]) -> dict[str, Any]:
+    """Merge multiple IR YAML docs so deploymentSpec, root, components are combined."""
+    if not docs:
+        return {}
+    if len(docs) == 1:
+        return docs[0]
+
+    def _get(d: Any, path: list[str]) -> dict[str, Any]:
+        for k in path:
+            d = (d.get(k) or {}) if isinstance(d, dict) else {}
+        return d if isinstance(d, dict) else {}
+
+    def _ensure_and_merge(out: dict[str, Any], path: list[str], src: dict[str, Any]) -> None:
+        cur: Any = out
+        for k in path[:-1]:
+            cur = cur.setdefault(k, {}) if isinstance(cur, dict) else {}
+        if not path or not isinstance(cur, dict):
+            return
+        key = path[-1]
+        target = cur.get(key)
+        if not isinstance(target, dict):
+            cur[key] = {}
+            target = cur[key]
+        target.update(src)
+
+    out: dict[str, Any] = dict(docs[0])
+    paths = [["deploymentSpec", "executors"], ["root", "dag", "tasks"], ["components"]]
+    for doc in docs[1:]:
+        if not isinstance(doc, dict):
+            continue
+        for path in paths:
+            src = _get(doc, path)
+            if src:
+                _ensure_and_merge(out, path, src)
+    return out
+
+
 def load_module_from_path(module_path: str, module_name: str) -> ModuleType:
     """Dynamically load a Python module from a file path.
 
@@ -40,6 +77,8 @@ def load_module_from_path(module_path: str, module_name: str) -> ModuleType:
 def compile_and_get_yaml(func: Any, output_path: str) -> dict[str, Any]:
     """Compile a component or pipeline function and return the parsed YAML.
 
+    Uses safe_load_all; merges deploymentSpec/root/components when multiple docs.
+
     Args:
         func: The KFP component or pipeline function to compile.
         output_path: Path to write the compiled YAML.
@@ -54,7 +93,12 @@ def compile_and_get_yaml(func: Any, output_path: str) -> dict[str, Any]:
     compiler_class = getattr(compiler_mod, "Compiler")
     compiler_class().compile(func, output_path)
     with open(output_path) as f:
-        return yaml.safe_load(f)
+        docs = list(yaml.safe_load_all(f))
+    if not docs:
+        return {}
+    if len(docs) == 1:
+        return docs[0]
+    return _merge_ir_docs(docs)
 
 
 def find_decorated_functions_runtime(module: Any, decorator_type: str) -> list[tuple[str, Any]]:
