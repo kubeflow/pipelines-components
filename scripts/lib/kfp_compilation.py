@@ -87,15 +87,20 @@ def compile_and_get_yaml(func: Any, output_path: str) -> dict[str, Any]:
         Parsed YAML dict.
 
     Raises:
+        ValueError: If the compiled YAML contains no dict document (e.g. only null or non-mapping).
         Exception: If compilation fails.
     """
     compiler_mod = importlib.import_module("kfp.compiler")
     compiler_class = getattr(compiler_mod, "Compiler")
     compiler_class().compile(func, output_path)
     with open(output_path) as f:
-        docs = list(yaml.safe_load_all(f))
+        raw = list(yaml.safe_load_all(f))
+    docs = [d for d in raw if isinstance(d, dict)]
     if not docs:
-        return {}
+        raise ValueError(
+            f"Compiled YAML at {output_path} has no dict document (got {len(raw)} doc(s), none are mappings). "
+            "Expected at least one pipeline/component spec."
+        )
     if len(docs) == 1:
         return docs[0]
     return _merge_ir_docs(docs)
