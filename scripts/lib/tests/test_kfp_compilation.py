@@ -2,7 +2,12 @@
 
 from pathlib import Path
 
-from ..kfp_compilation import find_decorated_functions_runtime, load_module_from_path
+from ..kfp_compilation import (
+    _merge_ir_docs,
+    compile_and_get_yaml,
+    find_decorated_functions_runtime,
+    load_module_from_path,
+)
 
 RESOURCES_DIR = Path(__file__).parent.parent.parent / "validate_base_images/tests/resources"
 
@@ -62,3 +67,58 @@ class TestFindDecoratedFunctions:
 
         func_names = [f[0] for f in functions]
         assert not any(name.startswith("_") for name in func_names)
+
+
+class TestMergeIrDocs:
+    """Tests for _merge_ir_docs: same behavior as pre-refactor merge."""
+
+    def test_empty_docs_returns_empty_dict(self):
+        assert _merge_ir_docs([]) == {}
+
+    def test_single_doc_returns_that_doc(self):
+        doc = {"deploymentSpec": {"executors": {"e1": {"container": {"image": "img:1"}}}}}
+        assert _merge_ir_docs([doc]) is doc
+
+    def test_two_docs_merge_executors_root_components(self):
+        doc1 = {
+            "deploymentSpec": {"executors": {"e1": {"container": {"image": "img1"}}}},
+            "root": {"dag": {"tasks": {"t1": {"componentRef": {"name": "c1"}}}}},
+            "components": {"c1": {"executorLabel": "e1"}},
+        }
+        doc2 = {
+            "deploymentSpec": {"executors": {"e2": {"container": {"image": "img2"}}}},
+            "root": {"dag": {"tasks": {"t2": {"componentRef": {"name": "c2"}}}}},
+            "components": {"c2": {"executorLabel": "e2"}},
+        }
+        merged = _merge_ir_docs([doc1, doc2])
+        assert merged["deploymentSpec"]["executors"]["e1"]["container"]["image"] == "img1"
+        assert merged["deploymentSpec"]["executors"]["e2"]["container"]["image"] == "img2"
+        assert "t1" in merged["root"]["dag"]["tasks"]
+        assert "t2" in merged["root"]["dag"]["tasks"]
+        assert "c1" in merged["components"]
+        assert "c2" in merged["components"]
+
+    def test_non_dict_doc_skipped(self):
+        doc1 = {"components": {"a": {}}}
+        merged = _merge_ir_docs([doc1, "not a dict", {"components": {"b": {}}}])
+        assert merged["components"]["a"] == {}
+        assert merged["components"]["b"] == {}
+
+    def test_merged_result_works_with_extract_base_images(self):
+        """Merged IR has the shape extract_base_images expects."""
+        from ..base_image import extract_base_images
+
+        doc1 = {
+            "deploymentSpec": {"executors": {"e1": {"container": {"image": "first:tag"}}}},
+            "root": {"dag": {"tasks": {}}},
+            "components": {},
+        }
+        doc2 = {
+            "deploymentSpec": {"executors": {"e2": {"container": {"image": "second:tag"}}}},
+            "root": {"dag": {"tasks": {}}},
+            "components": {},
+        }
+        merged = _merge_ir_docs([doc1, doc2])
+        images = extract_base_images(merged)
+        assert "first:tag" in images
+        assert "second:tag" in images
