@@ -37,6 +37,24 @@ def load_module_from_path(module_path: str, module_name: str) -> ModuleType:
     return module
 
 
+def _load_compiled_yaml(path: str) -> dict[str, Any]:
+    """Load compiled YAML from path; return single doc or two-doc wrapper.
+
+    Uses safe_load_all and filters to dicts. One doc -> return it; two docs ->
+    return {"pipeline_spec": docs[0], "platform_spec": docs[1]}. Testable without
+    the KFP compiler.
+    """
+    with open(path) as f:
+        docs = [d for d in yaml.safe_load_all(f) if isinstance(d, dict)]
+    if not docs:
+        raise ValueError(
+            f"Compiled YAML at {path} has no dict document. Expected at least one pipeline/component spec."
+        )
+    if len(docs) == 1:
+        return docs[0]
+    return {"pipeline_spec": docs[0], "platform_spec": docs[1]}
+
+
 def compile_and_get_yaml(func: Any, output_path: str) -> dict[str, Any]:
     """Compile a component or pipeline function and return the parsed YAML.
 
@@ -57,15 +75,7 @@ def compile_and_get_yaml(func: Any, output_path: str) -> dict[str, Any]:
     compiler_mod = importlib.import_module("kfp.compiler")
     compiler_class = getattr(compiler_mod, "Compiler")
     compiler_class().compile(func, output_path)
-    with open(output_path) as f:
-        docs = [d for d in yaml.safe_load_all(f) if isinstance(d, dict)]
-    if not docs:
-        raise ValueError(
-            f"Compiled YAML at {output_path} has no dict document. Expected at least one pipeline/component spec."
-        )
-    if len(docs) == 1:
-        return docs[0]
-    return {"pipeline_spec": docs[0], "platform_spec": docs[1]}
+    return _load_compiled_yaml(output_path)
 
 
 def find_decorated_functions_runtime(module: Any, decorator_type: str) -> list[tuple[str, Any]]:

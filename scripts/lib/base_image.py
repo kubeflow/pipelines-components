@@ -172,7 +172,14 @@ def get_base_images_from_compile_result(compile_result: dict[str, Any]) -> set[s
     return extract_base_images_from_pipeline_spec(compile_result)
 
 
-extract_base_images = extract_base_images_from_pipeline_spec
+def extract_base_images(compile_result: dict[str, Any]) -> set[str]:
+    """Compatibility wrapper for base image extraction.
+
+    Accepts either a pipeline spec dict or a multi-doc compile result
+    (e.g. {"pipeline_spec": ..., "platform_spec": ...}) and returns
+    the set of discovered base images.
+    """
+    return get_base_images_from_compile_result(compile_result)
 
 
 def is_valid_base_image(

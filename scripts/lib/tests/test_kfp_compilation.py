@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from ..kfp_compilation import (
+    _load_compiled_yaml,
     compile_and_get_yaml,
     find_decorated_functions_runtime,
     load_module_from_path,
@@ -70,6 +71,35 @@ class TestFindDecoratedFunctions:
 
 class TestCompileResultAndExtractors:
     """Tests for two-doc return shape and get_base_images_from_compile_result."""
+
+    def test_load_compiled_yaml_multi_doc_returns_wrapper(self):
+        """Multi-document YAML through load path produces pipeline_spec/platform_spec wrapper."""
+        import os
+        import tempfile
+
+        # Two-doc YAML: minimal pipeline spec + platform spec (same shape KFP writes).
+        yaml_content = """---
+deploymentSpec: {}
+root: {}
+components: {}
+---
+platforms:
+  k8s:
+    deploymentSpec:
+      executors: {}
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(yaml_content)
+            path = f.name
+        try:
+            result = _load_compiled_yaml(path)
+            assert "pipeline_spec" in result
+            assert "platform_spec" in result
+            assert result["pipeline_spec"].get("deploymentSpec") is not None
+            assert "platforms" in result["platform_spec"]
+            assert "k8s" in result["platform_spec"]["platforms"]
+        finally:
+            os.unlink(path)
 
     def test_single_doc_returns_single_dict(self):
         """Single doc returns that doc (no pipeline_spec/platform_spec wrapper)."""
