@@ -14,43 +14,6 @@ COMPONENT_DECORATORS = {"component", "container_component", "notebook_component"
 PIPELINE_DECORATORS = {"pipeline"}
 
 
-def _merge_ir_docs(docs: list[dict[str, Any]]) -> dict[str, Any]:
-    """Merge multiple IR YAML docs so deploymentSpec, root, components are combined."""
-    if not docs:
-        return {}
-    if len(docs) == 1:
-        return docs[0]
-
-    def _get(d: Any, path: list[str]) -> dict[str, Any]:
-        for k in path:
-            d = (d.get(k) or {}) if isinstance(d, dict) else {}
-        return d if isinstance(d, dict) else {}
-
-    def _ensure_and_merge(out: dict[str, Any], path: list[str], src: dict[str, Any]) -> None:
-        cur: Any = out
-        for k in path[:-1]:
-            cur = cur.setdefault(k, {}) if isinstance(cur, dict) else {}
-        if not path or not isinstance(cur, dict):
-            return
-        key = path[-1]
-        target = cur.get(key)
-        if not isinstance(target, dict):
-            cur[key] = {}
-            target = cur[key]
-        target.update(src)
-
-    out: dict[str, Any] = dict(docs[0])
-    paths = [["deploymentSpec", "executors"], ["root", "dag", "tasks"], ["components"]]
-    for doc in docs[1:]:
-        if not isinstance(doc, dict):
-            continue
-        for path in paths:
-            src = _get(doc, path)
-            if src:
-                _ensure_and_merge(out, path, src)
-    return out
-
-
 def load_module_from_path(module_path: str, module_name: str) -> ModuleType:
     """Dynamically load a Python module from a file path.
 
@@ -77,33 +40,32 @@ def load_module_from_path(module_path: str, module_name: str) -> ModuleType:
 def compile_and_get_yaml(func: Any, output_path: str) -> dict[str, Any]:
     """Compile a component or pipeline function and return the parsed YAML.
 
-    Uses safe_load_all; merges deploymentSpec/root/components when multiple docs.
+    Uses safe_load_all. Two docs (pipeline + platform spec) are returned separately;
+    key layout differs so callers handle each via get_base_images_from_compile_result.
 
     Args:
         func: The KFP component or pipeline function to compile.
         output_path: Path to write the compiled YAML.
 
     Returns:
-        Parsed YAML dict.
+        Single dict (one doc) or {"pipeline_spec": ..., "platform_spec": ...} (two docs).
 
     Raises:
-        ValueError: If the compiled YAML contains no dict document (e.g. only null or non-mapping).
+        ValueError: If the compiled YAML contains no dict document.
         Exception: If compilation fails.
     """
     compiler_mod = importlib.import_module("kfp.compiler")
     compiler_class = getattr(compiler_mod, "Compiler")
     compiler_class().compile(func, output_path)
     with open(output_path) as f:
-        raw = list(yaml.safe_load_all(f))
-    docs = [d for d in raw if isinstance(d, dict)]
+        docs = [d for d in yaml.safe_load_all(f) if isinstance(d, dict)]
     if not docs:
         raise ValueError(
-            f"Compiled YAML at {output_path} has no dict document (got {len(raw)} doc(s), none are mappings). "
-            "Expected at least one pipeline/component spec."
+            f"Compiled YAML at {output_path} has no dict document. Expected at least one pipeline/component spec."
         )
     if len(docs) == 1:
         return docs[0]
-    return _merge_ir_docs(docs)
+    return {"pipeline_spec": docs[0], "platform_spec": docs[1]}
 
 
 def find_decorated_functions_runtime(module: Any, decorator_type: str) -> list[tuple[str, Any]]:

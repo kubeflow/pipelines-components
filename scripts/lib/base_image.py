@@ -84,55 +84,95 @@ def _is_allowlisted_image(image: str, allowlist: BaseImageAllowlist) -> bool:
     return any(p.match(image) for p in allowlist.allowed_image_patterns)
 
 
-def extract_base_images(ir_yaml: dict[str, Any]) -> set[str]:
-    """Extract base_image values from a compiled KFP IR YAML.
+def _images_from_executors(executors: dict[str, Any]) -> set[str]:
+    """Collect container.image from an executors map. Shared by pipeline and platform spec."""
+    images: set[str] = set()
+    if not isinstance(executors, dict):
+        return images
+    for _key, executor_config in executors.items():
+        if not isinstance(executor_config, dict):
+            continue
+        container = executor_config.get("container") or {}
+        if isinstance(container, dict) and container.get("image"):
+            images.add(container["image"])
+    return images
 
-    The KFP IR YAML structure typically has:
-    - deploymentSpec.executors.<executor_name>.container.image
 
-    Args:
-        ir_yaml: Parsed IR YAML dictionary.
+def extract_base_images_from_pipeline_spec(pipeline_spec: dict[str, Any]) -> set[str]:
+    """Extract base_image values from a KFP pipeline spec (first YAML doc).
 
-    Returns:
-        Set of unique base image values.
-
-    Raises:
-        ValueError: If ir_yaml is None or not a dict.
+    Uses deploymentSpec.executors, root.dag.tasks (componentRef.image), and components.
     """
-    if ir_yaml is None:
-        raise ValueError("ir_yaml cannot be None")
-    if not isinstance(ir_yaml, dict):
-        raise ValueError(f"ir_yaml must be a dict, got {type(ir_yaml).__name__}")
+    if pipeline_spec is None:
+        raise ValueError("pipeline_spec cannot be None")
+    if not isinstance(pipeline_spec, dict):
+        raise ValueError(f"pipeline_spec must be a dict, got {type(pipeline_spec).__name__}")
 
     images: set[str] = set()
+    deployment_spec = pipeline_spec.get("deploymentSpec") or {}
+    executors = deployment_spec.get("executors") or {}
+    images |= _images_from_executors(executors)
 
-    deployment_spec = ir_yaml.get("deploymentSpec", {})
-    executors = deployment_spec.get("executors", {})
+    root = pipeline_spec.get("root") or {}
+    dag = (root if isinstance(root, dict) else {}).get("dag") or {}
+    tasks = (dag if isinstance(dag, dict) else {}).get("tasks") or {}
+    if isinstance(tasks, dict):
+        for _task_name, task_config in tasks.items():
+            if not isinstance(task_config, dict):
+                continue
+            component_ref = task_config.get("componentRef") or {}
+            if isinstance(component_ref, dict) and component_ref.get("image"):
+                images.add(component_ref["image"])
 
-    for _executor_name, executor_config in executors.items():
-        container = executor_config.get("container", {})
-        image = container.get("image")
-        if image:
-            images.add(image)
-
-    root = ir_yaml.get("root", {})
-    dag = root.get("dag", {})
-    tasks = dag.get("tasks", {})
-
-    for _task_name, task_config in tasks.items():
-        component_ref = task_config.get("componentRef", {})
-        if "image" in component_ref:
-            images.add(component_ref["image"])
-
-    components = ir_yaml.get("components", {})
-    for _component_name, comp_config in components.items():
-        executor_label = comp_config.get("executorLabel")
-        if executor_label and executor_label in executors:
-            container = executors[executor_label].get("container", {})
-            if "image" in container:
-                images.add(container["image"])
+    components = pipeline_spec.get("components") or {}
+    if isinstance(components, dict) and isinstance(executors, dict):
+        for _comp_name, comp_config in components.items():
+            if not isinstance(comp_config, dict):
+                continue
+            executor_label = comp_config.get("executorLabel")
+            if executor_label and executor_label in executors:
+                container = (executors.get(executor_label) or {}).get("container") or {}
+                if isinstance(container, dict) and container.get("image"):
+                    images.add(container["image"])
 
     return images
+
+
+def extract_base_images_from_platform_spec(platform_spec: dict[str, Any]) -> set[str]:
+    """Extract container image values from a KFP platform spec (second YAML doc).
+
+    Uses platforms.<name>.deploymentSpec.executors; key layout differs from pipeline spec.
+    """
+    if not isinstance(platform_spec, dict):
+        return set()
+    images: set[str] = set()
+    platforms = platform_spec.get("platforms") or {}
+    if not isinstance(platforms, dict):
+        return images
+    for _name, platform_config in platforms.items():
+        if not isinstance(platform_config, dict):
+            continue
+        deployment_spec = platform_config.get("deploymentSpec") or {}
+        executors = (deployment_spec if isinstance(deployment_spec, dict) else {}).get("executors") or {}
+        images |= _images_from_executors(executors)
+    return images
+
+
+def get_base_images_from_compile_result(compile_result: dict[str, Any]) -> set[str]:
+    """Collect base images from compile_and_get_yaml() result.
+
+    Dispatches to pipeline and/or platform spec extractors; returns union of images.
+    """
+    if not isinstance(compile_result, dict):
+        return set()
+    if "pipeline_spec" in compile_result and "platform_spec" in compile_result:
+        pipeline_images = extract_base_images_from_pipeline_spec(compile_result["pipeline_spec"])
+        platform_images = extract_base_images_from_platform_spec(compile_result["platform_spec"])
+        return pipeline_images | platform_images
+    return extract_base_images_from_pipeline_spec(compile_result)
+
+
+extract_base_images = extract_base_images_from_pipeline_spec
 
 
 def is_valid_base_image(
@@ -215,7 +255,7 @@ def _compile_asset_images(asset_file: Path, asset_type: str, tmpdir: str) -> set
                 asset_file,
                 f"Compilation failed for function '{func_name}': {e}",
             ) from e
-        images.update(extract_base_images(ir_yaml))
+        images.update(get_base_images_from_compile_result(ir_yaml))
     return images
 
 
