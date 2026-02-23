@@ -1,0 +1,467 @@
+"""Handle stale components: create warning issues and removal PRs.
+
+- Warning (270-360 days): Creates GitHub issues to notify owners
+- Stale (>360 days): Creates PRs to remove the component
+"""
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+import requests
+import yaml
+from jinja2 import Environment, FileSystemLoader
+
+# utils module sets up sys.path and re-exports from scripts/lib/discovery
+REPO_ROOT = Path(__file__).parent.parent.parent.parent
+sys.path.append(str(REPO_ROOT))
+
+from scripts.check_component_freshness.check_component_freshness import scan_repo  # noqa: E402
+from scripts.generate_readme.category_index_generator import CategoryIndexGenerator  # noqa: E402
+
+ISSUE_LABEL = "stale-component"
+REMOVAL_LABEL = "stale-component-removal"
+TEMPLATE_DIR = Path(__file__).parent
+ISSUE_BODY_TEMPLATE = "issue_body.md.j2"
+REMOVAL_PR_BODY_TEMPLATE = "removal_pr_body.md.j2"
+
+# Maximum issues to check when looking for duplicates (GitHub API max is 100)
+MAX_ISSUES_PER_PAGE = 100
+# GitHub API limits assignees to 10 per issue
+MAX_ASSIGNEES = 10
+
+
+def sanitize_branch_name(name: str) -> str:
+    r"""Sanitize a string to be a valid git branch name.
+
+    Git branch names cannot contain spaces, ~, ^, :, ?, *, [, \\, or
+    consecutive dots. They also cannot begin/end with dots or slashes.
+    """
+    # Replace spaces and invalid characters with hyphens
+    sanitized = re.sub(r"[\s~^:?*\[\]\\@{}'\"]+", "-", name)
+    # Replace consecutive dots with a single dot
+    sanitized = re.sub(r"\.{2,}", ".", sanitized)
+    # Remove leading/trailing dots, slashes, and hyphens
+    sanitized = sanitized.strip(".-/")
+    # Collapse multiple consecutive hyphens into one
+    sanitized = re.sub(r"-{2,}", "-", sanitized)
+    # Convert to lowercase for consistency
+    sanitized = sanitized.lower()
+    return sanitized
+
+
+def get_issue_title(component_name: str) -> str:
+    """Generate the standard issue title for a warning component."""
+    return f"Component `{component_name}` needs verification"
+
+
+def get_removal_pr_title(component_name: str) -> str:
+    """Generate the standard PR title for removing a stale component."""
+    return f"chore: Remove stale component `{component_name}`"
+
+
+def get_owners(component_path: Path) -> list[str]:
+    """Read OWNERS file for a component."""
+    owners_file = component_path / "OWNERS"
+    if not owners_file.exists():
+        return []
+    try:
+        owners = yaml.safe_load(owners_file.read_text())
+        return owners.get("approvers", []) if owners else []
+    except Exception:
+        print(f"::warning:: Error: Could not read OWNERS file for component {component_path}. ", file=sys.stderr)
+        print(f"::warning:: No owners will be assigned to the issue for {component_path}.", file=sys.stderr)
+        return []
+
+
+def create_issue_body(component: dict, repo_path: Path) -> str:
+    """Generate the issue body with instructions using Jinja2 template."""
+    env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
+    template = env.get_template(ISSUE_BODY_TEMPLATE)
+
+    owners = get_owners(repo_path / component["path"])
+    owners_mention = ", ".join(f"@{o}" for o in owners) if owners else "No owners found"
+
+    return template.render(
+        name=component["name"],
+        path=component["path"],
+        last_verified=component["last_verified"],
+        age_days=component["age_days"],
+        owners_mention=owners_mention,
+        today=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+    )
+
+
+def create_removal_pr_body(component: dict, owners: list[str]) -> str:
+    """Generate the PR body for component removal using Jinja2 template."""
+    env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
+    template = env.get_template(REMOVAL_PR_BODY_TEMPLATE)
+
+    owners_mention = ", ".join(f"@{o}" for o in owners) if owners else "No owners found"
+
+    return template.render(
+        name=component["name"],
+        path=component["path"],
+        last_verified=component["last_verified"],
+        age_days=component["age_days"],
+        owners_mention=owners_mention,
+    )
+
+
+def issue_exists(repo: str, component_name: str, token: str | None) -> bool:
+    """Check if an open issue already exists for this component."""
+    expected_title = get_issue_title(component_name)
+    headers = {"Accept": "application/vnd.github.v3+json"}
+    if token:
+        headers["Authorization"] = f"token {token}"
+    try:
+        resp = requests.get(
+            f"https://api.github.com/repos/{repo}/issues",
+            headers=headers,
+            params={"state": "open", "labels": ISSUE_LABEL, "per_page": MAX_ISSUES_PER_PAGE},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return any(issue["title"] == expected_title for issue in resp.json())
+    except Exception as e:
+        print(f"::error::Failed to check for existing issue: {e}", file=sys.stderr)
+        print(
+            "::error:: Cannot verify if issue already exists or not. Will assume it does to prevent "
+            "creating duplicate issues and skip this component.",
+            file=sys.stderr,
+        )
+        return True
+
+
+def removal_pr_exists(repo: str, component_name: str) -> bool:
+    """Check if an open PR already exists for removing this component."""
+    expected_title = get_removal_pr_title(component_name)
+    try:
+        result = subprocess.run(
+            ["gh", "pr", "list", "--repo", repo, "--state", "open", "--json", "title"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        prs = json.loads(result.stdout)
+        return any(pr["title"] == expected_title for pr in prs)
+    except subprocess.CalledProcessError as e:
+        print(f"::error::Failed to check for existing PR: {e}", file=sys.stderr)
+        print(
+            "::error:: Cannot verify if PR already exists or not. Will assume it does to prevent "
+            "creating duplicate PRs and skip this component.",
+            file=sys.stderr,
+        )
+        return True
+
+
+def create_issue(repo: str, component: dict, repo_path: Path, token: str | None, dry_run: bool) -> bool:
+    """Create a GitHub issue for a component needing verification."""
+    title = get_issue_title(component["name"])
+    owners = get_owners(repo_path / component["path"])
+    assignees = owners[:MAX_ASSIGNEES]
+
+    if dry_run:
+        print(f"[DRY RUN] Would create issue: {title}")
+        print(f"  Assignees: {assignees}")
+        return True
+
+    headers = {"Accept": "application/vnd.github.v3+json"}
+    if token:
+        headers["Authorization"] = f"token {token}"
+    body = create_issue_body(component, repo_path)
+
+    try:
+        resp = requests.post(
+            f"https://api.github.com/repos/{repo}/issues",
+            headers=headers,
+            json={"title": title, "body": body, "labels": [ISSUE_LABEL], "assignees": assignees},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        print(f"Created issue: {resp.json().get('html_url')}")
+        return True
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to create issue for {component['name']}: {e}", file=sys.stderr)
+        return False
+
+
+def get_current_branch() -> str | None:
+    """Get the current git branch name, or None if in detached HEAD state."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        branch = result.stdout.strip()
+        return None if branch == "HEAD" else branch
+    except subprocess.CalledProcessError:
+        return None
+
+
+def create_removal_pr(repo: str, component: dict, repo_path: Path, dry_run: bool) -> bool:
+    """Create a PR to remove a stale component using gh CLI."""
+    name = component["name"]
+    path = component["path"]
+    title = get_removal_pr_title(name)
+    branch_name = f"remove-stale-{sanitize_branch_name(name)}"
+    owners = get_owners(repo_path / path)
+
+    if dry_run:
+        print(f"[DRY RUN] Would create removal PR: {title}")
+        print(f"  Branch: {branch_name}")
+        print(f"  Removes: {path}")
+        print(f"  Updates: {Path(path).parent}/README.md (category index)")
+        print(f"  Reviewers: {owners}")
+        return True
+
+    # Save original branch to restore later
+    original_branch = get_current_branch()
+
+    branch_pushed = False
+    try:
+        # Fetch latest from origin
+        subprocess.run(["git", "fetch", "origin"], check=True, capture_output=True)
+
+        # Get default branch name
+        result = subprocess.run(
+            ["gh", "repo", "view", repo, "--json", "defaultBranchRef", "--jq", ".defaultBranchRef.name"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        default_branch = result.stdout.strip()
+
+        # Create and checkout new branch from default
+        subprocess.run(
+            ["git", "checkout", "-B", branch_name, f"origin/{default_branch}"],
+            check=True,
+            capture_output=True,
+        )
+
+        # Remove the component directory
+        component_dir = repo_path / path
+        if component_dir.exists():
+            subprocess.run(["git", "rm", "-rf", str(component_dir)], check=True, capture_output=True)
+        else:
+            print(f"Component directory not found: {component_dir}", file=sys.stderr)
+            return False
+
+        # Regenerate category README to remove the component from the index
+        category_dir = component_dir.parent
+        is_component = "components" in path
+        try:
+            index_generator = CategoryIndexGenerator(category_dir, is_component=is_component)
+            category_readme_content = index_generator.generate()
+            category_readme_path = category_dir / "README.md"
+            category_readme_path.write_text(category_readme_content)
+            subprocess.run(["git", "add", str(category_readme_path)], check=True, capture_output=True)
+        except Exception as e:
+            print(f"Warning: Could not regenerate category README: {e}", file=sys.stderr)
+
+        # Commit the change
+        commit_msg = (
+            f"Remove stale component: {name}\n\nComponent has not been verified in {component['age_days']} days."
+        )
+        subprocess.run(["git", "commit", "-m", commit_msg], check=True, capture_output=True)
+
+        # Push the branch
+        subprocess.run(["git", "push", "-u", "origin", branch_name, "--force"], check=True, capture_output=True)
+        branch_pushed = True
+
+        # Create the PR (use owners read before component was removed)
+        body = create_removal_pr_body(component, owners)
+        pr_cmd = [
+            "gh",
+            "pr",
+            "create",
+            "--repo",
+            repo,
+            "--title",
+            title,
+            "--body",
+            body,
+            "--label",
+            REMOVAL_LABEL,
+        ]
+
+        # Add reviewers if we have owners
+        if owners:
+            pr_cmd.extend(["--reviewer", ",".join(owners[:MAX_ASSIGNEES])])
+
+        result = subprocess.run(pr_cmd, capture_output=True, text=True, check=True)
+        print(f"Created removal PR: {result.stdout.strip()}")
+
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to create removal PR for {name}: {e}", file=sys.stderr)
+        if e.stderr:
+            print(f"  stderr: {e.stderr}", file=sys.stderr)
+        # Clean up the remote branch if it was pushed but PR creation failed
+        if branch_pushed:
+            try:
+                subprocess.run(
+                    ["git", "push", "origin", "--delete", branch_name],
+                    check=True,
+                    capture_output=True,
+                )
+                print(f"Cleaned up orphaned remote branch: {branch_name}")
+            except subprocess.CalledProcessError:
+                print(f"::warning:: Failed to clean up remote branch: {branch_name}", file=sys.stderr)
+        return False
+    finally:
+        # Always restore original branch
+        if original_branch:
+            subprocess.run(["git", "checkout", original_branch], capture_output=True)
+
+
+def ensure_labels_exist(repo: str, token: str | None, dry_run: bool) -> bool:
+    """Verify that required GitHub labels exist in the repo.
+
+    Checks for ISSUE_LABEL and REMOVAL_LABEL. Returns True if both
+    exist (or if running in dry-run mode), False otherwise.
+    """
+    required_labels = [ISSUE_LABEL, REMOVAL_LABEL]
+    headers = {"Accept": "application/vnd.github.v3+json"}
+    if token:
+        headers["Authorization"] = f"token {token}"
+
+    missing = []
+    for label in required_labels:
+        try:
+            resp = requests.get(
+                f"https://api.github.com/repos/{repo}/labels/{label}",
+                headers=headers,
+                timeout=30,
+            )
+            if resp.status_code == 404:
+                missing.append(label)
+            else:
+                resp.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            print(f"::error:: Failed to check for label '{label}': {e}", file=sys.stderr)
+            return False
+
+    if missing:
+        msg = ", ".join(f"'{label}'" for label in missing)
+        if dry_run:
+            print(f"::warning:: Labels {msg} do not exist in {repo}. They would need to be created before a real run.")
+            return True
+        print(f"::error:: Required labels {msg} do not exist in {repo}.", file=sys.stderr)
+        print("::error:: Create the missing labels and re-run.", file=sys.stderr)
+        return False
+
+    print(f"Preflight: all required labels exist ({', '.join(required_labels)})")
+    return True
+
+
+def handle_stale_components(repo: str, token: str | None, dry_run: bool) -> bool:
+    """Handle stale components: issues for warnings, removal PRs for stale.
+
+    Returns True if all operations succeeded, False if any failed.
+    """
+    if not ensure_labels_exist(repo, token, dry_run):
+        return False
+
+    repo_path = REPO_ROOT
+    results = scan_repo(repo_path)
+    # Include both warning (270-360 days) and stale (>360 days) components
+    fully_stale_components = results.get("stale", [])
+    components_needing_attention = results.get("warning", []) + fully_stale_components
+
+    if not components_needing_attention and not fully_stale_components:
+        print("No components need attention.")
+        return True
+
+    print(
+        f"Found {len(components_needing_attention)} components needing attention, including "
+        f"{len(fully_stale_components)} fully stale components that should be flagged for removal\n"
+    )
+
+    all_succeeded = True
+    issues_failed = 0
+    prs_failed = 0
+
+    # Handle warning components: create removal warning Issues
+    if components_needing_attention:
+        print("=== Warning Components (creating issues) ===")
+        issues_created, issues_skipped = 0, 0
+        for component in components_needing_attention:
+            if issue_exists(repo, component["name"], token):
+                print(f"Skipping {component['name']}: issue already exists")
+                issues_skipped += 1
+                continue
+            if create_issue(repo, component, repo_path, token, dry_run):
+                issues_created += 1
+            else:
+                issues_failed += 1
+                all_succeeded = False
+        print(f"Issues: {issues_created} created, {issues_skipped} skipped, {issues_failed} failed\n")
+
+    # Handle stale components: create stale component removal PRs
+    if fully_stale_components:
+        print("=== Stale Components (creating removal PRs) ===")
+        prs_created, prs_skipped = 0, 0
+        for component in fully_stale_components:
+            if removal_pr_exists(repo, component["name"]):
+                print(f"Skipping {component['name']}: removal PR already exists")
+                prs_skipped += 1
+                continue
+            if create_removal_pr(repo, component, repo_path, dry_run):
+                prs_created += 1
+            else:
+                prs_failed += 1
+                all_succeeded = False
+        print(f"Removal PRs: {prs_created} created, {prs_skipped} skipped, {prs_failed} failed")
+
+    return all_succeeded
+
+
+def main():
+    """Handle stale components: create issues for warnings, and removal PRs if stale."""
+    parser = argparse.ArgumentParser(
+        description="Handle stale components: create issues for warnings, and removal PRs if stale."
+    )
+    parser.add_argument("--repo", required=True, help="GitHub repo (e.g., owner/repo)")
+    parser.add_argument("--token", help="GitHub token (or set GITHUB_TOKEN env var)")
+    parser.add_argument("--dry-run", action="store_true", help="Print without creating issues/PRs")
+    args = parser.parse_args()
+
+    token = args.token or os.environ.get("GITHUB_TOKEN")
+    if not token:
+        if args.dry_run:
+            print(
+                "::warning:: Warning: No GitHub token provided. API requests will be subject to rate limiting.",
+                file=sys.stderr,
+            )
+            print(
+                "::warning:: Use --token or set GITHUB_TOKEN environment variable for authenticated requests.",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                "::error:: Error: Required GitHub token not provided. "
+                "Will not be able to create staleness Issues and PRs.",
+                file=sys.stderr,
+            )
+            print(
+                "::error:: Use --token or set GITHUB_TOKEN environment variable for authenticated requests.",
+                file=sys.stderr,
+            )
+            print("::error:: Stopping...", file=sys.stderr)
+            sys.exit(1)
+
+    success = handle_stale_components(args.repo, token, args.dry_run)
+    if not success:
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
