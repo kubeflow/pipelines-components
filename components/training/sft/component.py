@@ -1,0 +1,344 @@
+"""SFT Training Component.
+
+Reusable inline SFT (Supervised Fine-Tuning) training component.
+- Configurable logging
+- Optional Kubernetes connection (remote or in-cluster)
+- PVC-based caches/checkpoints
+- Dataset resolution (HF repo id, or local path)
+- Basic metrics logging and checkpoint export
+- Hardcoded to use instructlab-training backend and SFT algorithm
+"""
+
+from typing import Optional
+
+from kfp import dsl
+
+
+@dsl.component(
+    base_image="quay.io/opendatahub/odh-training-th04-cpu-torch29-py312-rhel9:cpu-3.3",
+    packages_to_install=[
+        "kubernetes",
+        "olot",
+        "matplotlib",
+        "kfp-components@git+https://github.com/Fiona-Waters/pipelines-components.git@separate-components",
+    ],
+    task_config_passthroughs=[
+        dsl.TaskConfigField.RESOURCES,
+        dsl.TaskConfigField.KUBERNETES_TOLERATIONS,
+        dsl.TaskConfigField.KUBERNETES_NODE_SELECTOR,
+        dsl.TaskConfigField.KUBERNETES_AFFINITY,
+        dsl.TaskConfigPassthrough(field=dsl.TaskConfigField.ENV, apply_to_task=True),
+        dsl.TaskConfigPassthrough(field=dsl.TaskConfigField.KUBERNETES_VOLUMES, apply_to_task=True),
+    ],
+)
+def train_model(
+    pvc_path: str,
+    output_model: dsl.Output[dsl.Model],
+    output_metrics: dsl.Output[dsl.Metrics],
+    output_loss_chart: dsl.Output[dsl.HTML],
+    dataset: dsl.Input[dsl.Dataset] = None,
+    training_base_model: str = "Qwen/Qwen2.5-1.5B-Instruct",
+    training_effective_batch_size: int = 128,
+    training_max_tokens_per_gpu: int = 10000,
+    training_max_seq_len: int = 8192,
+    training_learning_rate: Optional[float] = None,
+    training_lr_warmup_steps: Optional[int] = None,
+    training_checkpoint_at_epoch: Optional[bool] = None,
+    training_num_epochs: Optional[int] = None,
+    training_data_output_dir: Optional[str] = None,
+    training_envs: str = "",
+    training_resource_cpu_per_worker: str = "4",
+    training_resource_gpu_per_worker: int = 1,
+    training_resource_memory_per_worker: str = "64Gi",
+    training_resource_num_procs_per_worker: str = "auto",
+    training_resource_num_workers: int = 1,
+    training_metadata_labels: str = "",
+    training_metadata_annotations: str = "",
+    training_seed: Optional[int] = None,
+    training_use_liger: Optional[bool] = None,
+    training_lr_scheduler: Optional[str] = None,
+    training_save_samples: Optional[int] = None,
+    training_accelerate_full_state_at_epoch: Optional[bool] = None,
+    training_fsdp_sharding_strategy: Optional[str] = None,
+    kubernetes_config: dsl.TaskConfig = None,
+) -> str:
+    """Train model using SFT (Supervised Fine-Tuning). Outputs model artifact and metrics.
+
+    Args:
+        pvc_path: Workspace PVC root path (use dsl.WORKSPACE_PATH_PLACEHOLDER).
+        output_model: Output model artifact.
+        output_metrics: Output training metrics artifact.
+        output_loss_chart: Output HTML artifact with training loss chart.
+        dataset: Input training dataset artifact.
+        training_base_model: Base model (HuggingFace ID or local path).
+        training_effective_batch_size: Effective batch size per optimizer step.
+        training_max_tokens_per_gpu: Max tokens per GPU (memory cap).
+        training_max_seq_len: Max sequence length in tokens.
+        training_learning_rate: Learning rate (default: 5e-6).
+        training_lr_warmup_steps: Learning rate warmup steps.
+        training_checkpoint_at_epoch: Save checkpoint at each epoch.
+        training_num_epochs: Number of training epochs.
+        training_data_output_dir: Directory for processed training data.
+        training_envs: Environment overrides as KEY=VAL,KEY=VAL.
+        training_resource_cpu_per_worker: CPU cores per worker.
+        training_resource_gpu_per_worker: GPUs per worker.
+        training_resource_memory_per_worker: Memory per worker (e.g., 64Gi).
+        training_resource_num_procs_per_worker: Processes per worker (auto or int).
+        training_resource_num_workers: Number of training pods.
+        training_metadata_labels: Pod labels as key=value,key=value.
+        training_metadata_annotations: Pod annotations as key=value,key=value.
+        training_seed: Random seed for reproducibility.
+        training_use_liger: Enable Liger kernel optimizations.
+        training_lr_scheduler: LR scheduler type (cosine, linear, etc.).
+        training_save_samples: Number of samples to save.
+        training_accelerate_full_state_at_epoch: Save full accelerate state.
+        training_fsdp_sharding_strategy: FSDP sharding strategy.
+        kubernetes_config: KFP TaskConfig for volumes/env/resources passthrough.
+
+    Environment:
+        HF_TOKEN: HuggingFace token for gated models (read from environment).
+        OCI_PULL_SECRET_MODEL_DOWNLOAD: Docker config.json content for pulling OCI model images.
+    """
+    import os
+    from typing import Dict
+
+    from kfp_components.components.training.shared import (
+        configure_env,
+        create_logger,
+        download_oci_model,
+        extract_metrics_from_jsonl,
+        init_k8s,
+        parse_kv,
+        persist_model,
+        plot_training_loss,
+        prepare_jsonl,
+        resolve_dataset,
+        setup_hf_token,
+    )
+
+    log = create_logger("train_model")
+    log.info(f"Initializing SFT training component with: pvc={pvc_path}, model={training_base_model}")
+
+    _api = init_k8s(log)
+
+    cache = os.path.join(pvc_path, ".cache", "huggingface")
+    denv: Dict[str, str] = {
+        "XDG_CACHE_HOME": "/tmp",
+        "TRITON_CACHE_DIR": "/tmp/.triton",
+        "HF_HOME": "/tmp/.cache/huggingface",
+        "HF_DATASETS_CACHE": os.path.join(cache, "datasets"),
+        "TRANSFORMERS_CACHE": os.path.join(cache, "transformers"),
+        "NCCL_DEBUG": "INFO",
+    }
+
+    menv = configure_env(training_envs, denv, log)
+    setup_hf_token(menv, training_base_model, log)
+
+    ds_dir = os.path.join(pvc_path, "dataset", "train")
+    os.makedirs(ds_dir, exist_ok=True)
+
+    resolve_dataset(dataset, ds_dir, log)
+
+    jsonl = os.path.join(ds_dir, "train.jsonl")
+    prepare_jsonl(ds_dir, jsonl, log)
+
+    resolved = training_base_model
+
+    if isinstance(training_base_model, str) and training_base_model.startswith("oci://"):
+        resolved = download_oci_model(training_base_model, pvc_path, log)
+
+    ckpt_dir = os.path.join(pvc_path, "checkpoints")
+    os.makedirs(ckpt_dir, exist_ok=True)
+
+    try:
+        from kubeflow.common.types import KubernetesBackendConfig
+        from kubeflow.trainer import TrainerClient
+        from kubeflow.trainer.options.kubernetes import (
+            ContainerOverride,
+            PodSpecOverride,
+            PodTemplateOverride,
+            PodTemplateOverrides,
+        )
+        from kubeflow.trainer.rhai import TrainingHubAlgorithms, TrainingHubTrainer
+
+        if _api is None:
+            raise RuntimeError("K8s API not initialized")
+
+        client = TrainerClient(KubernetesBackendConfig(client_configuration=_api.configuration))
+
+        def _select_runtime(c):
+            for r in c.list_runtimes():
+                if getattr(r, "name", "") == "training-hub":
+                    log.info(f"Runtime: {r}")
+                    return r
+            raise RuntimeError("Runtime 'training-hub' not found")
+
+        runtime = _select_runtime(client)
+
+        def _int(v, d: int) -> int:
+            if v is None:
+                return d
+            if isinstance(v, int):
+                return v
+            s = str(v).strip()
+            return int(s) if s else d
+
+        def _nproc():
+            auto = str(training_resource_num_procs_per_worker).strip().lower() == "auto"
+            np = training_resource_gpu_per_worker if auto else _int(training_resource_num_procs_per_worker, 1)
+            nn = _int(training_resource_num_workers, 1)
+            return max(np, 1), max(nn, 1)
+
+        def _params() -> Dict:
+            np, nn = _nproc()
+            b = {
+                "model_path": resolved,
+                "data_path": jsonl if os.path.exists(jsonl) else ds_dir,
+                "effective_batch_size": int(training_effective_batch_size or 128),
+                "max_tokens_per_gpu": int(training_max_tokens_per_gpu),
+                "max_seq_len": int(training_max_seq_len or 8192),
+                "learning_rate": float(training_learning_rate or 5e-6),
+                "backend": "instructlab-training",
+                "ckpt_output_dir": ckpt_dir,
+                "data_output_dir": training_data_output_dir or os.path.join(ckpt_dir, "_internal_data_processing"),
+                "warmup_steps": int(training_lr_warmup_steps) if training_lr_warmup_steps else 0,
+                "checkpoint_at_epoch": bool(training_checkpoint_at_epoch)
+                if training_checkpoint_at_epoch is not None
+                else False,
+                "num_epochs": int(training_num_epochs) if training_num_epochs else 1,
+                "nproc_per_node": np,
+                "nnodes": nn,
+            }
+            # SFT-specific parameters
+            if training_save_samples is not None:
+                b["save_samples"] = int(training_save_samples)
+            if training_accelerate_full_state_at_epoch is not None:
+                b["accelerate_full_state_at_epoch"] = bool(training_accelerate_full_state_at_epoch)
+            if training_lr_scheduler:
+                b["lr_scheduler"] = training_lr_scheduler
+            if training_use_liger is not None:
+                b["use_liger"] = bool(training_use_liger)
+            if training_seed is not None:
+                b["seed"] = int(training_seed)
+            if training_fsdp_sharding_strategy:
+                b["fsdp_sharding_strategy"] = training_fsdp_sharding_strategy.upper().strip()
+            return b
+
+        params = _params()
+
+        def _train_func(p):
+            a = dict(p or {})
+            fsdp = a.pop("fsdp_sharding_strategy", None)
+            from training_hub import sft as tr
+
+            print("[PY] Launching SFT training...", flush=True)
+
+            if fsdp:
+                try:
+                    from instructlab.training.config import FSDPOptions, ShardingStrategies
+
+                    sm = {
+                        "FULL_SHARD": ShardingStrategies.FULL_SHARD,
+                        "HYBRID_SHARD": ShardingStrategies.HYBRID_SHARD,
+                        "NO_SHARD": ShardingStrategies.NO_SHARD,
+                    }
+                    if fsdp.upper() in sm:
+                        a["fsdp_options"] = FSDPOptions(sharding_strategy=sm[fsdp.upper()])
+                except ImportError as exc:
+                    raise RuntimeError(
+                        "FSDP support is not available. Required package 'instructlab.training.config' is missing."
+                    ) from exc
+            return tr(**a)
+
+        vols, vmts = [], []
+        if kubernetes_config and getattr(kubernetes_config, "volumes", None):
+            vols.extend(kubernetes_config.volumes)
+        if kubernetes_config and getattr(kubernetes_config, "volume_mounts", None):
+            vmts.extend(kubernetes_config.volume_mounts)
+
+        tlbl = parse_kv(training_metadata_labels)
+        tann = parse_kv(training_metadata_annotations)
+
+        def _pod_spec():
+            return PodSpecOverride(volumes=vols, containers=[ContainerOverride(name="node", volume_mounts=vmts)])
+
+        resources = {
+            "nvidia.com/gpu": training_resource_gpu_per_worker,
+            "memory": training_resource_memory_per_worker,
+            "cpu": int(training_resource_cpu_per_worker),
+        }
+
+        job = client.train(
+            trainer=TrainingHubTrainer(
+                func=_train_func,
+                func_args=params,
+                algorithm=TrainingHubAlgorithms.SFT,
+                packages_to_install=[],
+                env=dict(menv),
+                resources_per_node=resources,
+            ),
+            options=[
+                PodTemplateOverrides(
+                    PodTemplateOverride(
+                        target_jobs=["node"],
+                        metadata={"labels": tlbl, "annotations": tann} if (tlbl or tann) else None,
+                        spec=_pod_spec(),
+                    )
+                )
+            ],
+            runtime=runtime,
+        )
+        log.info(f"Job: {job}")
+        client.wait_for_job_status(name=job, status={"Running"}, timeout=900)
+        client.wait_for_job_status(name=job, status={"Complete", "Failed"}, timeout=1800)
+        j = client.get_job(name=job)
+        if getattr(j, "status", None) == "Failed":
+            log.error(f"Job failed: {j.status}")
+            raise RuntimeError(f"Job failed: {j.status}")
+        elif getattr(j, "status", None) != "Complete":
+            log.error(f"Unexpected status: {j.status}")
+            raise RuntimeError(f"Unexpected status: {j.status}")
+        log.info("Training completed successfully")
+    except Exception as e:
+        log.error(f"Training failed: {e}")
+        raise
+
+    def get_training_metrics(root: str):
+        # SFT prioritizes training_params_and_metrics_global0.jsonl
+        import os
+
+        pats = ["training_params_and_metrics_global0.jsonl", "training_metrics_0.jsonl"]
+        mf = None
+        for r, _, fs in os.walk(root):
+            for p in pats:
+                if p in fs:
+                    mf = os.path.join(r, p)
+                    break
+            if mf:
+                break
+        if not mf or not os.path.exists(mf):
+            return {}, []
+        log.info(f"Metrics: {mf}")
+        return extract_metrics_from_jsonl(mf)
+
+    def log_training_metrics():
+        output_metrics.log_metric("num_epochs", float(params.get("num_epochs") or 1))
+        output_metrics.log_metric("effective_batch_size", float(params.get("effective_batch_size") or 128))
+        output_metrics.log_metric("learning_rate", float(params.get("learning_rate") or 5e-6))
+        output_metrics.log_metric("max_seq_len", float(params.get("max_seq_len") or 8192))
+        output_metrics.log_metric("max_tokens_per_gpu", float(params.get("max_tokens_per_gpu") or 0))
+        tm, loss = get_training_metrics(ckpt_dir)
+        for k, v in tm.items():
+            output_metrics.log_metric(f"training_{k}", v)
+        plot_training_loss(loss, output_loss_chart.path)
+
+    log_training_metrics()
+
+    persist_model(ckpt_dir, pvc_path, training_base_model, output_model, log)
+    return "training completed"
+
+
+if __name__ == "__main__":
+    from kfp import compiler
+
+    compiler.Compiler().compile(train_model, package_path=__file__.replace(".py", "_component.yaml"))
