@@ -1,12 +1,12 @@
-"""SFT Training Component.
+"""LoRA Training Component.
 
-Reusable inline SFT (Supervised Fine-Tuning) training component.
+Reusable inline LoRA (Low-Rank Adaptation) training component.
 - Configurable logging
 - Optional Kubernetes connection (remote or in-cluster)
 - PVC-based caches/checkpoints
 - Dataset resolution (HF repo id, or local path)
 - Basic metrics logging and checkpoint export
-- Hardcoded to use instructlab-training backend and SFT algorithm
+- Hardcoded to use unsloth backend and LoRA algorithm
 """
 
 from typing import Optional
@@ -20,6 +20,7 @@ from kfp import dsl
         "kubernetes",
         "olot",
         "matplotlib",
+        "kubeflow@git+https://github.com/opendatahub-io/kubeflow-sdk.git@8f9e677",
         "kfp-components@git+https://github.com/Fiona-Waters/pipelines-components.git@separate-components",
     ],
     task_config_passthroughs=[
@@ -39,7 +40,7 @@ def train_model(
     dataset: dsl.Input[dsl.Dataset] = None,
     training_base_model: str = "Qwen/Qwen2.5-1.5B-Instruct",
     training_effective_batch_size: int = 128,
-    training_max_tokens_per_gpu: int = 10000,
+    training_max_tokens_per_gpu: int = 32000,
     training_max_seq_len: int = 8192,
     training_learning_rate: Optional[float] = None,
     training_lr_warmup_steps: Optional[int] = None,
@@ -49,20 +50,29 @@ def train_model(
     training_envs: str = "",
     training_resource_cpu_per_worker: str = "4",
     training_resource_gpu_per_worker: int = 1,
-    training_resource_memory_per_worker: str = "64Gi",
+    training_resource_memory_per_worker: str = "32Gi",
     training_resource_num_procs_per_worker: str = "auto",
     training_resource_num_workers: int = 1,
     training_metadata_labels: str = "",
     training_metadata_annotations: str = "",
+    training_lora_r: int = 16,
+    training_lora_alpha: int = 32,
+    training_lora_dropout: float = 0.0,
+    training_lora_target_modules: str = "",
+    training_lora_use_rslora: Optional[bool] = None,
+    training_lora_use_dora: Optional[bool] = None,
+    training_lora_load_in_4bit: Optional[bool] = None,
+    training_lora_load_in_8bit: Optional[bool] = None,
+    training_lora_bnb_4bit_quant_type: Optional[str] = None,
+    training_lora_bnb_4bit_compute_dtype: Optional[str] = None,
+    training_lora_bnb_4bit_use_double_quant: Optional[bool] = None,
+    training_lora_sample_packing: Optional[bool] = None,
     training_seed: Optional[int] = None,
     training_use_liger: Optional[bool] = None,
     training_lr_scheduler: Optional[str] = None,
-    training_save_samples: Optional[int] = None,
-    training_accelerate_full_state_at_epoch: Optional[bool] = None,
-    training_fsdp_sharding_strategy: Optional[str] = None,
     kubernetes_config: dsl.TaskConfig = None,
 ) -> str:
-    """Train model using SFT (Supervised Fine-Tuning). Outputs model artifact and metrics.
+    """Train model using LoRA (Low-Rank Adaptation). Outputs model artifact and metrics.
 
     Args:
         pvc_path: Workspace PVC root path (use dsl.WORKSPACE_PATH_PLACEHOLDER).
@@ -74,25 +84,34 @@ def train_model(
         training_effective_batch_size: Effective batch size per optimizer step.
         training_max_tokens_per_gpu: Max tokens per GPU (memory cap).
         training_max_seq_len: Max sequence length in tokens.
-        training_learning_rate: Learning rate (default: 5e-6).
+        training_learning_rate: Learning rate (default: 2e-4).
         training_lr_warmup_steps: Learning rate warmup steps.
         training_checkpoint_at_epoch: Save checkpoint at each epoch.
-        training_num_epochs: Number of training epochs.
+        training_num_epochs: Number of training epochs (default: 3).
         training_data_output_dir: Directory for processed training data.
         training_envs: Environment overrides as KEY=VAL,KEY=VAL.
         training_resource_cpu_per_worker: CPU cores per worker.
         training_resource_gpu_per_worker: GPUs per worker.
-        training_resource_memory_per_worker: Memory per worker (e.g., 64Gi).
+        training_resource_memory_per_worker: Memory per worker (e.g., 32Gi).
         training_resource_num_procs_per_worker: Processes per worker (auto or int).
         training_resource_num_workers: Number of training pods.
         training_metadata_labels: Pod labels as key=value,key=value.
         training_metadata_annotations: Pod annotations as key=value,key=value.
+        training_lora_r: LoRA rank (controls model capacity).
+        training_lora_alpha: LoRA scaling factor.
+        training_lora_dropout: Dropout rate for LoRA layers.
+        training_lora_target_modules: Comma-separated list of modules to apply LoRA (empty = auto-detect).
+        training_lora_use_rslora: Use Rank-Stabilized LoRA variant.
+        training_lora_use_dora: Use Weight-Decomposed LoRA (DoRA).
+        training_lora_load_in_4bit: Enable 4-bit quantization (QLoRA).
+        training_lora_load_in_8bit: Enable 8-bit quantization.
+        training_lora_bnb_4bit_quant_type: Quantization type (e.g., "nf4"). Reserved for future training_hub support.
+        training_lora_bnb_4bit_compute_dtype: Compute dtype (e.g., "bfloat16"). Reserved for future support.
+        training_lora_bnb_4bit_use_double_quant: Enable double quantization. Reserved for future training_hub support.
+        training_lora_sample_packing: Pack multiple samples for efficiency (default: True in training_hub).
         training_seed: Random seed for reproducibility.
         training_use_liger: Enable Liger kernel optimizations.
-        training_lr_scheduler: LR scheduler type (cosine, linear, etc.).
-        training_save_samples: Number of samples to save.
-        training_accelerate_full_state_at_epoch: Save full accelerate state.
-        training_fsdp_sharding_strategy: FSDP sharding strategy.
+        training_lr_scheduler: LR scheduler type (cosine, linear, etc.). Training_hub default: linear.
         kubernetes_config: KFP TaskConfig for volumes/env/resources passthrough.
 
     Environment:
@@ -106,7 +125,6 @@ def train_model(
         configure_env,
         create_logger,
         download_oci_model,
-        extract_metrics_from_jsonl,
         init_k8s,
         parse_kv,
         persist_model,
@@ -117,7 +135,7 @@ def train_model(
     )
 
     log = create_logger("train_model")
-    log.info(f"Initializing SFT training component with: pvc={pvc_path}, model={training_base_model}")
+    log.info(f"Initializing LoRA training component with: pvc={pvc_path}, model={training_base_model}")
 
     _api = init_k8s(log)
 
@@ -198,58 +216,142 @@ def train_model(
                 "effective_batch_size": int(training_effective_batch_size or 128),
                 "max_tokens_per_gpu": int(training_max_tokens_per_gpu),
                 "max_seq_len": int(training_max_seq_len or 8192),
-                "learning_rate": float(training_learning_rate or 5e-6),
-                "backend": "instructlab-training",
+                "learning_rate": float(training_learning_rate or 2e-4),
+                "backend": "unsloth",
                 "ckpt_output_dir": ckpt_dir,
                 "data_output_dir": training_data_output_dir or os.path.join(ckpt_dir, "_internal_data_processing"),
-                "warmup_steps": int(training_lr_warmup_steps) if training_lr_warmup_steps else 0,
+                "warmup_steps": int(training_lr_warmup_steps) if training_lr_warmup_steps is not None else 10,
                 "checkpoint_at_epoch": bool(training_checkpoint_at_epoch)
                 if training_checkpoint_at_epoch is not None
                 else False,
-                "num_epochs": int(training_num_epochs) if training_num_epochs else 1,
+                "num_epochs": int(training_num_epochs) if training_num_epochs else 3,
                 "nproc_per_node": np,
                 "nnodes": nn,
             }
-            # SFT-specific parameters
-            if training_save_samples is not None:
-                b["save_samples"] = int(training_save_samples)
-            if training_accelerate_full_state_at_epoch is not None:
-                b["accelerate_full_state_at_epoch"] = bool(training_accelerate_full_state_at_epoch)
+
+            # LoRA-specific parameters
+            b["lora_r"] = int(training_lora_r)
+            b["lora_alpha"] = int(training_lora_alpha)
+            b["lora_dropout"] = float(training_lora_dropout)
+
+            if training_lora_target_modules:
+                b["target_modules"] = [m.strip() for m in training_lora_target_modules.split(",") if m.strip()]
+
+            if training_lora_use_rslora is not None:
+                b["use_rslora"] = bool(training_lora_use_rslora)
+            if training_lora_use_dora is not None:
+                b["use_dora"] = bool(training_lora_use_dora)
+
+            # QLoRA parameters
+            if training_lora_load_in_4bit is not None:
+                b["load_in_4bit"] = bool(training_lora_load_in_4bit)
+            if training_lora_load_in_8bit is not None:
+                b["load_in_8bit"] = bool(training_lora_load_in_8bit)
+            # NOTE: bnb_4bit_quant_type, bnb_4bit_compute_dtype, bnb_4bit_use_double_quant
+            # are accepted by training_hub's lora_sft() API but _load_unsloth_model() passes
+            # them as raw kwargs to FastLanguageModel.from_pretrained() which causes a
+            # TypeError. Omitted until training_hub wraps them in BitsAndBytesConfig.
+            # Unsloth defaults to nf4 quantization when load_in_4bit=True.
+
+            # Other optional parameters
+            if training_lora_sample_packing is not None:
+                b["sample_packing"] = bool(training_lora_sample_packing)
             if training_lr_scheduler:
                 b["lr_scheduler"] = training_lr_scheduler
             if training_use_liger is not None:
                 b["use_liger"] = bool(training_use_liger)
             if training_seed is not None:
                 b["seed"] = int(training_seed)
-            if training_fsdp_sharding_strategy:
-                b["fsdp_sharding_strategy"] = training_fsdp_sharding_strategy.upper().strip()
+
             return b
 
         params = _params()
 
         def _train_func(p):
-            a = dict(p or {})
-            fsdp = a.pop("fsdp_sharding_strategy", None)
-            from training_hub import sft as tr
+            import os
 
-            print("[PY] Launching SFT training...", flush=True)
+            from training_hub import lora_sft as tr
 
-            if fsdp:
-                try:
-                    from instructlab.training.config import FSDPOptions, ShardingStrategies
+            print("[PY] Launching LoRA training...", flush=True)
+            result = tr(**(p or {}))
 
-                    sm = {
-                        "FULL_SHARD": ShardingStrategies.FULL_SHARD,
-                        "HYBRID_SHARD": ShardingStrategies.HYBRID_SHARD,
-                        "NO_SHARD": ShardingStrategies.NO_SHARD,
-                    }
-                    if fsdp.upper() in sm:
-                        a["fsdp_options"] = FSDPOptions(sharding_strategy=sm[fsdp.upper()])
-                except ImportError as exc:
-                    raise RuntimeError(
-                        "FSDP support is not available. Required package 'instructlab.training.config' is missing."
-                    ) from exc
-            return tr(**a)
+            # Merge LoRA adapter weights into base model for eval/deployment compatibility.
+            # LoRA training saves adapter-only files (adapter_config.json, adapter_model.safetensors)
+            # but downstream components (lm-eval, vLLM) expect a full model with config.json.
+            #
+            # Strategy: Use Unsloth's save_pretrained_merged() which properly dequantizes
+            # 4-bit QLoRA weights. Then post-process the saved files to:
+            # 1. Strip base_model. prefix from safetensors weight keys
+            # 2. Fix sharded index file if present
+            # 3. Remove quantization_config from config.json
+            ckpt_dir = p.get("ckpt_output_dir")
+            if ckpt_dir and result and "model" in result:
+                import glob as _glob
+                import json
+
+                from safetensors.torch import load_file, save_file
+
+                # Remove any existing files from trainer.save_model()
+                for _f in (
+                    _glob.glob(ckpt_dir + "/*.safetensors")
+                    + _glob.glob(ckpt_dir + "/model.safetensors.index.json")
+                    + _glob.glob(ckpt_dir + "/adapter_config.json")
+                ):
+                    if os.path.exists(_f):
+                        os.remove(_f)
+
+                # Let Unsloth handle dequantization and saving
+                print("[PY] Merging and saving model (Unsloth merged_16bit)...", flush=True)
+                result["model"].save_pretrained_merged(ckpt_dir, result["tokenizer"], save_method="merged_16bit")
+
+                # Post-process: fix weight key prefixes in safetensors files
+                for sf_path in sorted(_glob.glob(ckpt_dir + "/*.safetensors")):
+                    tensors = load_file(sf_path)
+                    clean = {}
+                    needs_fix = False
+                    for k, v in tensors.items():
+                        if k.startswith("base_model.model."):
+                            clean[k[len("base_model.model.") :]] = v
+                            needs_fix = True
+                        elif k.startswith("base_model."):
+                            clean[k[len("base_model.") :]] = v
+                            needs_fix = True
+                        else:
+                            clean[k] = v
+                    if needs_fix:
+                        save_file(clean, sf_path)
+
+                # Post-process: fix weight key prefixes in index file if sharded
+                idx_path = ckpt_dir + "/model.safetensors.index.json"
+                if os.path.exists(idx_path):
+                    with open(idx_path) as f:
+                        idx = json.load(f)
+                    if "weight_map" in idx:
+                        new_map = {}
+                        for k, v in idx["weight_map"].items():
+                            if k.startswith("base_model.model."):
+                                new_map[k[len("base_model.model.") :]] = v
+                            elif k.startswith("base_model."):
+                                new_map[k[len("base_model.") :]] = v
+                            else:
+                                new_map[k] = v
+                        idx["weight_map"] = new_map
+                        with open(idx_path, "w") as f:
+                            json.dump(idx, f, indent=2)
+
+                # Post-process: remove quantization_config from config.json
+                cfg_path = ckpt_dir + "/config.json"
+                if os.path.exists(cfg_path):
+                    with open(cfg_path) as f:
+                        cfg = json.load(f)
+                    if "quantization_config" in cfg:
+                        del cfg["quantization_config"]
+                        with open(cfg_path, "w") as f:
+                            json.dump(cfg, f, indent=2)
+
+                print("[PY] Merged model saved.", flush=True)
+
+            return result
 
         vols, vmts = [], []
         if kubernetes_config and getattr(kubernetes_config, "volumes", None):
@@ -273,7 +375,7 @@ def train_model(
             trainer=TrainingHubTrainer(
                 func=_train_func,
                 func_args=params,
-                algorithm=TrainingHubAlgorithms.SFT,
+                algorithm=TrainingHubAlgorithms.LORA_SFT,
                 packages_to_install=[],
                 env=dict(menv),
                 resources_per_node=resources,
@@ -305,29 +407,20 @@ def train_model(
         raise
 
     def get_training_metrics(root: str):
-        # SFT prioritizes training_params_and_metrics_global0.jsonl
-        import os
-
-        pats = ["training_params_and_metrics_global0.jsonl", "training_metrics_0.jsonl"]
-        mf = None
-        for r, _, fs in os.walk(root):
-            for p in pats:
-                if p in fs:
-                    mf = os.path.join(r, p)
-                    break
-            if mf:
-                break
-        if not mf or not os.path.exists(mf):
-            return {}, []
-        log.info(f"Metrics: {mf}")
-        return extract_metrics_from_jsonl(mf)
+        # TODO: Add loss chart support for LoRA once training_hub exposes a metrics/logging
+        # file for the unsloth backend. Blocked on:
+        # https://github.com/Red-Hat-AI-Innovation-Team/training_hub/pull/40
+        return {}, []
 
     def log_training_metrics():
-        output_metrics.log_metric("num_epochs", float(params.get("num_epochs") or 1))
+        output_metrics.log_metric("num_epochs", float(params.get("num_epochs") or 3))
         output_metrics.log_metric("effective_batch_size", float(params.get("effective_batch_size") or 128))
-        output_metrics.log_metric("learning_rate", float(params.get("learning_rate") or 5e-6))
+        output_metrics.log_metric("learning_rate", float(params.get("learning_rate") or 2e-4))
         output_metrics.log_metric("max_seq_len", float(params.get("max_seq_len") or 8192))
         output_metrics.log_metric("max_tokens_per_gpu", float(params.get("max_tokens_per_gpu") or 0))
+        output_metrics.log_metric("lora_r", float(params.get("lora_r") or 16))
+        output_metrics.log_metric("lora_alpha", float(params.get("lora_alpha") or 32))
+        output_metrics.log_metric("lora_dropout", float(params.get("lora_dropout") or 0.0))
         tm, loss = get_training_metrics(ckpt_dir)
         for k, v in tm.items():
             output_metrics.log_metric(f"training_{k}", v)

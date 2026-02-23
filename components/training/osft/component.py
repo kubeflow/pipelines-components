@@ -139,6 +139,7 @@ def train_model(
         "HF_DATASETS_CACHE": os.path.join(cache, "datasets"),
         "TRANSFORMERS_CACHE": os.path.join(cache, "transformers"),
         "NCCL_DEBUG": "INFO",
+        "PYTHONUNBUFFERED": "1",
     }
 
     menv = configure_env(training_envs, denv, log)

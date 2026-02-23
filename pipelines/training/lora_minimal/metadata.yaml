@@ -1,0 +1,28 @@
+name: lora_minimal_pipeline
+stability: alpha
+dependencies:
+  kubeflow:
+    - name: Pipelines
+      version: '>=2.15.2'
+    - name: Trainer
+      version: '>=0.1.0'
+  external_services:
+    - name: HuggingFace Datasets
+      version: ">=2.14.0"
+    - name: Kubernetes
+      version: ">=1.28.0"
+    - name: Model Registry
+      version: ">=0.3.4"
+tags:
+  - training
+  - fine_tuning
+  - lora
+  - peft
+  - parameter_efficient
+  - minimal
+  - llm
+  - language_model
+  - pipeline
+lastVerified: 2026-01-14T00:00:00Z
+links:
+  documentation: https://github.com/kubeflow/trainer

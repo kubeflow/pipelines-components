@@ -1,0 +1,25 @@
+name: lora
+stability: alpha
+dependencies:
+  kubeflow:
+    - name: Pipelines
+      version: '>=2.15.2'
+    - name: Trainer
+      version: '>=0.1.0'
+  external_services:
+    - name: HuggingFace Datasets
+      version: ">=2.14.0"
+    - name: Kubernetes
+      version: ">=1.28.0"
+    - name: Unsloth
+      version: ">=2024.11"
+tags:
+  - training
+  - fine_tuning
+  - lora
+  - peft
+  - llm
+  - parameter_efficient
+lastVerified: 2026-02-23T00:00:00Z
+links:
+  documentation: https://github.com/kubeflow/trainer
