@@ -34,6 +34,8 @@ test = [
     "semver",
     "pip",
     "setuptools",
+    "sdg-hub",
+    "pandas",
 ]
 # Local development (extends test with additional tools)
 dev = [
@@ -53,6 +55,8 @@ packages = [
     "kfp_components.components",
     "kfp_components.components.data_processing",
     "kfp_components.components.data_processing.yoda_data_processor",
+    "kfp_components.components.sdg",
+    "kfp_components.components.sdg.sdg_hub",
     "kfp_components.components.deployment",
     "kfp_components.components.evaluation",
     "kfp_components.components.training",
