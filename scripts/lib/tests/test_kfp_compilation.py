@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from ..kfp_compilation import (
     _load_compiled_yaml,
     compile_and_get_yaml,
@@ -73,11 +75,10 @@ class TestCompileResultAndExtractors:
     """Tests for two-doc return shape and get_base_images_from_compile_result."""
 
     def test_load_compiled_yaml_multi_doc_returns_wrapper(self):
-        """Multi-document YAML through load path produces pipeline_spec/platform_spec wrapper."""
+        """Two docs with pipeline and platform spec shape return wrapper; classification is by content."""
         import os
         import tempfile
 
-        # Two-doc YAML: minimal pipeline spec + platform spec (same shape KFP writes).
         yaml_content = """---
 deploymentSpec: {}
 root: {}
@@ -98,6 +99,25 @@ platforms:
             assert result["pipeline_spec"].get("deploymentSpec") is not None
             assert "platforms" in result["platform_spec"]
             assert "k8s" in result["platform_spec"]["platforms"]
+        finally:
+            os.unlink(path)
+
+    def test_load_compiled_yaml_two_ambiguous_docs_raises(self):
+        """Two docs that cannot be classified by content raise ValueError."""
+        import os
+        import tempfile
+
+        yaml_content = """---
+foo: 1
+---
+bar: 2
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(yaml_content)
+            path = f.name
+        try:
+            with pytest.raises(ValueError, match="could not classify them"):
+                _load_compiled_yaml(path)
         finally:
             os.unlink(path)
 

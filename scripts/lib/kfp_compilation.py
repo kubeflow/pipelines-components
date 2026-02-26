@@ -37,12 +37,23 @@ def load_module_from_path(module_path: str, module_name: str) -> ModuleType:
     return module
 
 
+def _is_platform_spec(doc: dict[str, Any]) -> bool:
+    """True if doc looks like a KFP platform spec (has top-level 'platforms' dict)."""
+    return isinstance(doc.get("platforms"), dict)
+
+
+def _is_pipeline_spec(doc: dict[str, Any]) -> bool:
+    """True if doc looks like a KFP pipeline/component spec (has deploymentSpec or root)."""
+    return "deploymentSpec" in doc or "root" in doc
+
+
 def _load_compiled_yaml(path: str) -> dict[str, Any]:
     """Load compiled YAML from path; return single doc or two-doc wrapper.
 
     Uses safe_load_all and filters to dicts. One doc -> return it; two docs ->
-    return {"pipeline_spec": docs[0], "platform_spec": docs[1]}. Testable without
-    the KFP compiler.
+    classify by content: doc with top-level 'platforms' -> platform_spec, doc with
+    'deploymentSpec' or 'root' -> pipeline_spec. If we cannot classify both
+    unambiguously, raise ValueError (no fallback).
     """
     with open(path) as f:
         docs = [d for d in yaml.safe_load_all(f) if isinstance(d, dict)]
@@ -52,7 +63,16 @@ def _load_compiled_yaml(path: str) -> dict[str, Any]:
         )
     if len(docs) == 1:
         return docs[0]
-    return {"pipeline_spec": docs[0], "platform_spec": docs[1]}
+    # Two docs: identify by content only.
+    pipeline_spec = next((d for d in docs if _is_pipeline_spec(d) and not _is_platform_spec(d)), None)
+    platform_spec = next((d for d in docs if _is_platform_spec(d)), None)
+    if pipeline_spec is not None and platform_spec is not None and pipeline_spec is not platform_spec:
+        return {"pipeline_spec": pipeline_spec, "platform_spec": platform_spec}
+    raise ValueError(
+        f"Compiled YAML at {path} has two documents but could not classify them: "
+        "expected one doc with 'deploymentSpec' or 'root' (pipeline spec) and one with "
+        "'platforms' (platform spec). Refusing to guess."
+    )
 
 
 def compile_and_get_yaml(func: Any, output_path: str) -> dict[str, Any]:
