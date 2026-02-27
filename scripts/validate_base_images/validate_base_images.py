@@ -19,7 +19,7 @@ from typing import Any
 
 from ..lib.base_image import (
     BaseImageAllowlist,
-    extract_base_images,
+    get_base_images_from_compile_result,
     load_base_image_allowlist,
 )
 from ..lib.base_image import is_valid_base_image as _is_valid_base_image
@@ -153,7 +153,7 @@ def process_asset(
             ir_yaml = compile_and_get_yaml(func, output_path)
             result["compiled"] = True
             compiled_count += 1
-            result["base_images"].update(extract_base_images(ir_yaml))
+            result["base_images"].update(get_base_images_from_compile_result(ir_yaml))
         except Exception as e:
             failed_count += 1
             print(f"  Warning: Failed to compile {func}: {e}")
