@@ -146,7 +146,7 @@ jobs:
 
       - name: Download built image artifacts
         if: github.event_name == 'pull_request'
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: image-*
           merge-multiple: true
