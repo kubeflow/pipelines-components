@@ -79,8 +79,8 @@ def _call_sdg(output_artifact, output_metrics, **kwargs):
         "checkpoint_pvc_path": "",
         "save_freq": 100,
         "log_level": "INFO",
-        "temperature": 0.7,
-        "max_tokens": 2048,
+        "temperature": -1.0,
+        "max_tokens": -1,
         "export_to_pvc": False,
         "export_path": "",
     }
@@ -333,6 +333,33 @@ class TestModelConfiguration:
         call_kwargs = mock_flow.set_model_config.call_args
         assert call_kwargs.kwargs["api_key"] == "test-key"
         assert call_kwargs.kwargs["api_base"] == "http://localhost:8080/v1"
+
+    @mock.patch("sdg_hub.core.flow.base.Flow.from_yaml")
+    @mock.patch("sdg_hub.core.flow.registry.FlowRegistry.get_flow_path_safe")
+    def test_default_sentinel_excludes_model_kwargs(
+        self, mock_get_path, mock_from_yaml, output_artifact, output_metrics, sample_input_file
+    ):
+        """Test that sentinel defaults (-1) exclude temperature/max_tokens from model config."""
+        mock_get_path.return_value = "/resolved/flow.yaml"
+        mock_flow = _make_mock_flow()
+        mock_flow.is_model_config_required.return_value = True
+        mock_from_yaml.return_value = mock_flow
+
+        _call_sdg(
+            output_artifact,
+            output_metrics,
+            input_pvc_path=sample_input_file,
+            flow_id="llm-flow",
+            model="openai/gpt-4o-mini",
+            temperature=-1.0,
+            max_tokens=-1,
+        )
+
+        mock_flow.set_model_config.assert_called_once()
+        call_kwargs = mock_flow.set_model_config.call_args.kwargs
+        assert call_kwargs["model"] == "openai/gpt-4o-mini"
+        assert "temperature" not in call_kwargs
+        assert "max_tokens" not in call_kwargs
 
 
 class TestFlowExecution:

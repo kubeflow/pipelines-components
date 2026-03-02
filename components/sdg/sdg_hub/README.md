@@ -24,8 +24,8 @@ This component wraps the SDG Hub SDK to execute composable data generation flows
 | `checkpoint_pvc_path` | `str` | `""` | PVC path for checkpoints |
 | `save_freq` | `int` | `100` | Checkpoint save frequency |
 | `log_level` | `str` | `"INFO"` | Logging level |
-| `temperature` | `float` | `0.7` | LLM sampling temperature |
-| `max_tokens` | `int` | `2048` | Maximum response tokens |
+| `temperature` | `float` | `-1.0` | LLM sampling temperature (0.0-2.0). Use -1 for flow default |
+| `max_tokens` | `int` | `-1` | Maximum response tokens. Use -1 for flow default |
 | `export_to_pvc` | `bool` | `False` | Export output to PVC (in addition to KFP artifact) |
 | `export_path` | `str` | `""` | Base PVC path for exports (required if `export_to_pvc` is `True`) |
 

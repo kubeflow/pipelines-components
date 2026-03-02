@@ -23,8 +23,8 @@ def sdg(
     checkpoint_pvc_path: str = "",
     save_freq: int = 100,
     log_level: str = "INFO",
-    temperature: float = 0.7,
-    max_tokens: int = 2048,
+    temperature: float = -1.0,
+    max_tokens: int = -1,
     export_to_pvc: bool = False,
     export_path: str = "",
 ) -> None:
@@ -45,8 +45,8 @@ def sdg(
         checkpoint_pvc_path: PVC path for checkpoints (enables resume).
         save_freq: Checkpoint save frequency (number of samples).
         log_level: Logging level (DEBUG, INFO, WARNING, ERROR).
-        temperature: LLM sampling temperature (0.0-2.0).
-        max_tokens: Maximum response tokens.
+        temperature: LLM sampling temperature (0.0-2.0). Use -1 for flow default.
+        max_tokens: Maximum response tokens. Use -1 for flow default.
         export_to_pvc: Whether to export output to PVC (in addition to KFP artifact).
         export_path: Base PVC path for exports (required if export_to_pvc is True).
     """
@@ -80,8 +80,8 @@ def sdg(
     logger.info(f"Flow YAML Path: {flow_yaml_path or 'Not provided'}")
     logger.info(f"Model: {model or 'Not provided'}")
     logger.info(f"Max Concurrency: {max_concurrency}")
-    logger.info(f"Temperature: {temperature}")
-    logger.info(f"Max Tokens: {max_tokens}")
+    logger.info(f"Temperature: {'flow default' if temperature < 0 else temperature}")
+    logger.info(f"Max Tokens: {'flow default' if max_tokens < 0 else max_tokens}")
     logger.info(f"Export to PVC: {export_to_pvc}")
     if export_to_pvc:
         logger.info(f"Export Path: {export_path or 'Not provided'}")
@@ -159,10 +159,11 @@ def sdg(
         api_key = os.environ.get("LLM_API_KEY", "")
         api_base = os.environ.get("LLM_API_BASE", "")
 
-        model_kwargs = {
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        }
+        model_kwargs = {}
+        if temperature >= 0:
+            model_kwargs["temperature"] = temperature
+        if max_tokens > 0:
+            model_kwargs["max_tokens"] = max_tokens
 
         logger.info(f"Configuring model: {model}")
         if api_base:
