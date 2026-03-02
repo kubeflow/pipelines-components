@@ -9,7 +9,7 @@ from kfp import dsl
 
 
 @dsl.component(
-    packages_to_install=["sdg-hub"],
+    packages_to_install=["sdg-hub>=0.7.0,<1.0"],
 )
 def sdg(
     output_artifact: dsl.Output[dsl.Dataset],
