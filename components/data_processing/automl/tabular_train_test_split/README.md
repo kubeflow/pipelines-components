@@ -1,29 +1,48 @@
-# Train Test Split ✂️
+# Tabular Train Test Split ✨
 
 > ⚠️ **Stability: alpha** — This asset is not yet stable and may change.
 
 ## Overview 🧾
 
-Splits a tabular (CSV) dataset into train and test sets for AutoML workflows.
-
-The Train Test Split component takes a single CSV dataset and splits it into training and test sets using scikit-learn's `train_test_split`.
-For **regression** tasks the split is random; for **binary** and **multiclass** tasks the split is **stratified** by the label column by default, so that class proportions are preserved in both splits.
-The component writes the train and test CSVs to the output artifacts and returns a sample row (from the test set) and the split configuration.
+Splits a tabular dataset into train and test sets and writes them to output artifacts.
 
 ## Inputs 📥
 
-| Parameter              | Type                     | Default   | Description |
-| ---------------------- | ------------------------ | -------- | ----------- |
-| `dataset`              | `dsl.Input[dsl.Dataset]` | *required* | Input CSV dataset to split. |
-| `task_type`            | `str`                    | *required* | Machine learning task type: `"binary"`, `"multiclass"`, or `"regression"`. |
-| `label_column`         | `str`                    | *required* | Name of the label/target column. |
-| `split_config`         | `dict`                   | *required* | Split configuration dictionary. Available keys: "test_size" (float), "random_state" (int), "stratify" (bool). |
-| `sampled_train_dataset` | `dsl.Output[dsl.Dataset]` | *required* | Output dataset artifact for the train split. |
-| `sampled_test_dataset` | `dsl.Output[dsl.Dataset]` | *required* | Output dataset artifact for the test split. |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `dataset` | `dsl.Input[dsl.Dataset]` | `None` | Input CSV dataset to split. |
+| `task_type` | `str` | `None` | Machine learning task type: "binary", "multiclass", or "regression". |
+| `label_column` | `str` | `None` | Name of the label/target column. |
+| `split_config` | `dict` | `None` | Split configuration dictionary. Available keys: "test_size" (float), "random_state" (int), "stratify" (bool). |
+| `sampled_train_dataset` | `dsl.Output[dsl.Dataset]` | `None` | Output dataset artifact for the train split. |
+| `sampled_test_dataset` | `dsl.Output[dsl.Dataset]` | `None` | Output dataset artifact for the test split. |
 
-### Split Configuration
+## Outputs 📤
 
-The `split_config` dictionary supports:
+| Name | Type | Description |
+|------|------|-------------|
+| Output | `NamedTuple('outputs', sample_row=str, split_config=dict)` | Contains a sample row and a split configuration dictionary. |
+
+## Metadata 🗂️
+
+- **Name**: tabular_train_test_split
+- **Stability**: alpha
+- **Dependencies**:
+  - Kubeflow:
+    - Name: Pipelines, Version: >=2.15.2
+- **Tags**:
+  - data-processing
+- **Last Verified**: 2026-01-22 10:28:49+00:00
+- **Owners**:
+  - Approvers:
+    - None
+  - Reviewers:
+    - None
+
+<!-- custom-content -->
+## Split Configuration
+
+The `split_config` dictionary parameter supports:
 
 ```python
 {
@@ -35,14 +54,6 @@ The `split_config` dictionary supports:
 
 - **Regression**: `stratify` is ignored; the split is always random.
 - **Binary / multiclass**: If `stratify` is `True` (default), the split is stratified by `label_column`; if `False`, the split is random.
-
-## Outputs 📤
-
-| Output                 | Type           | Description |
-| ---------------------- | -------------- | ----------- |
-| `sampled_train_dataset` | `dsl.Dataset`  | Training split (CSV). |
-| `sampled_test_dataset`  | `dsl.Dataset`  | Test split (CSV). |
-| Return value            | `NamedTuple`   | `sample_row`: JSON string of one row from the test set; `split_config`: dict with `test_size`. |
 
 ## Usage Examples 💡
 
@@ -110,20 +121,6 @@ def my_pipeline(dataset):
 - **Stratified split**: Used by default for `task_type="binary"` and `"multiclass"` when `split_config["stratify"]` is `True` (default) to preserve class distribution in train and test sets.
 - **Reproducibility**: Pass `random_state` in `split_config` (default: 42) for consistent splits.
 - **Output format**: Train and test artifacts are written as CSV files; the component appends `.csv` to the output artifact URIs.
-
-## Metadata 🗂️
-
-- **Name**: tabular_train_test_split
-- **Stability**: alpha
-- **Dependencies**:
-  - Kubeflow Pipelines >= 2.15.2
-  - pandas
-  - scikit-learn
-- **Tags**:
-  - automl
-  - data-processing
-  - train-test-split
-- **Last Verified**: 2025-01-27 00:00:00+00:00
 
 ## Additional Resources 📚
 

@@ -54,42 +54,23 @@ def autogluon_models_full_refit(
     candidates are refitted on the full dataset for optimal performance.
 
     Args:
-        model_name: The name of the model to refit. Must match a model name
-            in the predictor. The refitted model is saved with the suffix
-            "_FULL" appended to this name.
-        test_dataset: Dataset artifact (CSV) with the complete training data.
-            Used for evaluation and for writing metrics; the dataset format
-            should match the data used during initial training.
-        predictor_path: Path to a trained AutoGluon TabularPredictor that
-            includes the model specified by model_name.
-        sampling_config: Configuration dictionary for data sampling (stored
-            in artifact metadata).
-        split_config: Configuration dictionary for data splitting (stored
-            in artifact metadata).
-        model_config: Configuration dictionary for model training (stored
-            in artifact metadata).
-        pipeline_name: Name of the pipeline run. The last hyphen-separated
-            segment is stripped for use in the generated notebook.
-        run_id: ID of the pipeline run (used in the generated notebook).
-        sample_row: JSON string of a list of row objects (e.g.
-            '[{"feature1": 1, "target": 0}]'). Used as example input in the
-            generated notebook; the label column is removed from each row.
-        model_artifact: Output Model artifact. The refitted predictor is
-            saved under model_artifact.path / model_name_FULL / predictor;
-            metrics under model_artifact.path / model_name_FULL / metrics;
-            notebook under model_artifact.path / model_name_FULL / notebooks.
+        model_name: Name of the model to refit (must exist in predictor); refitted model saved with "_FULL" suffix.
+        test_dataset: Dataset artifact (CSV) for evaluation and metrics; format should match initial training data.
+        predictor_path: Path to the trained TabularPredictor containing model_name.
+        sampling_config: Data sampling config (stored in artifact metadata).
+        split_config: Data split config (stored in artifact metadata).
+        model_config: Model training config (stored in artifact metadata).
+        pipeline_name: Pipeline run name; last hyphen-separated segment used in the generated notebook.
+        run_id: Pipeline run ID (used in the generated notebook).
+        sample_row: JSON list of row objects for example input in the notebook; label column is stripped.
+        model_artifact: Output Model; refitted predictor, metrics, and notebook under model_artifact.path/model_name_FULL.
 
     Returns:
-        NamedTuple with field model_name: the refitted model name (model_name
-        with "_FULL" suffix). The refitted predictor and artifacts are also
-        written to model_artifact.
+        NamedTuple with model_name (refitted name with "_FULL" suffix); artifacts written to model_artifact.
 
     Raises:
-        FileNotFoundError: If the predictor path or test_dataset path
-            cannot be found.
-        ValueError: If the predictor cannot be loaded, model_name is not
-            found in the predictor, refit fails, or problem_type is not
-            regression, binary, or multiclass.
+        FileNotFoundError: If predictor path or test_dataset path cannot be found.
+        ValueError: If predictor load fails, model_name not in predictor, refit fails, or invalid problem_type.
         KeyError: If required model files are missing from the predictor.
 
     Example:
@@ -114,7 +95,7 @@ def autogluon_models_full_refit(
             )
             return refitted.model_name
 
-    """
+    """  # noqa: E501
     import json
     import os
     from pathlib import Path

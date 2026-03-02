@@ -12,8 +12,7 @@ sampled training data, then evaluates them on test data to identify the top N pe
 The component uses AutoGluon's TabularPredictor which automatically trains various model types (neural networks,
 tree-based models, linear models, etc.) and combines them using stacking with multiple levels and bagging. After
 training, models are evaluated on the test dataset and ranked by performance. The top N models are selected and their
-names are returned (with eval_metric and predictor_path) for use in subsequent refitting stages. The predictor is
-saved under the provided workspace_path (workspace_path / autogluon_predictor).
+names are returned for use in subsequent refitting stages. The predictor is saved under workspace_path.
 
 This component is part of a two-stage training pipeline where models are first built and evaluated on sampled data (for
 efficiency), then the best candidates are refitted on the full dataset for optimal performance.
@@ -21,22 +20,39 @@ efficiency), then the best candidates are refitted on the full dataset for optim
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-| --------- | ---- | ------- | ----------- |
-| `label_column` | `str` | — | Name of the target/label column used as the prediction target. |
-| `task_type` | `str` | — | Task type: `"binary"`, `"multiclass"` (classification) or `"regression"`. Determines metrics and model types. |
-| `top_n` | `int` | — | Number of top-performing models to select from the leaderboard (positive integer). |
-| `train_data` | `dsl.Input[dsl.Dataset]` | — | Dataset artifact (CSV) for training; must include label_column and feature columns. |
-| `test_data` | `dsl.Input[dsl.Dataset]` | — | Dataset artifact (CSV) for evaluation; schema should match training data. |
-| `workspace_path` | `str` | — | Workspace path; predictor saved under `workspace_path / autogluon_predictor`, returned as predictor_path. |
+|-----------|------|---------|-------------|
+| `label_column` | `str` | `None` | Name of the target/label column in train and test datasets. |
+| `task_type` | `str` | `None` | ML task type: "binary", "multiclass", or "regression"; drives metrics and model types. |
+| `top_n` | `int` | `None` | Number of top-performing models to select from the leaderboard (positive integer). |
+| `train_data` | `dsl.Input[dsl.Dataset]` | `None` | Dataset artifact (CSV) with training data; must include label_column and features. |
+| `test_data` | `dsl.Input[dsl.Dataset]` | `None` | Dataset artifact (CSV) for evaluation and leaderboard; schema must match train_data. |
+| `workspace_path` | `str` | `None` | Workspace directory where TabularPredictor is saved (workspace_path/autogluon_predictor). |
 
 ## Outputs 📤
 
 | Name | Type | Description |
-| ---- | ---- | ----------- |
-| `top_models` | `List[str]` | Top N model names from the leaderboard, ranked by test performance. |
-| `eval_metric` | `str` | Metric used by TabularPredictor (e.g. "accuracy", "r2"), from task_type. |
-| `predictor_path` | `str` | Path to saved TabularPredictor (`workspace_path / autogluon_predictor`) for downstream use. |
+|------|------|-------------|
+| Output | `NamedTuple('outputs', top_models=List[str], eval_metric=str, predictor_path=str, model_config=dict)` | top_models, eval_metric, predictor_path, model_config (preset, metric, time_limit). |
 
+## Metadata 🗂️
+
+- **Name**: autogluon_models_selection
+- **Stability**: alpha
+- **Dependencies**:
+  - Kubeflow:
+    - Name: Pipelines, Version: >=2.14.4
+- **Tags**:
+  - training
+  - automl
+  - autogluon-models-selection
+- **Last Verified**: 2026-01-22 10:30:08+00:00
+- **Owners**:
+  - Approvers:
+    - None
+  - Reviewers:
+    - None
+
+<!-- custom-content -->
 ## Usage Examples 💡
 
 ### Basic usage (regression)
@@ -74,17 +90,3 @@ selection_task = models_selection(
 # Use selection_task.outputs["top_models"], selection_task.outputs["eval_metric"],
 # selection_task.outputs["predictor_path"] for downstream refit and leaderboard.
 ```
-
-## Metadata 🗂️
-
-- **Name**: autogluon_models_selection
-- **Stability**: alpha
-- **Dependencies**:
-  - Kubeflow:
-    - Name: Pipelines, Version: >=2.15.2
-- **Tags**:
-  - training
-- **Last Verified**: 2026-01-22 10:30:08+00:00
-- **Owners**:
-  - Approvers: None
-  - Reviewers: None

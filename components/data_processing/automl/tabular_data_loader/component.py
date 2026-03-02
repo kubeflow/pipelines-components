@@ -21,14 +21,12 @@ def automl_data_loader(
     loading the entire dataset into memory at once.
 
     Args:
-        file_key: Location of the CSV file in the S3 bucket.
-        bucket_name: Name of the S3 bucket containing the file.
-        label_column: Name of the column containing labels/target values for stratified sampling.
-        full_dataset: Output dataset artifact where the sampled data will be saved.
-        sampling_method: Type of sampling strategy. Options: "first_n_rows", "stratified", or "random".
-            If None (default), derived from task_type: "stratified" for binary/multiclass, "random" for regression.
-        task_type: The type of machine learning task. Supported values: "binary", "multiclass", or "regression"
-            (default). Used when sampling_method is None to choose the sampling strategy.
+        file_key: S3 object key of the CSV file.
+        bucket_name: S3 bucket name containing the file.
+        label_column: Column name for labels/target (used for stratified sampling).
+        full_dataset: Output dataset artifact for the sampled data.
+        sampling_method: "first_n_rows", "stratified", or "random"; if None, derived from task_type.
+        task_type: "binary", "multiclass", or "regression" (default); used when sampling_method is None.
 
     Returns:
         NamedTuple: Contains a sample configuration dictionary.

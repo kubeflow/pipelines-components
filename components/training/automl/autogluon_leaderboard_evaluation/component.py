@@ -20,21 +20,13 @@ def leaderboard_evaluation(
     model.path / model.metadata["display_name"] / metrics / metrics.json.
 
     Args:
-        models: A list of Model artifacts. Each should have metadata containing
-            a "display_name" field and metrics file at
-            model.path / model_name / metrics / metrics.json.
-        eval_metric: The name of the evaluation metric to use for ranking.
-            Must match a key in the metrics JSON (e.g., "accuracy" for
-            classification, "root_mean_squared_error" for regression).
-            The leaderboard is sorted by this metric in descending order.
-        html_artifact: Output artifact where the HTML-formatted leaderboard
-            will be written. The leaderboard contains model names and their
-            evaluation metrics.
+        models: List of Model artifacts with "display_name" in metadata and metrics at model.path/model_name/metrics/metrics.json.
+        eval_metric: Metric name for ranking (e.g. "accuracy", "root_mean_squared_error"); leaderboard sorted by it descending.
+        html_artifact: Output artifact for the HTML-formatted leaderboard (model names and metrics).
 
     Raises:
         FileNotFoundError: If any model metrics path cannot be found.
-        KeyError: If model metadata does not contain "display_name" or the
-            metrics JSON does not contain the eval_metric key.
+        KeyError: If metadata lacks "display_name" or metrics JSON lacks the eval_metric key.
 
     Example:
         from kfp import dsl
@@ -49,7 +41,7 @@ def leaderboard_evaluation(
                 eval_metric="root_mean_squared_error",
             )
             return leaderboard
-    """
+    """  # noqa: E501
     import json
     from pathlib import Path
 

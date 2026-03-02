@@ -96,39 +96,20 @@ def autogluon_tabular_training_pipeline(
     - Selecting optimal ensemble configurations
 
     Args:
-        train_data_secret_name: The Kubernetes secret name with S3-compatible credentials for tabular data file access.
-            The following keys are required:
-            AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION.
-        train_data_bucket_name: The name of the S3-compatible bucket containing the tabular data file.
-            The bucket should be accessible using the AWS credentials configured in the
-            'train_data_secret_name' Kubernetes secret.
-        train_data_file_key: The key (path) of the data file within the S3 bucket. The file should
-            be in CSV format and contain both feature columns and the target column.
-        label_column: The name of the target/label column in the dataset. This column
-            will be used as the prediction target for model training. The column must
-            exist in the loaded dataset.
-        task_type: The type of machine learning task. Supported values:
-            - "binary" or "multiclass": For classification tasks
-            - "regression": For regression tasks (predicting continuous values)
-            This parameter determines the evaluation metrics and model types AutoGluon
-            will use during training.
-        top_n: The number of top-performing models to select and refit (default: 3).
-            Must be a positive integer. Only the top N models from the initial training
-            stage will be promoted to the refitting stage. Higher values increase pipeline
-            execution time but provide more model options for final selection.
+        train_data_secret_name: Kubernetes secret name with S3 credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION).
+        train_data_bucket_name: S3-compatible bucket name containing the tabular data file.
+        train_data_file_key: S3 object key of the CSV file (features and target column).
+        label_column: Name of the target/label column in the dataset.
+        task_type: "binary", "multiclass", or "regression"; drives metrics and model types.
+        top_n: Number of top models to select and refit (default: 3); positive integer.
 
     Returns:
-        An HTML artifact containing the leaderboard with evaluation metrics for all
-        refitted models, ranked by performance. The leaderboard uses the metric
-        determined by task_type (e.g., accuracy for classification, r2 for regression)
-        and can be used for model comparison and selection decisions.
+        HTML artifact with leaderboard of refitted models ranked by task_type metric (e.g. accuracy, r2).
 
     Raises:
         FileNotFoundError: If the S3 file cannot be found or accessed.
-        ValueError: If the label_column is not found in the dataset, task_type is
-            invalid, top_n is not positive, or data splitting fails.
-        KeyError: If required AWS credentials are missing from Kubernetes secrets or
-            if required component outputs are not available.
+        ValueError: If label_column missing, task_type invalid, top_n not positive, or split fails.
+        KeyError: If AWS credentials missing in secret or required component outputs unavailable.
 
     Example:
         from kfp import dsl
@@ -145,7 +126,7 @@ def autogluon_tabular_training_pipeline(
             task_type="regression",
             top_n=3,
         )
-    """
+    """  # noqa: E501
     from kfp.kubernetes import use_secret_as_env
 
     tabular_loader_task = automl_data_loader(

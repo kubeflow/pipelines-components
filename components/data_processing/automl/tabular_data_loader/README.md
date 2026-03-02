@@ -1,43 +1,64 @@
-# Tabular Data Loader 📊
+# Tabular Data Loader ✨
 
 > ⚠️ **Stability: alpha** — This asset is not yet stable and may change.
 
 ## Overview 🧾
 
-Loads tabular (CSV) data from S3 for AutoML processing. The component reads data in chunks (up to 1GB in memory) and supports configurable sampling strategies.
+Automl Data Loader component.
 
-The Tabular Data Loader is typically the first step in the AutoML pipeline. It streams CSV data from an S3 bucket, optionally samples it using one of the supported strategies, and writes the result to an output dataset artifact.
-Authentication uses AWS-style credentials provided via environment variables (e.g. from a Kubernetes secret).
+Loads tabular (CSV) data from S3 in batches, sampling up to 1GB of data. The component reads data in chunks to
+efficiently handle large files without loading the entire dataset into memory at once.
 
 ## Inputs 📥
 
-| Parameter        | Type                     | Default     | Description |
-| --------------- | ------------------------ | ----------- | ----------- |
-| `file_key`      | `str`                    | *required*  | Path to the CSV file within the S3 bucket. |
-| `bucket_name`  | `str`                    | *required*  | Name of the S3 bucket containing the file. |
-| `full_dataset` | `dsl.Output[dsl.Dataset]` | *required*  | Output artifact where the sampled CSV will be written. |
-| `sampling_method` | `Optional[str]`       | `None`      | Sampling strategy: `"first_n_rows"`, `"stratified"`, or `"random"`. If `None`, derived from `task_type`: `"stratified"` for binary/multiclass, `"random"` for regression. |
-| `label_column`  | `Optional[str]`          | `None`      | Name of the target/label column. Required when `sampling_method="stratified"`. |
-| `task_type`     | `str`                    | `"regression"` | Machine learning task: `"binary"`, `"multiclass"`, or `"regression"`. Used when `sampling_method` is `None` to choose the strategy. |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `file_key` | `str` | `None` | S3 object key of the CSV file. |
+| `bucket_name` | `str` | `None` | S3 bucket name containing the file. |
+| `full_dataset` | `dsl.Output[dsl.Dataset]` | `None` | Output dataset artifact for the sampled data. |
+| `sampling_method` | `Optional[str]` | `None` | "first_n_rows", "stratified", or "random"; if None, derived from task_type. |
+| `label_column` | `Optional[str]` | `None` | Column name for labels/target (used for stratified sampling). |
+| `task_type` | `str` | `regression` | "binary", "multiclass", or "regression" (default); used when sampling_method is None. |
 
-### Sampling strategies
+## Outputs 📤
 
-- **first_n_rows** — Read rows from the start of the file until the 1GB size limit.
-- **stratified** — Iterate over all batches, merge with accumulated data, and subsample proportionally by `label_column` when over the limit. Requires `label_column`.
-- **random** — Iterate over all batches, merge with accumulated data, and randomly subsample when over the limit.
+| Name | Type | Description |
+|------|------|-------------|
+| Output | `NamedTuple('outputs', sample_config=dict)` | Contains a sample configuration dictionary. |
 
-### Credentials
+## Metadata 🗂️
+
+- **Name**: tabular_data_loader
+- **Stability**: alpha
+- **Dependencies**:
+  - Kubeflow:
+    - Name: Pipelines, Version: >=2.15.2
+- **Tags**:
+  - data-processing
+  - automl
+- **Last Verified**: 2026-02-23 14:30:00+00:00
+- **Owners**:
+  - Approvers:
+    - None
+  - Reviewers:
+    - None
+
+<!-- custom-content -->
+## Sampling strategies
+
+Available values for the `sampling_method` parameter are:
+
+- `"first_n_rows"`: Reads the first N rows from the file up to the component's memory limit (default 1GB).
+- `"stratified"`: Samples the dataset in a way that preserves the distribution of the `label_column`. Only available if `label_column` is specified and task type is classification.
+- `"random"`: Randomly samples rows from the dataset up to the size limit.
+
+If `sampling_method` is not set, it is automatically derived from `task_type` (`"random"` for regression, `"stratified"` for classification).
+
+## Credentials
 
 S3 access uses environment variables (e.g. from a Kubernetes secret):
 
 - `AWS_S3_ENDPOINT`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` — required for S3.
-
-## Outputs 📤
-
-| Output          | Type     | Description |
-| --------------- | -------- | ----------- |
-| `full_dataset`  | `dsl.Dataset` | CSV artifact with the loaded (and optionally sampled) data. |
-| Return value    | `NamedTuple`  | `sample_config`: dict with `n_samples` (number of rows written). |
 
 ## Usage Examples 💡
 
@@ -95,17 +116,6 @@ The component logs at INFO level:
 
 - Which sampling method is used (including when derived from `task_type`).
 - Number of rows read and the S3 location (`bucket_name`, `file_key`).
-
-## Metadata 🗂️
-
-- **Name**: tabular_data_loader
-- **Stability**: alpha
-- **Dependencies**:
-  - Kubeflow Pipelines >= 2.15.2
-- **Tags**:
-  - data-processing
-  - automl
-- **Last Verified**: 2026-02-23 14:30:00+00:00
 
 ## Additional resources 📚
 

@@ -40,46 +40,19 @@ def models_selection(
     candidates are refitted on the full dataset for optimal performance.
 
     Args:
-        label_column: The name of the target/label column in the training
-            and test datasets. This column will be used as the prediction target.
-        task_type: The type of machine learning task. Supported values
-            include "binary", "multiclass" (classification) or "regression". This
-            determines the evaluation metrics and model types AutoGluon will use.
-        top_n: The number of top-performing models to select from the leaderboard.
-            Only the top N models will be returned and promoted to the refit stage.
-            Must be a positive integer.
-        train_data: A Dataset artifact containing the training data
-            in CSV format. This data is used to train the AutoGluon models.
-            The dataset should include the label_column and all feature columns.
-        test_data: A Dataset artifact containing the test data in
-            CSV format. This data is used to evaluate model performance and
-            generate the leaderboard. The dataset should match the schema of
-            the training data.
-        workspace_path: Path (string) to the workspace directory where the
-            trained TabularPredictor will be saved (under workspace_path /
-            autogluon_predictor). This path is also returned as predictor_path
-            for use by downstream components.
+        label_column: Name of the target/label column in train and test datasets.
+        task_type: ML task type: "binary", "multiclass", or "regression"; drives metrics and model types.
+        top_n: Number of top-performing models to select from the leaderboard (positive integer).
+        train_data: Dataset artifact (CSV) with training data; must include label_column and features.
+        test_data: Dataset artifact (CSV) for evaluation and leaderboard; schema must match train_data.
+        workspace_path: Workspace directory where TabularPredictor is saved (workspace_path/autogluon_predictor).
 
     Returns:
-        A NamedTuple with the following fields:
-            - top_models (List[str]): A list of model names (strings) representing
-              the top N performing models selected from the leaderboard, ranked
-              by performance on the test dataset.
-            - eval_metric (str): The evaluation metric name used by the TabularPredictor
-              to assess model performance. This metric is automatically determined
-              based on the task_type (e.g., "accuracy" for classification,
-              "r2" for regression).
-            - predictor_path (str): The path to the saved TabularPredictor
-              (workspace_path / autogluon_predictor), for use by downstream
-              components such as autogluon_models_full_refit.
-            - model_config (dict): The configuration dictionary for the model.
-              It includes the preset used for the model training, the evaluation metric used, and the time limit for the model training.
+        NamedTuple: top_models, eval_metric, predictor_path, model_config (preset, metric, time_limit).
 
     Raises:
-        FileNotFoundError: If the train_data or test_data
-            paths cannot be found.
-        ValueError: If the label_column is not found in the datasets, the
-            task_type is invalid, top_n is not positive, or model training fails.
+        FileNotFoundError: If train_data or test_data paths cannot be found.
+        ValueError: If label_column missing, task_type invalid, top_n not positive, or training fails.
         KeyError: If required columns are missing from the datasets.
 
     Example:
