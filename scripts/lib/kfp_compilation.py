@@ -37,24 +37,65 @@ def load_module_from_path(module_path: str, module_name: str) -> ModuleType:
     return module
 
 
+def _is_platform_spec(doc: dict[str, Any]) -> bool:
+    """True if doc looks like a KFP platform spec (has top-level 'platforms' dict)."""
+    return isinstance(doc.get("platforms"), dict)
+
+
+def _is_pipeline_spec(doc: dict[str, Any]) -> bool:
+    """True if doc looks like a KFP pipeline/component spec (has deploymentSpec or root)."""
+    return "deploymentSpec" in doc or "root" in doc
+
+
+def _load_compiled_yaml(path: str) -> dict[str, Any]:
+    """Load compiled YAML from path; return single doc or two-doc wrapper.
+
+    Uses safe_load_all and filters to dicts. One doc -> return it; two docs ->
+    classify by content: doc with top-level 'platforms' -> platform_spec, doc with
+    'deploymentSpec' or 'root' -> pipeline_spec. If we cannot classify both
+    unambiguously, raise ValueError (no fallback).
+    """
+    with open(path) as f:
+        docs = [d for d in yaml.safe_load_all(f) if isinstance(d, dict)]
+    if not docs:
+        raise ValueError(
+            f"Compiled YAML at {path} has no dict document. Expected at least one pipeline/component spec."
+        )
+    if len(docs) == 1:
+        return docs[0]
+    # Two docs: identify by content only.
+    pipeline_spec = next((d for d in docs if _is_pipeline_spec(d) and not _is_platform_spec(d)), None)
+    platform_spec = next((d for d in docs if _is_platform_spec(d)), None)
+    if pipeline_spec is not None and platform_spec is not None and pipeline_spec is not platform_spec:
+        return {"pipeline_spec": pipeline_spec, "platform_spec": platform_spec}
+    raise ValueError(
+        f"Compiled YAML at {path} has two documents but could not classify them: "
+        "expected one doc with 'deploymentSpec' or 'root' (pipeline spec) and one with "
+        "'platforms' (platform spec). Refusing to guess."
+    )
+
+
 def compile_and_get_yaml(func: Any, output_path: str) -> dict[str, Any]:
     """Compile a component or pipeline function and return the parsed YAML.
+
+    Uses safe_load_all. Two docs (pipeline + platform spec) are returned separately;
+    key layout differs so callers handle each via get_base_images_from_compile_result.
 
     Args:
         func: The KFP component or pipeline function to compile.
         output_path: Path to write the compiled YAML.
 
     Returns:
-        Parsed YAML dict.
+        Single dict (one doc) or {"pipeline_spec": ..., "platform_spec": ...} (two docs).
 
     Raises:
+        ValueError: If the compiled YAML contains no dict document.
         Exception: If compilation fails.
     """
     compiler_mod = importlib.import_module("kfp.compiler")
     compiler_class = getattr(compiler_mod, "Compiler")
     compiler_class().compile(func, output_path)
-    with open(output_path) as f:
-        return yaml.safe_load(f)
+    return _load_compiled_yaml(output_path)
 
 
 def find_decorated_functions_runtime(module: Any, decorator_type: str) -> list[tuple[str, Any]]:
