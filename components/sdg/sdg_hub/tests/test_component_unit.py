@@ -1,6 +1,5 @@
 """Unit tests for the sdg_hub component."""
 
-import json
 import os
 import tempfile
 from unittest import mock
@@ -17,6 +16,11 @@ class MockArtifact:
     def __init__(self, path: str):
         """Initialize with path."""
         self.path = path
+        self.metadata = {}
+
+    def log_metric(self, metric: str, value: float):
+        """Log a metric value."""
+        self.metadata[metric] = value
 
 
 @pytest.fixture
@@ -506,8 +510,8 @@ class TestPVCExport:
         assert not os.path.exists(export_base), "Export directory should not be created when export is disabled"
 
         files_in_tmp = set(os.listdir(tmp_dir))
-        expected_files = {"output.jsonl", "metrics.json", "input.jsonl"}
-        assert files_in_tmp == expected_files, "Only artifact and metrics files should exist"
+        expected_files = {"output.jsonl", "input.jsonl"}
+        assert files_in_tmp == expected_files, "Only artifact and input files should exist"
 
     @mock.patch("sdg_hub.core.flow.base.Flow.from_yaml")
     @mock.patch("sdg_hub.core.flow.registry.FlowRegistry.get_flow_path_safe")
@@ -573,12 +577,7 @@ class TestOutputHandling:
 
         _call_sdg(output_artifact, output_metrics, input_pvc_path=sample_input_file, flow_id="test-flow")
 
-        with open(output_metrics.path) as f:
-            metrics = json.load(f)
-
-        assert "metrics" in metrics
-        metric_names = {m["name"] for m in metrics["metrics"]}
-        assert metric_names == {"input_rows", "output_rows", "execution_time_seconds"}
+        assert set(output_metrics.metadata.keys()) == {"input_rows", "output_rows", "execution_time_seconds"}
 
     @mock.patch("sdg_hub.core.flow.base.Flow.from_yaml")
     @mock.patch("sdg_hub.core.flow.registry.FlowRegistry.get_flow_path_safe")
@@ -591,9 +590,5 @@ class TestOutputHandling:
 
         _call_sdg(output_artifact, output_metrics, input_pvc_path=sample_input_file, flow_id="test-flow")
 
-        with open(output_metrics.path) as f:
-            metrics = json.load(f)
-
-        by_name = {m["name"]: m["numberValue"] for m in metrics["metrics"]}
-        assert by_name["input_rows"] == 3
-        assert by_name["output_rows"] == 3
+        assert output_metrics.metadata["input_rows"] == 3
+        assert output_metrics.metadata["output_rows"] == 3

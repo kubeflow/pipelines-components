@@ -1,6 +1,5 @@
 """Local runner tests for the sdg_hub component."""
 
-import json
 import os
 import tempfile
 
@@ -22,6 +21,11 @@ class MockArtifact:
     def __init__(self, path: str):
         """Initialize with path."""
         self.path = path
+        self.metadata = {}
+
+    def log_metric(self, metric: str, value: float):
+        """Log a metric value."""
+        self.metadata[metric] = value
 
 
 class TestSdgHubLocalRunner:
@@ -60,11 +64,7 @@ class TestSdgHubLocalRunner:
             assert "domain" in output_df.columns
 
             # Validate metrics
-            assert os.path.exists(output_metrics.path), "Metrics not created"
-            with open(output_metrics.path) as f:
-                metrics_data = json.load(f)
-            metric_names = {m["name"] for m in metrics_data["metrics"]}
-            assert metric_names == {"input_rows", "output_rows", "execution_time_seconds"}
+            assert set(output_metrics.metadata.keys()) == {"input_rows", "output_rows", "execution_time_seconds"}
 
 
 @pytest.mark.skipif(not os.environ.get("LLM_API_KEY"), reason="LLM_API_KEY not set - skipping LLM E2E test")
@@ -123,21 +123,12 @@ class TestSdgHubLLMFlow:
             assert "document" in output_df.columns, "Original 'document' column missing"
             assert "domain" in output_df.columns, "Original 'domain' column missing"
 
-            # Validate metrics artifact exists and has expected keys
-            assert os.path.exists(output_metrics.path), "Metrics artifact file not created"
-            with open(output_metrics.path) as f:
-                metrics_data = json.load(f)
-
-            assert "metrics" in metrics_data, "Metrics data missing 'metrics' key"
-            metric_names = {m["name"] for m in metrics_data["metrics"]}
+            # Validate metrics
             expected_metrics = {"input_rows", "output_rows", "execution_time_seconds"}
-            assert metric_names == expected_metrics, f"Expected metrics {expected_metrics}, got {metric_names}"
-
-            # Validate metric values are reasonable
-            metrics_by_name = {m["name"]: m["numberValue"] for m in metrics_data["metrics"]}
-            assert metrics_by_name["input_rows"] == 3, "Expected 3 input rows from sample_input.jsonl"
-            assert metrics_by_name["output_rows"] == 3, "Expected 3 output rows"
-            assert metrics_by_name["execution_time_seconds"] > 0, "Execution time should be positive"
+            assert set(output_metrics.metadata.keys()) == expected_metrics
+            assert output_metrics.metadata["input_rows"] == 3, "Expected 3 input rows"
+            assert output_metrics.metadata["output_rows"] == 3, "Expected 3 output rows"
+            assert output_metrics.metadata["execution_time_seconds"] > 0, "Execution time should be positive"
 
     def test_llm_flow_with_invalid_model_raises_error(self):
         """Test that using an invalid model identifier raises an appropriate error.

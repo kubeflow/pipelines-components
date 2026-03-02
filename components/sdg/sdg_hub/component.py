@@ -50,7 +50,6 @@ def sdg(
         export_to_pvc: Whether to export output to PVC (in addition to KFP artifact).
         export_path: Base PVC path for exports (required if export_to_pvc is True).
     """
-    import json
     import logging
     import os
     import time
@@ -236,16 +235,10 @@ def sdg(
 
     # Write metrics
     execution_time = time.time() - start_time
-    metrics_data = {
-        "metrics": [
-            {"name": "input_rows", "numberValue": input_rows},
-            {"name": "output_rows", "numberValue": output_rows},
-            {"name": "execution_time_seconds", "numberValue": round(execution_time, 2)},
-        ]
-    }
-    with open(output_metrics.path, "w") as f:
-        json.dump(metrics_data, f)
-    logger.info(f"Metrics written to: {output_metrics.path}")
+    output_metrics.log_metric("input_rows", input_rows)
+    output_metrics.log_metric("output_rows", output_rows)
+    output_metrics.log_metric("execution_time_seconds", round(execution_time, 2))
+    logger.info("Metrics logged")
 
     logger.info("=" * 60)
     logger.info(f"SDG Hub KFP Component completed in {execution_time:.2f}s")
