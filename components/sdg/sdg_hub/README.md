@@ -164,7 +164,6 @@ This runs the LLM test flow against `test_data/sdg_hub/sample_input.jsonl` using
 To run with your own data or flow:
 
 ```python
-import json
 import os
 import tempfile
 
@@ -176,6 +175,10 @@ from components.sdg.sdg_hub.component import sdg
 class Artifact:
     def __init__(self, path):
         self.path = path
+        self.metadata = {}
+
+    def log_metric(self, metric, value):
+        self.metadata[metric] = value
 
 
 with tempfile.TemporaryDirectory() as tmp_dir:
@@ -202,8 +205,7 @@ with tempfile.TemporaryDirectory() as tmp_dir:
     df = pd.read_json(output_artifact.path, lines=True)
     print(df)
 
-    with open(output_metrics.path) as f:
-        print(json.dumps(json.load(f), indent=2))
+    print(output_metrics.metadata)
 ```
 
 To persist output to a local directory instead of a temp folder, set
