@@ -1,8 +1,13 @@
-# yamllint disable rule:line-length
 ---
 # PIPELINE DEFINITION
 # Name: autogluon-tabular-training-pipeline
-# Description: End-to-end AutoGluon tabular training pipeline implementing a two-stage approach: first builds and selects top-performing models on sampled data, then refits them on the full dataset. The pipeline loads data from S3, splits it into train/test sets, trains multiple AutoGluon models using ensembling (stacking and bagging), selects the top N performers, refits each on the complete training data in parallel, and finally evaluates all refitted models to generate a comprehensive leaderboard with performance metrics.
+# Description: End-to-end AutoGluon tabular training pipeline implementing a two-stage
+#   approach: first builds and selects top-performing models on sampled data, then
+#   refits them on the full dataset. The pipeline loads data from S3, splits it into
+#   train/test sets, trains multiple AutoGluon models using ensembling (stacking and
+#   bagging), selects the top N performers, refits each on the complete training data
+#   in parallel, and finally evaluates all refitted models to generate a comprehensive
+#   leaderboard with performance metrics.
 # Inputs:
 #    label_column: str
 #    task_type: str
@@ -286,7 +291,7 @@ deploymentSpec:
 
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
 
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                           --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
           - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
@@ -392,24 +397,21 @@ deploymentSpec:
           \             \"cell_type\": \"markdown\",\n                \"id\": \"0e9aa72f\"\
           ,\n                \"metadata\": {},\n                \"source\": [\n  \
           \                  \"## Notebook content\\n\",\n                    \"\\\
-          n\",\n                    \"This notebook lets you review the experiment\
-          \ leaderboard for insights into trained model evaluation quality, load a\
-          \ chosen AutoGluon model from S3, and run predictions. \\n\",  # noqa: E501\n\
-          \                    \"\\n\",\n                    \"\\n\",\n          \
-          \          \" \\U0001f4a1 **Tips:**\\n\",\n                    \"- Ensure\
-          \ the S3 connection to pipeline run results is configured so the notebook\
-          \ can access run artifacts.\\n\",  # noqa: E501\n                    \"\
-          - The model name must match one of the models listed in the leaderboard\
-          \ (the **model** column).\\n\",\n                    \"\\n\",\n        \
-          \            \"### Contents\\n\",\n                    \"This notebook contains\
-          \ the following parts:\\n\",\n                    \"\\n\",\n           \
-          \         \"**[Setup](#setup)**  \\n\",\n                    \"**[Experiment\
-          \ run details](#experiment-run-details)**  \\n\",\n                    \"\
-          **[Experiment leaderboard](#experiment-leaderboard)**  \\n\",\n        \
-          \            \"**[Download trained model](#download-trained-model)**  \\\
-          n\",\n                    \"**[Model insights](#model-insights)**  \\n\"\
-          ,\n                    \"**[Load the predictor](#load-the-predictor)** \
-          \ \\n\",\n                    \"**[Predict the values](#predict-the-values)**\
+          n\",\n                    \"This notebook lets you load a chosen AutoGluon\
+          \ model from S3, and run predictions. \\n\",  # noqa: E501\n           \
+          \         \"\\n\",\n                    \"\\n\",\n                    \"\
+          \ \\U0001f4a1 **Tips:**\\n\",\n                    \"- Ensure the S3 connection\
+          \ to pipeline run results is configured so the notebook can access run artifacts.\\\
+          n\",  # noqa: E501\n                    \"- The model name must match one\
+          \ of the models listed in the leaderboard (the **model** column).\\n\",\n\
+          \                    \"\\n\",\n                    \"### Contents\\n\",\n\
+          \                    \"This notebook contains the following parts:\\n\"\
+          ,\n                    \"\\n\",\n                    \"**[Setup](#setup)**\
+          \  \\n\",\n                    \"**[Experiment run details](#experiment-run-details)**\
+          \  \\n\",\n                    \"**[Download trained model](#download-trained-model)**\
+          \  \\n\",\n                    \"**[Model insights](#model-insights)** \
+          \ \\n\",\n                    \"**[Load the predictor](#load-the-predictor)**\
+          \  \\n\",\n                    \"**[Predict the values](#predict-the-values)**\
           \  \\n\",\n                    \"**[Summary and next steps](#summary-and-next-steps)**\"\
           ,\n                ],\n            },\n            {\n                \"\
           cell_type\": \"markdown\",\n                \"id\": \"a7d9cf2b-18cc-4ac9-87af-a74f8bf60322\"\
@@ -434,62 +436,40 @@ deploymentSpec:
           ,\n                \"metadata\": {},\n                \"source\": [\n  \
           \                  '<a id=\"experiment-run-details\"></a>\\n',\n       \
           \             \"## Experiment run details\\n\",\n                    \"\\\
-          n\",\n                    \"Set the pipeline name, and run ID that identify\
+          n\",\n                    \"Set the pipeline name and run ID that identify\
           \ the training run whose artifacts you want to load. These values are typically\
           \ available from the pipeline run or workbench.\",  # noqa: E501\n     \
           \           ],\n            },\n            {\n                \"cell_type\"\
           : \"code\",\n                \"execution_count\": None,\n              \
           \  \"id\": \"fa7f736d-0b5c-4988-87a5-4d1a5cde0873\",\n                \"\
           metadata\": {},\n                \"outputs\": [],\n                \"source\"\
-          : ['pipeline_name = \"<PIPELINE_NAME>\"\\n', 'run_id = \"<RUN_ID>\"'],\n\
-          \            },\n            {\n                \"cell_type\": \"markdown\"\
-          ,\n                \"id\": \"00cc5969-0f9b-406d-a6e9-dce42ed64331\",\n \
-          \               \"metadata\": {},\n                \"source\": [\n     \
-          \               '<a id=\"experiment-leaderboard\"></a>\\n',\n          \
-          \          \"## Experiment leaderboard\\n\",\n                    \"\\n\"\
-          ,\n                    \" \\U0001f4cc **Action:** Ensure the S3 connection\
-          \ is added to the workbench so the notebook can access the results.\", \
-          \ # noqa: E501\n                ],\n            },\n            {\n    \
-          \            \"cell_type\": \"code\",\n                \"execution_count\"\
-          : None,\n                \"id\": \"9be1f501-02e4-4107-906b-8f19448768bd\"\
-          ,\n                \"metadata\": {},\n                \"outputs\": [],\n\
-          \                \"source\": [\n                    \"import boto3\\n\"\
-          ,\n                    \"import os\\n\",\n                    \"from IPython.display\
-          \ import HTML\\n\",\n                    \"\\n\",\n                    \"\
-          s3 = boto3.resource('s3', endpoint_url=os.environ['AWS_S3_ENDPOINT'])\\\
+          : [\n                    'pipeline_name = \"<PIPELINE_NAME>\"\\n',\n   \
+          \                 'run_id = \"<RUN_ID>\"\\n',\n                    'model_name\
+          \ = \"<MODEL_NAME>\"',\n                ],\n            },\n           \
+          \ {\n                \"cell_type\": \"markdown\",\n                \"id\"\
+          : \"54525a94-7799-41cc-822e-91bae88b3b78\",\n                \"metadata\"\
+          : {},\n                \"source\": [\n                    '<a id=\"download-trained-model\"\
+          ></a>\\n',\n                    \"## Download trained model\\n\",\n    \
+          \                \"\\n\",\n                    \" \\U0001f4cc **Action:**\
+          \ Ensure the S3 connection is added to the workbench so the notebook can\
+          \ access the results.\",  # noqa: E501\n                ],\n           \
+          \ },\n            {\n                \"cell_type\": \"markdown\",\n    \
+          \            \"id\": \"fba16ca7-b15f-4d7a-95b4-d3cf73163440\",\n       \
+          \         \"metadata\": {},\n                \"source\": [\"Download model\
+          \ binaries and metrics.\"],\n            },\n            {\n           \
+          \     \"cell_type\": \"code\",\n                \"execution_count\": None,\n\
+          \                \"id\": \"e88370df-ecda-453d-913a-9524088ccc36\",\n   \
+          \             \"metadata\": {},\n                \"outputs\": [],\n    \
+          \            \"source\": [\n                    \"import boto3\\n\",\n \
+          \                   \"import os\\n\",\n                    \"\\n\",\n  \
+          \                  \"s3 = boto3.resource('s3', endpoint_url=os.environ['AWS_S3_ENDPOINT'])\\\
           n\",\n                    \"bucket = s3.Bucket(os.environ['AWS_S3_BUCKET'])\\\
-          n\",\n                    \"leaderboard_prefix = os.path.join(pipeline_name,\
-          \ run_id, 'leaderboard-evaluation')\\n\",\n                    \"leaderboard_artifact_name\
-          \ = 'html_artifact'\\n\",\n                    \"\\n\",\n              \
-          \      \"for obj in bucket.objects.filter(Prefix=leaderboard_prefix):\\\
-          n\",\n                    \"    if leaderboard_artifact_name in obj.key:\\\
-          n\",\n                    \"        bucket.download_file(obj.key, leaderboard_artifact_name)\\\
-          n\",\n                    \"\\n\",\n                    \"HTML(leaderboard_artifact_name)\"\
-          ,\n                ],\n            },\n            {\n                \"\
-          cell_type\": \"markdown\",\n                \"id\": \"54525a94-7799-41cc-822e-91bae88b3b78\"\
-          ,\n                \"metadata\": {},\n                \"source\": [\n  \
-          \                  '<a id=\"download-trained-model\"></a>\\n',\n       \
-          \             \"## Download trained model\\n\",\n                    \"\\\
-          n\",\n                    \" \\U0001f4a1 **Tip:** IF you want to download\
-          \ different model than the best one set `model_name` accordingly (must match\
-          \ a name from the leaderboard **model** column).\",  # noqa: E501\n    \
-          \            ],\n            },\n            {\n                \"cell_type\"\
-          : \"code\",\n                \"execution_count\": None,\n              \
-          \  \"id\": \"55ce6aee-8c0c-445e-8b1b-62585ac7ddd6\",\n                \"\
-          metadata\": {},\n                \"outputs\": [],\n                \"source\"\
-          : ['model_name = \"<MODEL_NAME>\"'],\n            },\n            {\n  \
-          \              \"cell_type\": \"markdown\",\n                \"id\": \"\
-          fba16ca7-b15f-4d7a-95b4-d3cf73163440\",\n                \"metadata\": {},\n\
-          \                \"source\": [\"Download model binaries and metrics.\"],\n\
-          \            },\n            {\n                \"cell_type\": \"code\"\
-          ,\n                \"execution_count\": None,\n                \"id\": \"\
-          e88370df-ecda-453d-913a-9524088ccc36\",\n                \"metadata\": {},\n\
-          \                \"outputs\": [],\n                \"source\": [\n     \
-          \               'full_refit_prefix = os.path.join(pipeline_name, run_id,\
-          \ \"autogluon-models-full-refit\")\\n',\n                    'best_model_subpath\
-          \ = os.path.join(\"model_artifact\", model_name)\\n',\n                \
-          \    \"best_model_path = None\\n\",\n                    \"local_dir = None\\\
-          n\",\n                    \"\\n\",\n                    \"for obj in bucket.objects.filter(Prefix=full_refit_prefix):\\\
+          n\",\n                    \"\\n\",\n                    'full_refit_prefix\
+          \ = os.path.join(pipeline_name, run_id, \"autogluon-models-full-refit\"\
+          )\\n',\n                    'best_model_subpath = os.path.join(\"model_artifact\"\
+          , model_name)\\n',\n                    \"best_model_path = None\\n\",\n\
+          \                    \"local_dir = None\\n\",\n                    \"\\\
+          n\",\n                    \"for obj in bucket.objects.filter(Prefix=full_refit_prefix):\\\
           n\",\n                    \"    if best_model_subpath in obj.key:\\n\",\n\
           \                    \"        target = obj.key if local_dir is None else\
           \ os.path.join(local_dir, os.path.relpath(obj.key, s3_folder))\\n\",  #\
@@ -564,51 +544,47 @@ deploymentSpec:
           \             '<a id=\"summary-and-next-steps\"></a>\\n',\n            \
           \        \"## Summary and next steps\\n\",\n                    \"\\n\"\
           ,\n                    \"**Summary:** This notebook loaded a trained AutoGluon\
-          \ model from S3, displayed the experiment leaderboard, and ran predictions\
-          \ on sample data using `predict_proba`.\\n\",  # noqa: E501\n          \
-          \          \"\\n\",\n                    \"**Next steps:**\\n\",\n     \
-          \               \"- Run predictions on your own data (ensure columns match\
-          \ the training schema).\\n\",\n                    \"- Try another model\
-          \ from the leaderboard by changing `model_name` and re-running the download\
-          \ and load cells.\\n\",  # noqa: E501\n                    \"- Optionally\
-          \ create the Predictor online deployment using Kserve custom runtime.\"\
-          ,\n                ],\n            },\n            {\"cell_type\": \"markdown\"\
-          , \"id\": \"44a650c8-e5cc-4a2e-bebd-becd73944489\", \"metadata\": {}, \"\
-          source\": [\"---\"]},\n        ],\n        \"metadata\": {\n           \
-          \ \"kernelspec\": {\"display_name\": \"Python 3.12\", \"language\": \"python\"\
-          , \"name\": \"python3\"},\n            \"language_info\": {\n          \
-          \      \"codemirror_mode\": {\"name\": \"ipython\", \"version\": 3},\n \
-          \               \"file_extension\": \".py\",\n                \"mimetype\"\
-          : \"text/x-python\",\n                \"name\": \"python\",\n          \
-          \      \"nbconvert_exporter\": \"python\",\n                \"pygments_lexer\"\
-          : \"ipython3\",\n                \"version\": \"3.12.9\",\n            },\n\
-          \        },\n        \"nbformat\": 4,\n        \"nbformat_minor\": 5,\n\
-          \    }\n\n    CLASSIFICATION = {\n        \"cells\": [\n            {\n\
-          \                \"cell_type\": \"markdown\",\n                \"id\": \"\
-          a12d957a-c313-4e92-9578-44f6a48560d5\",\n                \"metadata\": {},\n\
-          \                \"source\": [\n                    \"![AutoML Banner](data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHg9IjBweCIgeT0iMHB4IgoJIHZpZXdCb3g9IjAgMCAxNzk2IDEwMCIgc3R5bGU9ImVuYWJsZS1iYWNrZ3JvdW5kOm5ldyAwIDAgMTc5NiAxMDA7IiB4bWw6c3BhY2U9InByZXNlcnZlIj4KPHN0eWxlIHR5cGU9InRleHQvY3NzIj4KCS5zdDB7ZmlsbC1ydWxlOmV2ZW5vZGQ7Y2xpcC1ydWxlOmV2ZW5vZGQ7ZmlsbDp1cmwoI1NWR0lEXzFfKTt9Cgkuc3Qxe2ZpbGw6bm9uZTtzdHJva2U6I0ZGRkZGRjtzdHJva2Utd2lkdGg6MjtzdHJva2UtbWl0ZXJsaW1pdDoxMDt9Cgkuc3Qye2ZpbGw6bm9uZTtzdHJva2U6I0ZGRkZGRjtzdHJva2Utd2lkdGg6MS41O3N0cm9rZS1taXRlcmxpbWl0OjEwO30KCS5zdDN7ZmlsbDojRkZGRkZGO30KCS5zdDR7Zm9udC1mYW1pbHk6J0hlbHZldGljYSBOZXVlJywgQXJpYWwsIHNhbnMtc2VyaWY7fQoJLnN0NXtmb250LXNpemU6MzJweDt9Cgkuc3Q2e2ZpbGw6IzNEM0QzRDt9Cgkuc3Q3e2ZpbGw6IzkzOTU5ODt9Cgkuc3Q4e29wYWNpdHk6MC4yO2ZpbGw6dXJsKCNTVkdJRF8yXyk7ZW5hYmxlLWJhY2tncm91bmQ6bmV3O30KCS5zdDl7Zm9udC13ZWlnaHQ6NTAwO30KPC9zdHlsZT4KPHJlY3Qgd2lkdGg9IjE3OTYiIGhlaWdodD0iMTAwIiBmaWxsPSIjMTYxNjE2Ii8+CjxsaW5lYXJHcmFkaWVudCBpZD0iU1ZHSURfMV8iIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIiB4MT0iNDIuODYiIHkxPSI1MCIgeDI9Ijc5LjcxIiB5Mj0iNTAiPgoJPHN0b3Agb2Zmc2V0PSIwIiBzdHlsZT0ic3RvcC1jb2xvcjojRkY2QjZCIi8+Cgk8c3RvcCBvZmZzZXQ9IjAuMjEiIHN0eWxlPSJzdG9wLWNvbG9yOiNFRTAwMDAiLz4KCTxzdG9wIG9mZnNldD0iMC43NSIgc3R5bGU9InN0b3AtY29sb3I6I0NDMDAwMCIvPgoJPHN0b3Agb2Zmc2V0PSIxIiBzdHlsZT0ic3RvcC1jb2xvcjojQUEwMDAwIi8+CjwvbGluZWFyR3JhZGllbnQ+CjwhLS0gQXV0b01MIEljb24vTG9nbyBwbGFjZWhvbGRlciAtIHNpbXBsaWZpZWQgZ2VvbWV0cmljIHNoYXBlIC0tPgo8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNTIuNCw0NS45YzAtMi4zLDEuOC00LjEsNC4xLTQuMXM0LjEsMS44LDQuMSw0LjFTNTguOCw1MCw1Ni41LDUwbDAsMGMtMi4yLDAuMS00LTEuNy00LjEtMy45CglDNTIuNCw0Niw1Mi40LDQ2LDUyLjQsNDUuOXogTTc3LjUsNTIuNWMtMC44LTEuMS0xLjQtMi4zLTEuOS0zLjVjMS4yLTQuNSwwLjctOC42LTEuOC0xMS45Yy0yLjktMy44LTguMi02LTE0LjUtNi4xCgljLTQuNS0wLjEtOC44LDEuNy0xMiw0LjhjLTMsMy00LjYsNy4yLTQuNSwxMS41Yy0wLjEsMi45LDAuOSw1LjgsMi43LDguMWMwLjgsMC44LDEuMywxLjksMS40LDN2NC41Yy0wLjgsMC41LTEuNCwxLjMtMS40LDIuMwoJYzAuMiwxLjUsMS41LDIuNiwzLDIuNGMxLjItMC4yLDIuMi0xLjEsMi40LTIuNGMwLTEtMC41LTEuOS0xLjQtMi4zdi00LjVjMC0yLTEtMy4zLTEuOS00LjZjLTEuNS0xLjktMi4yLTQuMi0yLjEtNi41CgljMC0zLjUsMS40LTYuOSwzLjgtOS40YzIuNy0yLjcsNi4zLTQuMSwxMC00LjFjNS41LDAsOS44LDEuOSwxMi4xLDVjMiwyLjgsMi41LDYuMywxLjQsOS42Yy0wLjQsMS4yLDAuNiwyLjcsMi4zLDUuNgoJYzAuNiwwLjksMS4yLDEuOSwxLjYsMi45Yy0wLjksMC43LTIsMS4yLTMuMSwxLjVjLTAuNSwwLjQtMC43LDAuOS0wLjgsMS41VjY1YzAsMC40LTAuMSwwLjgtMC40LDEuMWMtMC4zLDAuMi0wLjcsMC4zLTEuMSwwLjMKCWMtMS42LTAuMy0zLjQtMC43LTUuMi0xLjF2LTQuOGMwLjgtMC41LDEuNC0xLjQsMS40LTIuM2MwLTEuNS0xLjItMi43LTIuNy0yLjdzLTIuNywxLjItMi43LDIuN2MwLDEsMC41LDEuOSwxLjQsMi4zdjQuMQoJYy0wLjQtMC4xLTAuNy0wLjEtMS4xLTAuM2MtNC41LTEuMS00LjUtMi42LTQuNS0zLjR2LTguM2MzLjItMC43LDUuNC0zLjUsNS41LTYuN2MtMC4xLTMuOC0zLjMtNi43LTcuMS02LjZjLTMuNiwwLjEtNi40LDMtNi42LDYuNgoJYzAsMy4yLDIuMyw2LDUuNSw2Ljd2OC4zYzAsMiwwLjcsNC42LDYuNiw2LjFjMywwLjgsNiwxLjUsOS4xLDEuOWMwLjMsMCwwLjYsMC4xLDAuOCwwLjFjMSwwLDEuOS0wLjMsMi42LTEKCWMwLjktMC44LDEuNC0xLjksMS40LTMuMXYtNC41YzItMC44LDQuMS0yLDQuMS0zLjdDNzkuNyw1NS45LDc5LDU0LjYsNzcuNSw1Mi41eiIvPgo8Y2lyY2xlIGNsYXNzPSJzdDEiIGN4PSI1Ni41IiBjeT0iNDUuOSIgcj0iNS40Ii8+CjxjaXJjbGUgY2xhc3M9InN0MiIgY3g9IjQ4LjMiIGN5PSI2NSIgcj0iMS42Ii8+CjxjaXJjbGUgY2xhc3M9InN0MiIgY3g9IjY0LjgiIGN5PSI1OC4yIiByPSIxLjYiLz4KPHRleHQgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgMSAxMDEuMDIgNTkuMzMpIiBjbGFzcz0ic3QzIHN0NCBzdDUiPkF1dG9NTDwvdGV4dD4KPHJlY3QgeD0iMjMxLjEiIHk9IjM0IiBjbGFzcz0ic3Q2IiB3aWR0aD0iMSIgaGVpZ2h0PSIzMiIvPgo8dGV4dCB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAxIDI1Ni4yOSA1OS42NikiIGNsYXNzPSJzdDcgc3Q0IHN0NSI+UGFydCBvZiBSZWQgSGF0IE9wZW5TaGlmdCBBSTwvdGV4dD4KPGxpbmVhckdyYWRpZW50IGlkPSJTVkdJRF8yXyIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiIHgxPSI3NzMuOCIgeTE9IjUwIiB4Mj0iMTc5NiIgeTI9IjUwIj4KCTxzdG9wIG9mZnNldD0iMCIgc3R5bGU9InN0b3AtY29sb3I6IzE2MTYxNiIvPgoJPHN0b3Agb2Zmc2V0PSIwLjUyIiBzdHlsZT0ic3RvcC1jb2xvcjojRkY2QjZCIi8+Cgk8c3RvcCBvZmZzZXQ9IjAuNjIiIHN0eWxlPSJzdG9wLWNvbG9yOiNFRTAwMDAiLz4KCTxzdG9wIG9mZnNldD0iMC44OCIgc3R5bGU9InN0b3AtY29sb3I6I0NDMDAwMCIvPgoJPHN0b3Agb2Zmc2V0PSIxIiBzdHlsZT0ic3RvcC1jb2xvcjojQUEwMDAwIi8+CjwvbGluZWFyR3JhZGllbnQ+CjxyZWN0IHg9Ijc3My44IiBjbGFzcz0ic3Q4IiB3aWR0aD0iMTAyMi4yIiBoZWlnaHQ9IjEwMCIvPgo8dGV4dCB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAxIDE0NDguMTY0MSA1OS40NikiIGNsYXNzPSJzdDMgc3Q0IHN0NSBzdDkiPlByZWRpY3RvciBOb3RlYm9vazwvdGV4dD4KPC9zdmc+Cg==)\"\
+          \ model from S3 and ran predictions on sample data using `predict_proba`.\\\
+          n\",  # noqa: E501\n                    \"\\n\",\n                    \"\
+          **Next steps:**\\n\",\n                    \"- Run predictions on your own\
+          \ data (ensure columns match the training schema).\\n\",\n             \
+          \       \"- Try another model from the leaderboard by changing `model_name`\
+          \ and re-running the download and load cells.\\n\",  # noqa: E501\n    \
+          \                \"- Optionally create the Predictor online deployment using\
+          \ Kserve custom runtime.\",\n                ],\n            },\n      \
+          \      {\"cell_type\": \"markdown\", \"id\": \"44a650c8-e5cc-4a2e-bebd-becd73944489\"\
+          , \"metadata\": {}, \"source\": [\"---\"]},\n        ],\n        \"metadata\"\
+          : {\n            \"kernelspec\": {\"display_name\": \"Python 3.12\", \"\
+          language\": \"python\", \"name\": \"python3\"},\n            \"language_info\"\
+          : {\n                \"codemirror_mode\": {\"name\": \"ipython\", \"version\"\
+          : 3},\n                \"file_extension\": \".py\",\n                \"\
+          mimetype\": \"text/x-python\",\n                \"name\": \"python\",\n\
+          \                \"nbconvert_exporter\": \"python\",\n                \"\
+          pygments_lexer\": \"ipython3\",\n                \"version\": \"3.12.9\"\
+          ,\n            },\n        },\n        \"nbformat\": 4,\n        \"nbformat_minor\"\
+          : 5,\n    }\n\n    CLASSIFICATION = {\n        \"cells\": [\n          \
+          \  {\n                \"cell_type\": \"markdown\",\n                \"id\"\
+          : \"a12d957a-c313-4e92-9578-44f6a48560d5\",\n                \"metadata\"\
+          : {},\n                \"source\": [\n                    \"![AutoML Banner](data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHg9IjBweCIgeT0iMHB4IgoJIHZpZXdCb3g9IjAgMCAxNzk2IDEwMCIgc3R5bGU9ImVuYWJsZS1iYWNrZ3JvdW5kOm5ldyAwIDAgMTc5NiAxMDA7IiB4bWw6c3BhY2U9InByZXNlcnZlIj4KPHN0eWxlIHR5cGU9InRleHQvY3NzIj4KCS5zdDB7ZmlsbC1ydWxlOmV2ZW5vZGQ7Y2xpcC1ydWxlOmV2ZW5vZGQ7ZmlsbDp1cmwoI1NWR0lEXzFfKTt9Cgkuc3Qxe2ZpbGw6bm9uZTtzdHJva2U6I0ZGRkZGRjtzdHJva2Utd2lkdGg6MjtzdHJva2UtbWl0ZXJsaW1pdDoxMDt9Cgkuc3Qye2ZpbGw6bm9uZTtzdHJva2U6I0ZGRkZGRjtzdHJva2Utd2lkdGg6MS41O3N0cm9rZS1taXRlcmxpbWl0OjEwO30KCS5zdDN7ZmlsbDojRkZGRkZGO30KCS5zdDR7Zm9udC1mYW1pbHk6J0hlbHZldGljYSBOZXVlJywgQXJpYWwsIHNhbnMtc2VyaWY7fQoJLnN0NXtmb250LXNpemU6MzJweDt9Cgkuc3Q2e2ZpbGw6IzNEM0QzRDt9Cgkuc3Q3e2ZpbGw6IzkzOTU5ODt9Cgkuc3Q4e29wYWNpdHk6MC4yO2ZpbGw6dXJsKCNTVkdJRF8yXyk7ZW5hYmxlLWJhY2tncm91bmQ6bmV3O30KCS5zdDl7Zm9udC13ZWlnaHQ6NTAwO30KPC9zdHlsZT4KPHJlY3Qgd2lkdGg9IjE3OTYiIGhlaWdodD0iMTAwIiBmaWxsPSIjMTYxNjE2Ii8+CjxsaW5lYXJHcmFkaWVudCBpZD0iU1ZHSURfMV8iIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIiB4MT0iNDIuODYiIHkxPSI1MCIgeDI9Ijc5LjcxIiB5Mj0iNTAiPgoJPHN0b3Agb2Zmc2V0PSIwIiBzdHlsZT0ic3RvcC1jb2xvcjojRkY2QjZCIi8+Cgk8c3RvcCBvZmZzZXQ9IjAuMjEiIHN0eWxlPSJzdG9wLWNvbG9yOiNFRTAwMDAiLz4KCTxzdG9wIG9mZnNldD0iMC43NSIgc3R5bGU9InN0b3AtY29sb3I6I0NDMDAwMCIvPgoJPHN0b3Agb2Zmc2V0PSIxIiBzdHlsZT0ic3RvcC1jb2xvcjojQUEwMDAwIi8+CjwvbGluZWFyR3JhZGllbnQ+CjwhLS0gQXV0b01MIEljb24vTG9nbyBwbGFjZWhvbGRlciAtIHNpbXBsaWZpZWQgZ2VvbWV0cmljIHNoYXBlIC0tPgo8cGF0aCBjbGFzcz0ic3QwIiBkPSJNNTIuNCw0NS45YzAtMi4zLDEuOC00LjEsNC4xLTQuMXM0LjEsMS44LDQuMSw0LjFTNTguOCw1MCw1Ni41LDUwbDAsMGMtMi4yLDAuMS00LTEuNy00LjEtMy45CglDNTIuNCw0Niw1Mi40LDQ2LDUyLjQsNDUuOXogTTc3LjUsNTIuNWMtMC44LTEuMS0xLjQtMi4zLTEuOS0zLjVjMS4yLTQuNSwwLjctOC42LTEuOC0xMS45Yy0yLjktMy44LTguMi02LTE0LjUtNi4xCgljLTQuNS0wLjEtOC44LDEuNy0xMiw0LjhjLTMsMy00LjYsNy4yLTQuNSwxMS41Yy0wLjEsMi45LDAuOSw1LjgsMi43LDguMWMwLjgsMC44LDEuMywxLjksMS40LDN2NC41Yy0wLjgsMC41LTEuNCwxLjMtMS40LDIuMwoJYzAuMiwxLjUsMS41LDIuNiwzLDIuNGMxLjItMC4yLDIuMi0xLjEsMi40LTIuNGMwLTEtMC41LTEuOS0xLjQtMi4zdi00LjVjMC0yLTEtMy4zLTEuOS00LjZjLTEuNS0xLjktMi4yLTQuMi0yLjEtNi41CgljMC0zLjUsMS40LTYuOSwzLjgtOS40YzIuNy0yLjcsNi4zLTQuMSwxMC00LjFjNS41LDAsOS44LDEuOSwxMi4xLDVjMiwyLjgsMi41LDYuMywxLjQsOS42Yy0wLjQsMS4yLDAuNiwyLjcsMi4zLDUuNgoJYzAuNiwwLjksMS4yLDEuOSwxLjYsMi45Yy0wLjksMC43LTIsMS4yLTMuMSwxLjVjLTAuNSwwLjQtMC43LDAuOS0wLjgsMS41VjY1YzAsMC40LTAuMSwwLjgtMC40LDEuMWMtMC4zLDAuMi0wLjcsMC4zLTEuMSwwLjMKCWMtMS42LTAuMy0zLjQtMC43LTUuMi0xLjF2LTQuOGMwLjgtMC41LDEuNC0xLjQsMS40LTIuM2MwLTEuNS0xLjItMi43LTIuNy0yLjdzLTIuNywxLjItMi43LDIuN2MwLDEsMC41LDEuOSwxLjQsMi4zdjQuMQoJYy0wLjQtMC4xLTAuNy0wLjEtMS4xLTAuM2MtNC41LTEuMS00LjUtMi42LTQuNS0zLjR2LTguM2MzLjItMC43LDUuNC0zLjUsNS41LTYuN2MtMC4xLTMuOC0zLjMtNi43LTcuMS02LjZjLTMuNiwwLjEtNi40LDMtNi42LDYuNgoJYzAsMy4yLDIuMyw2LDUuNSw2Ljd2OC4zYzAsMiwwLjcsNC42LDYuNiw2LjFjMywwLjgsNiwxLjUsOS4xLDEuOWMwLjMsMCwwLjYsMC4xLDAuOCwwLjFjMSwwLDEuOS0wLjMsMi42LTEKCWMwLjktMC44LDEuNC0xLjksMS40LTMuMXYtNC41YzItMC44LDQuMS0yLDQuMS0zLjdDNzkuNyw1NS45LDc5LDU0LjYsNzcuNSw1Mi41eiIvPgo8Y2lyY2xlIGNsYXNzPSJzdDEiIGN4PSI1Ni41IiBjeT0iNDUuOSIgcj0iNS40Ii8+CjxjaXJjbGUgY2xhc3M9InN0MiIgY3g9IjQ4LjMiIGN5PSI2NSIgcj0iMS42Ii8+CjxjaXJjbGUgY2xhc3M9InN0MiIgY3g9IjY0LjgiIGN5PSI1OC4yIiByPSIxLjYiLz4KPHRleHQgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgMSAxMDEuMDIgNTkuMzMpIiBjbGFzcz0ic3QzIHN0NCBzdDUiPkF1dG9NTDwvdGV4dD4KPHJlY3QgeD0iMjMxLjEiIHk9IjM0IiBjbGFzcz0ic3Q2IiB3aWR0aD0iMSIgaGVpZ2h0PSIzMiIvPgo8dGV4dCB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAxIDI1Ni4yOSA1OS42NikiIGNsYXNzPSJzdDcgc3Q0IHN0NSI+UGFydCBvZiBSZWQgSGF0IE9wZW5TaGlmdCBBSTwvdGV4dD4KPGxpbmVhckdyYWRpZW50IGlkPSJTVkdJRF8yXyIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiIHgxPSI3NzMuOCIgeTE9IjUwIiB4Mj0iMTc5NiIgeTI9IjUwIj4KCTxzdG9wIG9mZnNldD0iMCIgc3R5bGU9InN0b3AtY29sb3I6IzE2MTYxNiIvPgoJPHN0b3Agb2Zmc2V0PSIwLjUyIiBzdHlsZT0ic3RvcC1jb2xvcjojRkY2QjZCIi8+Cgk8c3RvcCBvZmZzZXQ9IjAuNjIiIHN0eWxlPSJzdG9wLWNvbG9yOiNFRTAwMDAiLz4KCTxzdG9wIG9mZnNldD0iMC44OCIgc3R5bGU9InN0b3AtY29sb3I6I0NDMDAwMCIvPgoJPHN0b3Agb2Zmc2V0PSIxIiBzdHlsZT0ic3RvcC1jb2xvcjojQUEwMDAwIi8+CjwvbGluZWFyR3JhZGllbnQ+CjxyZWN0IHg9Ijc3My44IiBjbGFzcz0ic3Q4IiB3aWR0aD0iMTAyMi4yIiBoZWlnaHQ9IjEwMCIvPgo8dGV4dCB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAxIDE0NDguMTY0MSA1OS40NikiIGNsYXNzPSJzdDMgc3Q0IHN0NSBzdDkiPlByZWRpY3RvciBOb3RlYm9vazwvdGV4dD4KPC9zdmc+Cg==)\"\
           \  # noqa: E501\n                ],\n            },\n            {\n   \
           \             \"cell_type\": \"markdown\",\n                \"id\": \"0e9aa72f\"\
           ,\n                \"metadata\": {},\n                \"source\": [\n  \
           \                  \"## Notebook content\\n\",\n                    \"\\\
-          n\",\n                    \"This notebook lets you review the experiment\
-          \ leaderboard for insights into trained model evaluation quality, load a\
-          \ chosen AutoGluon model from S3, and run predictions. \\n\",  # noqa: E501\n\
-          \                    \"\\n\",\n                    \"\\n\",\n          \
-          \          \" \\U0001f4a1 **Tips:**\\n\",\n                    \"- Ensure\
-          \ the S3 connection to pipeline run results is configured so the notebook\
-          \ can access run artifacts.\\n\",  # noqa: E501\n                    \"\
-          - The model name must match one of the models listed in the leaderboard\
-          \ (the **model** column).\\n\",\n                    \"\\n\",\n        \
-          \            \"### Contents\\n\",\n                    \"This notebook contains\
-          \ the following parts:\\n\",\n                    \"\\n\",\n           \
-          \         \"**[Setup](#setup)**  \\n\",\n                    \"**[Experiment\
-          \ run details](#experiment-run-details)**  \\n\",\n                    \"\
-          **[Experiment leaderboard](#experiment-leaderboard)**  \\n\",\n        \
-          \            \"**[Download trained model](#download-trained-model)**  \\\
-          n\",\n                    \"**[Model insights](#model-insights)**  \\n\"\
-          ,\n                    \"**[Load the predictor](#load-the-predictor)** \
-          \ \\n\",\n                    \"**[Predict the values](#predict-the-values)**\
+          n\",\n                    \"This notebook lets you load a chosen AutoGluon\
+          \ model from S3, and run predictions. \\n\",  # noqa: E501\n           \
+          \         \"\\n\",\n                    \"\\n\",\n                    \"\
+          \ \\U0001f4a1 **Tips:**\\n\",\n                    \"- Ensure the S3 connection\
+          \ to pipeline run results is configured so the notebook can access run artifacts.\\\
+          n\",  # noqa: E501\n                    \"- The model name must match one\
+          \ of the models listed in the leaderboard (the **model** column).\\n\",\n\
+          \                    \"\\n\",\n                    \"### Contents\\n\",\n\
+          \                    \"This notebook contains the following parts:\\n\"\
+          ,\n                    \"\\n\",\n                    \"**[Setup](#setup)**\
+          \  \\n\",\n                    \"**[Experiment run details](#experiment-run-details)**\
+          \  \\n\",\n                    \"**[Download trained model](#download-trained-model)**\
+          \  \\n\",\n                    \"**[Model insights](#model-insights)** \
+          \ \\n\",\n                    \"**[Load the predictor](#load-the-predictor)**\
+          \  \\n\",\n                    \"**[Predict the values](#predict-the-values)**\
           \  \\n\",\n                    \"**[Summary and next steps](#summary-and-next-steps)**\"\
           ,\n                ],\n            },\n            {\n                \"\
           cell_type\": \"markdown\",\n                \"id\": \"a7d9cf2b-18cc-4ac9-87af-a74f8bf60322\"\
@@ -633,62 +609,40 @@ deploymentSpec:
           ,\n                \"metadata\": {},\n                \"source\": [\n  \
           \                  '<a id=\"experiment-run-details\"></a>\\n',\n       \
           \             \"## Experiment run details\\n\",\n                    \"\\\
-          n\",\n                    \"Set the pipeline name, run name, and run ID\
-          \ that identify the training run whose artifacts you want to load. These\
-          \ values are typically available from the pipeline run or workbench.\",\
-          \  # noqa: E501\n                ],\n            },\n            {\n   \
-          \             \"cell_type\": \"code\",\n                \"execution_count\"\
-          : None,\n                \"id\": \"fa7f736d-0b5c-4988-87a5-4d1a5cde0873\"\
-          ,\n                \"metadata\": {},\n                \"outputs\": [],\n\
-          \                \"source\": ['pipeline_name = \"<PIPELINE_NAME>\"\\n',\
-          \ 'run_id = \"<RUN_ID>\"'],\n            },\n            {\n           \
-          \     \"cell_type\": \"markdown\",\n                \"id\": \"00cc5969-0f9b-406d-a6e9-dce42ed64331\"\
-          ,\n                \"metadata\": {},\n                \"source\": [\n  \
-          \                  '<a id=\"experiment-leaderboard\"></a>\\n',\n       \
-          \             \"## Experiment leaderboard\\n\",\n                    \"\\\
-          n\",\n                    \" \\U0001f4cc **Action:** Ensure the S3 connection\
-          \ is added to the workbench so the notebook can access the results.\", \
-          \ # noqa: E501\n                ],\n            },\n            {\n    \
-          \            \"cell_type\": \"code\",\n                \"execution_count\"\
-          : None,\n                \"id\": \"9be1f501-02e4-4107-906b-8f19448768bd\"\
-          ,\n                \"metadata\": {},\n                \"outputs\": [],\n\
-          \                \"source\": [\n                    \"import boto3\\n\"\
-          ,\n                    \"import os\\n\",\n                    \"from IPython.display\
-          \ import HTML\\n\",\n                    \"\\n\",\n                    \"\
-          s3 = boto3.resource('s3', endpoint_url=os.environ['AWS_S3_ENDPOINT'])\\\
-          n\",\n                    \"bucket = s3.Bucket(os.environ['AWS_S3_BUCKET'])\\\
-          n\",\n                    \"leaderboard_prefix = os.path.join(pipeline_name,\
-          \ run_id, 'leaderboard-evaluation')\\n\",\n                    \"leaderboard_artifact_name\
-          \ = 'html_artifact'\\n\",\n                    \"\\n\",\n              \
-          \      \"for obj in bucket.objects.filter(Prefix=leaderboard_prefix):\\\
-          n\",\n                    \"    if leaderboard_artifact_name in obj.key:\\\
-          n\",\n                    \"        bucket.download_file(obj.key, leaderboard_artifact_name)\\\
-          n\",\n                    \"\\n\",\n                    \"HTML(leaderboard_artifact_name)\"\
-          ,\n                ],\n            },\n            {\n                \"\
-          cell_type\": \"markdown\",\n                \"id\": \"54525a94-7799-41cc-822e-91bae88b3b78\"\
-          ,\n                \"metadata\": {},\n                \"source\": [\n  \
-          \                  '<a id=\"download-trained-model\"></a>\\n',\n       \
-          \             \"## Download trained model\\n\",\n                    \"\\\
-          n\",\n                    \" \\U0001f4a1 **Tip:** IF you want to download\
-          \ different model than the best one set `model_name` accordingly (must match\
-          \ a name from the leaderboard **model** column).\",  # noqa: E501\n    \
-          \            ],\n            },\n            {\n                \"cell_type\"\
+          n\",\n                    \"Set the pipeline name and run ID that identify\
+          \ the training run whose artifacts you want to load. These values are typically\
+          \ available from the pipeline run or workbench.\",  # noqa: E501\n     \
+          \           ],\n            },\n            {\n                \"cell_type\"\
           : \"code\",\n                \"execution_count\": None,\n              \
-          \  \"id\": \"55ce6aee-8c0c-445e-8b1b-62585ac7ddd6\",\n                \"\
+          \  \"id\": \"fa7f736d-0b5c-4988-87a5-4d1a5cde0873\",\n                \"\
           metadata\": {},\n                \"outputs\": [],\n                \"source\"\
-          : ['model_name = \"<MODEL_NAME>\"'],\n            },\n            {\n  \
-          \              \"cell_type\": \"markdown\",\n                \"id\": \"\
-          fba16ca7-b15f-4d7a-95b4-d3cf73163440\",\n                \"metadata\": {},\n\
-          \                \"source\": [\"Download model binaries and metrics.\"],\n\
-          \            },\n            {\n                \"cell_type\": \"code\"\
-          ,\n                \"execution_count\": None,\n                \"id\": \"\
-          e88370df-ecda-453d-913a-9524088ccc36\",\n                \"metadata\": {},\n\
-          \                \"outputs\": [],\n                \"source\": [\n     \
-          \               'full_refit_prefix = os.path.join(pipeline_name, run_id,\
-          \ \"autogluon-models-full-refit\")\\n',\n                    'best_model_subpath\
-          \ = os.path.join(\"model_artifact\", model_name)\\n',\n                \
-          \    \"best_model_path = None\\n\",\n                    \"local_dir = None\\\
-          n\",\n                    \"\\n\",\n                    \"for obj in bucket.objects.filter(Prefix=full_refit_prefix):\\\
+          : [\n                    'pipeline_name = \"<PIPELINE_NAME>\"\\n',\n   \
+          \                 'run_id = \"<RUN_ID>\"\\n',\n                    'model_name\
+          \ = \"<MODEL_NAME>\"',\n                ],\n            },\n           \
+          \ {\n                \"cell_type\": \"markdown\",\n                \"id\"\
+          : \"54525a94-7799-41cc-822e-91bae88b3b78\",\n                \"metadata\"\
+          : {},\n                \"source\": [\n                    '<a id=\"download-trained-model\"\
+          ></a>\\n',\n                    \"## Download trained model\\n\",\n    \
+          \                \"\\n\",\n                    \" \\U0001f4cc **Action:**\
+          \ Ensure the S3 connection is added to the workbench so the notebook can\
+          \ access the results.\",  # noqa: E501\n                ],\n           \
+          \ },\n            {\n                \"cell_type\": \"markdown\",\n    \
+          \            \"id\": \"fba16ca7-b15f-4d7a-95b4-d3cf73163440\",\n       \
+          \         \"metadata\": {},\n                \"source\": [\"Download model\
+          \ binaries and metrics.\"],\n            },\n            {\n           \
+          \     \"cell_type\": \"code\",\n                \"execution_count\": None,\n\
+          \                \"id\": \"e88370df-ecda-453d-913a-9524088ccc36\",\n   \
+          \             \"metadata\": {},\n                \"outputs\": [],\n    \
+          \            \"source\": [\n                    \"import boto3\\n\",\n \
+          \                   \"import os\\n\",\n                    \"\\n\",\n  \
+          \                  \"s3 = boto3.resource('s3', endpoint_url=os.environ['AWS_S3_ENDPOINT'])\\\
+          n\",\n                    \"bucket = s3.Bucket(os.environ['AWS_S3_BUCKET'])\\\
+          n\",\n                    \"\\n\",\n                    'full_refit_prefix\
+          \ = os.path.join(pipeline_name, run_id, \"autogluon-models-full-refit\"\
+          )\\n',\n                    'best_model_subpath = os.path.join(\"model_artifact\"\
+          , model_name)\\n',\n                    \"best_model_path = None\\n\",\n\
+          \                    \"local_dir = None\\n\",\n                    \"\\\
+          n\",\n                    \"for obj in bucket.objects.filter(Prefix=full_refit_prefix):\\\
           n\",\n                    \"    if best_model_subpath in obj.key:\\n\",\n\
           \                    \"        target = obj.key if local_dir is None else\
           \ os.path.join(local_dir, os.path.relpath(obj.key, s3_folder))\\n\",  #\
@@ -768,26 +722,25 @@ deploymentSpec:
           \               '<a id=\"summary-and-next-steps\"></a>\\n',\n          \
           \          \"## Summary and next steps\\n\",\n                    \"\\n\"\
           ,\n                    \"**Summary:** This notebook loaded a trained AutoGluon\
-          \ model from S3, displayed the experiment leaderboard, and ran predictions\
-          \ on sample data using `predict_proba`.\\n\",  # noqa: E501\n          \
-          \          \"\\n\",\n                    \"**Next steps:**\\n\",\n     \
-          \               \"- Run predictions on your own data (ensure columns match\
-          \ the training schema).\\n\",\n                    \"- Try another model\
-          \ from the leaderboard by changing `model_name` and re-running the download\
-          \ and load cells.\\n\",  # noqa: E501\n                    \"- Optionally\
-          \ create the Predictor online deployment using Kserve custom runtime.\"\
-          ,\n                ],\n            },\n            {\"cell_type\": \"markdown\"\
-          , \"id\": \"44a650c8-e5cc-4a2e-bebd-becd73944489\", \"metadata\": {}, \"\
-          source\": [\"---\"]},\n        ],\n        \"metadata\": {\n           \
-          \ \"kernelspec\": {\"display_name\": \"Python 3.12\", \"language\": \"python\"\
-          , \"name\": \"python3\"},\n            \"language_info\": {\n          \
-          \      \"codemirror_mode\": {\"name\": \"ipython\", \"version\": 3},\n \
-          \               \"file_extension\": \".py\",\n                \"mimetype\"\
-          : \"text/x-python\",\n                \"name\": \"python\",\n          \
-          \      \"nbconvert_exporter\": \"python\",\n                \"pygments_lexer\"\
-          : \"ipython3\",\n                \"version\": \"3.12.9\",\n            },\n\
-          \        },\n        \"nbformat\": 4,\n        \"nbformat_minor\": 5,\n\
-          \    }\n\n    problem_type = predictor.problem_type\n    match problem_type:\n\
+          \ model from S3 and ran predictions on sample data using `predict_proba`.\\\
+          n\",  # noqa: E501\n                    \"\\n\",\n                    \"\
+          **Next steps:**\\n\",\n                    \"- Run predictions on your own\
+          \ data (ensure columns match the training schema).\\n\",\n             \
+          \       \"- Try another model from the leaderboard by changing `model_name`\
+          \ and re-running the download and load cells.\\n\",  # noqa: E501\n    \
+          \                \"- Optionally create the Predictor online deployment using\
+          \ Kserve custom runtime.\",\n                ],\n            },\n      \
+          \      {\"cell_type\": \"markdown\", \"id\": \"44a650c8-e5cc-4a2e-bebd-becd73944489\"\
+          , \"metadata\": {}, \"source\": [\"---\"]},\n        ],\n        \"metadata\"\
+          : {\n            \"kernelspec\": {\"display_name\": \"Python 3.12\", \"\
+          language\": \"python\", \"name\": \"python3\"},\n            \"language_info\"\
+          : {\n                \"codemirror_mode\": {\"name\": \"ipython\", \"version\"\
+          : 3},\n                \"file_extension\": \".py\",\n                \"\
+          mimetype\": \"text/x-python\",\n                \"name\": \"python\",\n\
+          \                \"nbconvert_exporter\": \"python\",\n                \"\
+          pygments_lexer\": \"ipython3\",\n                \"version\": \"3.12.9\"\
+          ,\n            },\n        },\n        \"nbformat\": 4,\n        \"nbformat_minor\"\
+          : 5,\n    }\n\n    problem_type = predictor.problem_type\n    match problem_type:\n\
           \        case \"regression\":\n            notebook = REGRESSION\n     \
           \   case \"binary\" | \"multiclass\":\n            notebook = CLASSIFICATION\n\
           \        case _:\n            raise ValueError(f\"Invalid problem type:\
@@ -795,17 +748,17 @@ deploymentSpec:
           \ -> str:\n        pipeline_name_elements = pipeline_name.split(\"-\")\n\
           \        return \"-\".join(pipeline_name_elements[:-1])\n\n    pipeline_name\
           \ = retrieve_pipeline_name(pipeline_name)\n\n    RUN_ID_INDEX = 6\n    PIPELINE_NAME_INDEX\
-          \ = 6\n    MODEL_NAME_INDEX = 10\n    notebook[\"cells\"][RUN_ID_INDEX][\"\
+          \ = 6\n    MODEL_NAME_INDEX = 6\n    notebook[\"cells\"][RUN_ID_INDEX][\"\
           source\"][1] = notebook[\"cells\"][RUN_ID_INDEX][\"source\"][1].replace(\n\
           \        \"<RUN_ID>\", run_id\n    )\n    notebook[\"cells\"][PIPELINE_NAME_INDEX][\"\
           source\"][0] = notebook[\"cells\"][PIPELINE_NAME_INDEX][\"source\"][0].replace(\n\
           \        \"<PIPELINE_NAME>\", pipeline_name\n    )\n    notebook[\"cells\"\
-          ][MODEL_NAME_INDEX][\"source\"][0] = notebook[\"cells\"][MODEL_NAME_INDEX][\"\
-          source\"][0].replace(\n        \"<MODEL_NAME>\", model_name_full\n    )\n\
+          ][MODEL_NAME_INDEX][\"source\"][2] = notebook[\"cells\"][MODEL_NAME_INDEX][\"\
+          source\"][2].replace(\n        \"<MODEL_NAME>\", model_name_full\n    )\n\
           \n    sample_row_list = json.loads(sample_row)\n\n    # remove label column\
           \ from sample row\n    sample_row_formatted = [\n        {col: value for\
           \ col, value in row.items() if col != predictor.label} for row in sample_row_list\n\
-          \    ]\n\n    sample_row_idx = 20 + int((problem_type in {\"binary\", \"\
+          \    ]\n\n    sample_row_idx = 17 + int((problem_type in {\"binary\", \"\
           multiclass\"}))\n    notebook[\"cells\"][sample_row_idx][\"source\"][2]\
           \ = notebook[\"cells\"][sample_row_idx][\"source\"][2].replace(\n      \
           \  \"<SAMPLE_ROW>\", str(sample_row_formatted)\n    )\n    notebook_path\
@@ -838,7 +791,7 @@ deploymentSpec:
 
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
 
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                           --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
           - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
@@ -993,7 +946,7 @@ deploymentSpec:
 
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
 
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                           --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
           - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
@@ -1116,7 +1069,7 @@ deploymentSpec:
 
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
 
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                           --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
           - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
@@ -1205,7 +1158,7 @@ deploymentSpec:
 
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
 
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                           --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
           - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\

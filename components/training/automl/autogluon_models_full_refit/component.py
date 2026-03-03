@@ -187,7 +187,7 @@ def autogluon_models_full_refit(
                 "source": [
                     "## Notebook content\n",
                     "\n",
-                    "This notebook lets you review the experiment leaderboard for insights into trained model evaluation quality, load a chosen AutoGluon model from S3, and run predictions. \n",  # noqa: E501
+                    "This notebook lets you load a chosen AutoGluon model from S3, and run predictions. \n",  # noqa: E501
                     "\n",
                     "\n",
                     " \U0001f4a1 **Tips:**\n",
@@ -199,7 +199,6 @@ def autogluon_models_full_refit(
                     "\n",
                     "**[Setup](#setup)**  \n",
                     "**[Experiment run details](#experiment-run-details)**  \n",
-                    "**[Experiment leaderboard](#experiment-leaderboard)**  \n",
                     "**[Download trained model](#download-trained-model)**  \n",
                     "**[Model insights](#model-insights)**  \n",
                     "**[Load the predictor](#load-the-predictor)**  \n",
@@ -244,7 +243,7 @@ def autogluon_models_full_refit(
                     '<a id="experiment-run-details"></a>\n',
                     "## Experiment run details\n",
                     "\n",
-                    "Set the pipeline name, and run ID that identify the training run whose artifacts you want to load. These values are typically available from the pipeline run or workbench.",  # noqa: E501
+                    "Set the pipeline name and run ID that identify the training run whose artifacts you want to load. These values are typically available from the pipeline run or workbench.",  # noqa: E501
                 ],
             },
             {
@@ -253,40 +252,10 @@ def autogluon_models_full_refit(
                 "id": "fa7f736d-0b5c-4988-87a5-4d1a5cde0873",
                 "metadata": {},
                 "outputs": [],
-                "source": ['pipeline_name = "<PIPELINE_NAME>"\n', 'run_id = "<RUN_ID>"'],
-            },
-            {
-                "cell_type": "markdown",
-                "id": "00cc5969-0f9b-406d-a6e9-dce42ed64331",
-                "metadata": {},
                 "source": [
-                    '<a id="experiment-leaderboard"></a>\n',
-                    "## Experiment leaderboard\n",
-                    "\n",
-                    " \U0001f4cc **Action:** Ensure the S3 connection is added to the workbench so the notebook can access the results.",  # noqa: E501
-                ],
-            },
-            {
-                "cell_type": "code",
-                "execution_count": None,
-                "id": "9be1f501-02e4-4107-906b-8f19448768bd",
-                "metadata": {},
-                "outputs": [],
-                "source": [
-                    "import boto3\n",
-                    "import os\n",
-                    "from IPython.display import HTML\n",
-                    "\n",
-                    "s3 = boto3.resource('s3', endpoint_url=os.environ['AWS_S3_ENDPOINT'])\n",
-                    "bucket = s3.Bucket(os.environ['AWS_S3_BUCKET'])\n",
-                    "leaderboard_prefix = os.path.join(pipeline_name, run_id, 'leaderboard-evaluation')\n",
-                    "leaderboard_artifact_name = 'html_artifact'\n",
-                    "\n",
-                    "for obj in bucket.objects.filter(Prefix=leaderboard_prefix):\n",
-                    "    if leaderboard_artifact_name in obj.key:\n",
-                    "        bucket.download_file(obj.key, leaderboard_artifact_name)\n",
-                    "\n",
-                    "HTML(leaderboard_artifact_name)",
+                    'pipeline_name = "<PIPELINE_NAME>"\n',
+                    'run_id = "<RUN_ID>"\n',
+                    'model_name = "<MODEL_NAME>"',
                 ],
             },
             {
@@ -297,16 +266,8 @@ def autogluon_models_full_refit(
                     '<a id="download-trained-model"></a>\n',
                     "## Download trained model\n",
                     "\n",
-                    " \U0001f4a1 **Tip:** IF you want to download different model than the best one set `model_name` accordingly (must match a name from the leaderboard **model** column).",  # noqa: E501
+                    " \U0001f4cc **Action:** Ensure the S3 connection is added to the workbench so the notebook can access the results.",  # noqa: E501
                 ],
-            },
-            {
-                "cell_type": "code",
-                "execution_count": None,
-                "id": "55ce6aee-8c0c-445e-8b1b-62585ac7ddd6",
-                "metadata": {},
-                "outputs": [],
-                "source": ['model_name = "<MODEL_NAME>"'],
             },
             {
                 "cell_type": "markdown",
@@ -321,6 +282,12 @@ def autogluon_models_full_refit(
                 "metadata": {},
                 "outputs": [],
                 "source": [
+                    "import boto3\n",
+                    "import os\n",
+                    "\n",
+                    "s3 = boto3.resource('s3', endpoint_url=os.environ['AWS_S3_ENDPOINT'])\n",
+                    "bucket = s3.Bucket(os.environ['AWS_S3_BUCKET'])\n",
+                    "\n",
                     'full_refit_prefix = os.path.join(pipeline_name, run_id, "autogluon-models-full-refit")\n',
                     'best_model_subpath = os.path.join("model_artifact", model_name)\n',
                     "best_model_path = None\n",
@@ -447,7 +414,7 @@ def autogluon_models_full_refit(
                     '<a id="summary-and-next-steps"></a>\n',
                     "## Summary and next steps\n",
                     "\n",
-                    "**Summary:** This notebook loaded a trained AutoGluon model from S3, displayed the experiment leaderboard, and ran predictions on sample data using `predict_proba`.\n",  # noqa: E501
+                    "**Summary:** This notebook loaded a trained AutoGluon model from S3 and ran predictions on sample data using `predict_proba`.\n",  # noqa: E501
                     "\n",
                     "**Next steps:**\n",
                     "- Run predictions on your own data (ensure columns match the training schema).\n",
@@ -490,7 +457,7 @@ def autogluon_models_full_refit(
                 "source": [
                     "## Notebook content\n",
                     "\n",
-                    "This notebook lets you review the experiment leaderboard for insights into trained model evaluation quality, load a chosen AutoGluon model from S3, and run predictions. \n",  # noqa: E501
+                    "This notebook lets you load a chosen AutoGluon model from S3, and run predictions. \n",  # noqa: E501
                     "\n",
                     "\n",
                     " \U0001f4a1 **Tips:**\n",
@@ -502,7 +469,6 @@ def autogluon_models_full_refit(
                     "\n",
                     "**[Setup](#setup)**  \n",
                     "**[Experiment run details](#experiment-run-details)**  \n",
-                    "**[Experiment leaderboard](#experiment-leaderboard)**  \n",
                     "**[Download trained model](#download-trained-model)**  \n",
                     "**[Model insights](#model-insights)**  \n",
                     "**[Load the predictor](#load-the-predictor)**  \n",
@@ -547,7 +513,7 @@ def autogluon_models_full_refit(
                     '<a id="experiment-run-details"></a>\n',
                     "## Experiment run details\n",
                     "\n",
-                    "Set the pipeline name, run name, and run ID that identify the training run whose artifacts you want to load. These values are typically available from the pipeline run or workbench.",  # noqa: E501
+                    "Set the pipeline name and run ID that identify the training run whose artifacts you want to load. These values are typically available from the pipeline run or workbench.",  # noqa: E501
                 ],
             },
             {
@@ -556,40 +522,10 @@ def autogluon_models_full_refit(
                 "id": "fa7f736d-0b5c-4988-87a5-4d1a5cde0873",
                 "metadata": {},
                 "outputs": [],
-                "source": ['pipeline_name = "<PIPELINE_NAME>"\n', 'run_id = "<RUN_ID>"'],
-            },
-            {
-                "cell_type": "markdown",
-                "id": "00cc5969-0f9b-406d-a6e9-dce42ed64331",
-                "metadata": {},
                 "source": [
-                    '<a id="experiment-leaderboard"></a>\n',
-                    "## Experiment leaderboard\n",
-                    "\n",
-                    " \U0001f4cc **Action:** Ensure the S3 connection is added to the workbench so the notebook can access the results.",  # noqa: E501
-                ],
-            },
-            {
-                "cell_type": "code",
-                "execution_count": None,
-                "id": "9be1f501-02e4-4107-906b-8f19448768bd",
-                "metadata": {},
-                "outputs": [],
-                "source": [
-                    "import boto3\n",
-                    "import os\n",
-                    "from IPython.display import HTML\n",
-                    "\n",
-                    "s3 = boto3.resource('s3', endpoint_url=os.environ['AWS_S3_ENDPOINT'])\n",
-                    "bucket = s3.Bucket(os.environ['AWS_S3_BUCKET'])\n",
-                    "leaderboard_prefix = os.path.join(pipeline_name, run_id, 'leaderboard-evaluation')\n",
-                    "leaderboard_artifact_name = 'html_artifact'\n",
-                    "\n",
-                    "for obj in bucket.objects.filter(Prefix=leaderboard_prefix):\n",
-                    "    if leaderboard_artifact_name in obj.key:\n",
-                    "        bucket.download_file(obj.key, leaderboard_artifact_name)\n",
-                    "\n",
-                    "HTML(leaderboard_artifact_name)",
+                    'pipeline_name = "<PIPELINE_NAME>"\n',
+                    'run_id = "<RUN_ID>"\n',
+                    'model_name = "<MODEL_NAME>"',
                 ],
             },
             {
@@ -600,16 +536,8 @@ def autogluon_models_full_refit(
                     '<a id="download-trained-model"></a>\n',
                     "## Download trained model\n",
                     "\n",
-                    " \U0001f4a1 **Tip:** IF you want to download different model than the best one set `model_name` accordingly (must match a name from the leaderboard **model** column).",  # noqa: E501
+                    " \U0001f4cc **Action:** Ensure the S3 connection is added to the workbench so the notebook can access the results.",  # noqa: E501
                 ],
-            },
-            {
-                "cell_type": "code",
-                "execution_count": None,
-                "id": "55ce6aee-8c0c-445e-8b1b-62585ac7ddd6",
-                "metadata": {},
-                "outputs": [],
-                "source": ['model_name = "<MODEL_NAME>"'],
             },
             {
                 "cell_type": "markdown",
@@ -624,6 +552,12 @@ def autogluon_models_full_refit(
                 "metadata": {},
                 "outputs": [],
                 "source": [
+                    "import boto3\n",
+                    "import os\n",
+                    "\n",
+                    "s3 = boto3.resource('s3', endpoint_url=os.environ['AWS_S3_ENDPOINT'])\n",
+                    "bucket = s3.Bucket(os.environ['AWS_S3_BUCKET'])\n",
+                    "\n",
                     'full_refit_prefix = os.path.join(pipeline_name, run_id, "autogluon-models-full-refit")\n',
                     'best_model_subpath = os.path.join("model_artifact", model_name)\n',
                     "best_model_path = None\n",
@@ -760,7 +694,7 @@ def autogluon_models_full_refit(
                     '<a id="summary-and-next-steps"></a>\n',
                     "## Summary and next steps\n",
                     "\n",
-                    "**Summary:** This notebook loaded a trained AutoGluon model from S3, displayed the experiment leaderboard, and ran predictions on sample data using `predict_proba`.\n",  # noqa: E501
+                    "**Summary:** This notebook loaded a trained AutoGluon model from S3 and ran predictions on sample data using `predict_proba`.\n",  # noqa: E501
                     "\n",
                     "**Next steps:**\n",
                     "- Run predictions on your own data (ensure columns match the training schema).\n",
@@ -803,14 +737,14 @@ def autogluon_models_full_refit(
 
     RUN_ID_INDEX = 6
     PIPELINE_NAME_INDEX = 6
-    MODEL_NAME_INDEX = 10
+    MODEL_NAME_INDEX = 6
     notebook["cells"][RUN_ID_INDEX]["source"][1] = notebook["cells"][RUN_ID_INDEX]["source"][1].replace(
         "<RUN_ID>", run_id
     )
     notebook["cells"][PIPELINE_NAME_INDEX]["source"][0] = notebook["cells"][PIPELINE_NAME_INDEX]["source"][0].replace(
         "<PIPELINE_NAME>", pipeline_name
     )
-    notebook["cells"][MODEL_NAME_INDEX]["source"][0] = notebook["cells"][MODEL_NAME_INDEX]["source"][0].replace(
+    notebook["cells"][MODEL_NAME_INDEX]["source"][2] = notebook["cells"][MODEL_NAME_INDEX]["source"][2].replace(
         "<MODEL_NAME>", model_name_full
     )
 
@@ -821,7 +755,7 @@ def autogluon_models_full_refit(
         {col: value for col, value in row.items() if col != predictor.label} for row in sample_row_list
     ]
 
-    sample_row_idx = 20 + int((problem_type in {"binary", "multiclass"}))
+    sample_row_idx = 17 + int((problem_type in {"binary", "multiclass"}))
     notebook["cells"][sample_row_idx]["source"][2] = notebook["cells"][sample_row_idx]["source"][2].replace(
         "<SAMPLE_ROW>", str(sample_row_formatted)
     )
