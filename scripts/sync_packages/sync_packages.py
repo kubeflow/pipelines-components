@@ -19,8 +19,9 @@ from setuptools import find_packages
 from ..lib.discovery import get_repo_root
 
 # Regex to find the packages list in pyproject.toml.
+# Uses [^\n]* and (?:(?!\]).) to avoid ReDoS (no exponential backtracking).
 _PACKAGES_RE = re.compile(
-    r"(\[tool\.setuptools\]\s*\n(?:(?!\[).*\n)*?)(packages\s*=\s*\[.*?\])",
+    r"(\[tool\.setuptools\]\s*\n(?:(?!\[)[^\n]*\n)*?)(packages\s*=\s*\[(?:(?!\]).)*\])",
     re.DOTALL,
 )
 
