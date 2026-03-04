@@ -173,12 +173,17 @@ packages = [
         assert is_valid
         assert len(errors) == 0
 
-    def test_missing_packages(self, components_training_structure: Path):
-        """Test validation when packages are missing from pyproject.toml."""
-        # Create root __init__.py
+    def test_valid_parent_only_covers_subpackages(self, components_training_structure: Path):
+        """Test that declaring only parent packages still passes (subpackages are covered)."""
+        # Create root and nested package (e.g. training.finetuning)
         (components_training_structure / "__init__.py").write_text("")
+        finetuning_dir = (
+            components_training_structure / "components" / "training" / "finetuning"
+        )
+        finetuning_dir.mkdir(parents=True)
+        (finetuning_dir / "__init__.py").write_text("")
 
-        # Create pyproject.toml missing some packages
+        # Declare only parent packages (no finetuning listed)
         pyproject_content = """
 [build-system]
 requires = ["setuptools", "wheel"]
@@ -187,7 +192,29 @@ requires = ["setuptools", "wheel"]
 packages = [
     "kfp_components",
     "kfp_components.components",
-    # Missing kfp_components.components.training
+    "kfp_components.components.training",
+]
+"""
+        (components_training_structure / "pyproject.toml").write_text(pyproject_content)
+
+        is_valid, errors = validate_package_entries(components_training_structure)
+        assert is_valid, errors
+        assert len(errors) == 0
+
+    def test_missing_packages(self, components_training_structure: Path):
+        """Test validation when a discovered package is not covered by any declared."""
+        # Create root __init__.py
+        (components_training_structure / "__init__.py").write_text("")
+
+        # Declare only kfp_components.components (no root); root is discovered but not covered
+        pyproject_content = """
+[build-system]
+requires = ["setuptools", "wheel"]
+
+[tool.setuptools]
+packages = [
+    "kfp_components.components",
+    "kfp_components.components.training",
 ]
 """
         (components_training_structure / "pyproject.toml").write_text(pyproject_content)
@@ -196,7 +223,7 @@ packages = [
         assert not is_valid
         assert len(errors) == 1
         assert "Missing packages" in errors[0]
-        assert "kfp_components.components.training" in errors[0]
+        assert "kfp_components" in errors[0]
 
     def test_extra_packages(self, tmp_path: Path):
         """Test validation when pyproject.toml has extra packages."""
@@ -229,17 +256,16 @@ packages = [
         # Create root __init__.py
         (components_training_structure / "__init__.py").write_text("")
 
-        # Create pyproject.toml with both issues
+        # Missing: kfp_components (root not declared). Extra: nonexistent (on disk).
         pyproject_content = """
 [build-system]
 requires = ["setuptools", "wheel"]
 
 [tool.setuptools]
 packages = [
-    "kfp_components",
     "kfp_components.components",
-    # Missing kfp_components.components.training
-    "kfp_components.components.nonexistent",  # Extra package
+    "kfp_components.components.training",
+    "kfp_components.components.nonexistent",  # Extra (not on disk)
 ]
 """
         (components_training_structure / "pyproject.toml").write_text(pyproject_content)
@@ -248,4 +274,6 @@ packages = [
         assert not is_valid
         assert len(errors) == 2
         assert any("Missing packages" in e for e in errors)
+        assert any("kfp_components" in e for e in errors)
         assert any("Extra packages" in e for e in errors)
+        assert any("nonexistent" in e for e in errors)
