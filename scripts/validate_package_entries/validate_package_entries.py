@@ -3,7 +3,8 @@
 
 This script discovers all Python packages in the components/ and pipelines/
 directories and ensures they are properly listed in pyproject.toml under
-tool.setuptools.packages.
+tool.setuptools.packages. Declared parent packages cover their subpackages
+(e.g. kfp_components.components.training covers kfp_components.components.training.finetuning).
 
 Usage:
     uv run python -m scripts.validate_package_entries.validate_package_entries
@@ -95,6 +96,8 @@ def read_pyproject_packages(repo_root: Path) -> set[str]:
 def validate_package_entries(repo_root: Path | None = None) -> tuple[bool, list[str]]:
     """Validate that package entries in pyproject.toml match discovered packages.
 
+    Declared parent packages cover their subpackages (parent-only list is valid).
+
     Returns:
         (is_valid, error_messages)
     """
@@ -104,17 +107,23 @@ def validate_package_entries(repo_root: Path | None = None) -> tuple[bool, list[
     discovered = discover_packages(repo_root)
     declared = read_pyproject_packages(repo_root)
 
+    # Expand declared: add any discovered package that is a subpackage of a declared one
+    expanded = set(declared)
+    for p in discovered:
+        for d in declared:
+            if p.startswith(d + "."):
+                expanded.add(p)
+                break
+
     errors: list[str] = []
 
-    # Find missing packages (discovered but not declared)
-    missing = discovered - declared
+    missing = discovered - expanded
     if missing:
         errors.append(
             f"Missing packages in pyproject.toml (found {len(missing)}):\n"
             + "\n".join(f"  - {pkg}" for pkg in sorted(missing))
         )
 
-    # Find extra packages (declared but not discovered)
     extra = declared - discovered
     if extra:
         errors.append(
