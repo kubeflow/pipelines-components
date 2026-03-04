@@ -104,7 +104,7 @@ components:
           pipelinechannel--autogluon-models-full-refit-model_artifact:
             artifactSelectors:
               - outputArtifactKey: model_artifact
-                producerSubtask: autogluon-models-full-refit
+                producerSubtask: autogluon-models-full-refit  # yamllint disable-line: indentation
       tasks:
         autogluon-models-full-refit:
           cachingOptions:
@@ -397,22 +397,24 @@ deploymentSpec:
           \             \"cell_type\": \"markdown\",\n                \"id\": \"0e9aa72f\"\
           ,\n                \"metadata\": {},\n                \"source\": [\n  \
           \                  \"## Notebook content\\n\",\n                    \"\\\
-          n\",\n                    \"This notebook lets you load a chosen AutoGluon\
-          \ model from S3, and run predictions. \\n\",  # noqa: E501\n           \
-          \         \"\\n\",\n                    \"\\n\",\n                    \"\
-          \ \\U0001f4a1 **Tips:**\\n\",\n                    \"- Ensure the S3 connection\
-          \ to pipeline run results is configured so the notebook can access run artifacts.\\\
-          n\",  # noqa: E501\n                    \"- The model name must match one\
-          \ of the models listed in the leaderboard (the **model** column).\\n\",\n\
-          \                    \"\\n\",\n                    \"### Contents\\n\",\n\
-          \                    \"This notebook contains the following parts:\\n\"\
-          ,\n                    \"\\n\",\n                    \"**[Setup](#setup)**\
-          \  \\n\",\n                    \"**[Experiment run details](#experiment-run-details)**\
-          \  \\n\",\n                    \"**[Download trained model](#download-trained-model)**\
-          \  \\n\",\n                    \"**[Model insights](#model-insights)** \
-          \ \\n\",\n                    \"**[Load the predictor](#load-the-predictor)**\
-          \  \\n\",\n                    \"**[Predict the values](#predict-the-values)**\
-          \  \\n\",\n                    \"**[Summary and next steps](#summary-and-next-steps)**\"\
+          n\",\n                    \"This notebook lets you review the experiment\
+          \ leaderboard for insights into trained model evaluation quality, load a\
+          \ chosen AutoGluon model from S3, and run predictions. \\n\",  # noqa: E501\n\
+          \                    \"\\n\",\n                    \"\\n\",\n          \
+          \          \" \\U0001f4a1 **Tips:**\\n\",\n                    \"- Ensure\
+          \ the S3 connection to pipeline run results is configured so the notebook\
+          \ can access run artifacts.\\n\",  # noqa: E501\n                    \"\
+            - The model name must match one of the models listed in the leaderboard\
+          \ (the **model** column).\\n\",\n                    \"\\n\",\n        \
+          \            \"### Contents\\n\",\n                    \"This notebook contains\
+          \ the following parts:\\n\",\n                    \"\\n\",\n           \
+          \         \"**[Setup](#setup)**  \\n\",\n                    \"**[Experiment\
+          \ run details](#experiment-run-details)**  \\n\",\n                    \"\
+          **[Download trained model](#download-trained-model)**  \\n\",\n        \
+          \            \"**[Model insights](#model-insights)**  \\n\",\n         \
+          \           \"**[Load the predictor](#load-the-predictor)**  \\n\",\n  \
+          \                  \"**[Predict the values](#predict-the-values)**  \\n\"\
+          ,\n                    \"**[Summary and next steps](#summary-and-next-steps)**\"\
           ,\n                ],\n            },\n            {\n                \"\
           cell_type\": \"markdown\",\n                \"id\": \"a7d9cf2b-18cc-4ac9-87af-a74f8bf60322\"\
           ,\n                \"metadata\": {},\n                \"source\": ['<a id=\"\
@@ -472,27 +474,38 @@ deploymentSpec:
           n\",\n                    \"for obj in bucket.objects.filter(Prefix=full_refit_prefix):\\\
           n\",\n                    \"    if best_model_subpath in obj.key:\\n\",\n\
           \                    \"        target = obj.key if local_dir is None else\
-          \ os.path.join(local_dir, os.path.relpath(obj.key, s3_folder))\\n\",  #\
-          \ noqa: E501\n                    \"        if not os.path.exists(os.path.dirname(target)):\\\
-          n\",\n                    \"            os.makedirs(os.path.dirname(target))\\\
-          n\",\n                    \"        if obj.key[-1] == '/':\\n\",\n     \
-          \               \"            continue\\n\",\n                    \"   \
-          \     bucket.download_file(obj.key, target)\\n\",\n                    \"\
-          \        best_model_path = os.path.join(obj.key.split(model_name)[0], model_name)\\\
-          n\",\n                    \"\\n\",\n                    'print(\"Model artifact\
-          \ stored under\", best_model_path)',\n                ],\n            },\n\
-          \            {\n                \"cell_type\": \"markdown\",\n         \
-          \       \"id\": \"cf53ddb3-14af-44e2-9c5d-6636095cb2b5\",\n            \
-          \    \"metadata\": {},\n                \"source\": [\n                \
-          \    '<a id=\"model-insights\"></a>\\n',\n                    \"## Model\
-          \ insights\\n\",\n                    \"\\n\",\n                    \"Display\
-          \ the features importances for selected model.\",\n                ],\n\
+          \ os.path.join(local_dir, obj.key)\\n\",\n                    \"       \
+          \ if not os.path.exists(os.path.dirname(target)):\\n\",\n              \
+          \      \"            os.makedirs(os.path.dirname(target))\\n\",\n      \
+          \              \"        if obj.key[-1] == '/':\\n\",\n                \
+          \    \"            continue\\n\",\n                    \"        bucket.download_file(obj.key,\
+          \ target)\\n\",\n                    \"        best_model_path = os.path.join(obj.key.split(model_name)[0],\
+          \ model_name)\\n\",\n                    \"\\n\",\n                    'print(\"\
+          Model artifact stored under\", best_model_path)',\n                ],\n\
           \            },\n            {\n                \"cell_type\": \"markdown\"\
-          ,\n                \"id\": \"cc4f419b-2e28-406c-932b-de43182bef31\",\n \
-          \               \"metadata\": {},\n                \"source\": [\"### Feature\
-          \ importance\\n\", \"Top ten are displayed.\"],\n            },\n      \
-          \      {\n                \"cell_type\": \"code\",\n                \"execution_count\"\
-          : None,\n                \"id\": \"0a7417fa-396f-4d83-ba20-1df01a3c0e2a\"\
+          ,\n                \"id\": \"cf53ddb3-14af-44e2-9c5d-6636095cb2b5\",\n \
+          \               \"metadata\": {},\n                \"source\": [\n     \
+          \               '<a id=\"model-insights\"></a>\\n',\n                  \
+          \  \"## Model insights\\n\",\n                    \"\\n\",\n           \
+          \         \"Display the metrics and features importances for selected model.\"\
+          ,\n                ],\n            },\n            {\n                \"\
+          cell_type\": \"markdown\",\n                \"id\": \"1df774b4\",\n    \
+          \            \"metadata\": {},\n                \"source\": [\"### Metrics\\\
+          n\", \"Metrics determined on the basis of test data.\"],\n            },\n\
+          \            {\n                \"cell_type\": \"code\",\n             \
+          \   \"execution_count\": None,\n                \"id\": \"f71f38c1\",\n\
+          \                \"metadata\": {},\n                \"outputs\": [],\n \
+          \               \"source\": [\n                    \"import pandas as pd\\\
+          n\",\n                    \"import json\\n\",\n                    \"\\\
+          n\",\n                    'with open(os.path.join(best_model_path, \"metrics\"\
+          , \"metrics.json\")) as f:\\n',\n                    \"    metrics = pd.json_normalize(json.load(f))\\\
+          n\",\n                    \"\\n\",\n                    \"metrics\",\n \
+          \               ],\n            },\n            {\n                \"cell_type\"\
+          : \"markdown\",\n                \"id\": \"cc4f419b-2e28-406c-932b-de43182bef31\"\
+          ,\n                \"metadata\": {},\n                \"source\": [\"###\
+          \ Feature importance\\n\", \"Top ten are displayed.\"],\n            },\n\
+          \            {\n                \"cell_type\": \"code\",\n             \
+          \   \"execution_count\": None,\n                \"id\": \"0a7417fa-396f-4d83-ba20-1df01a3c0e2a\"\
           ,\n                \"metadata\": {},\n                \"outputs\": [],\n\
           \                \"source\": [\n                    \"import pandas as pd\\\
           n\",\n                    \"\\n\",\n                    'feature_importance\
@@ -571,16 +584,16 @@ deploymentSpec:
           ,\n                \"metadata\": {},\n                \"source\": [\n  \
           \                  \"## Notebook content\\n\",\n                    \"\\\
           n\",\n                    \"This notebook lets you load a chosen AutoGluon\
-          \ model from S3, and run predictions. \\n\",  # noqa: E501\n           \
-          \         \"\\n\",\n                    \"\\n\",\n                    \"\
-          \ \\U0001f4a1 **Tips:**\\n\",\n                    \"- Ensure the S3 connection\
-          \ to pipeline run results is configured so the notebook can access run artifacts.\\\
-          n\",  # noqa: E501\n                    \"- The model name must match one\
-          \ of the models listed in the leaderboard (the **model** column).\\n\",\n\
-          \                    \"\\n\",\n                    \"### Contents\\n\",\n\
-          \                    \"This notebook contains the following parts:\\n\"\
-          ,\n                    \"\\n\",\n                    \"**[Setup](#setup)**\
-          \  \\n\",\n                    \"**[Experiment run details](#experiment-run-details)**\
+          \ model from S3, and run predictions. \\n\",\n                    \"\\n\"\
+          ,\n                    \"\\n\",\n                    \" \\U0001f4a1 **Tips:**\\\
+          n\",\n                    \"- Ensure the S3 connection to pipeline run results\
+          \ is configured so the notebook can access run artifacts.\\n\",  # noqa:\
+          \ E501\n                    \"- The model name must match one of the models\
+          \ listed in the leaderboard (the **model** column).\\n\",\n            \
+          \        \"\\n\",\n                    \"### Contents\\n\",\n          \
+          \          \"This notebook contains the following parts:\\n\",\n       \
+          \             \"\\n\",\n                    \"**[Setup](#setup)**  \\n\"\
+          ,\n                    \"**[Experiment run details](#experiment-run-details)**\
           \  \\n\",\n                    \"**[Download trained model](#download-trained-model)**\
           \  \\n\",\n                    \"**[Model insights](#model-insights)** \
           \ \\n\",\n                    \"**[Load the predictor](#load-the-predictor)**\
@@ -645,38 +658,49 @@ deploymentSpec:
           n\",\n                    \"for obj in bucket.objects.filter(Prefix=full_refit_prefix):\\\
           n\",\n                    \"    if best_model_subpath in obj.key:\\n\",\n\
           \                    \"        target = obj.key if local_dir is None else\
-          \ os.path.join(local_dir, os.path.relpath(obj.key, s3_folder))\\n\",  #\
-          \ noqa: E501\n                    \"        if not os.path.exists(os.path.dirname(target)):\\\
-          n\",\n                    \"            os.makedirs(os.path.dirname(target))\\\
-          n\",\n                    \"        if obj.key[-1] == '/':\\n\",\n     \
-          \               \"            continue\\n\",\n                    \"   \
-          \     bucket.download_file(obj.key, target)\\n\",\n                    \"\
-          \        best_model_path = os.path.join(obj.key.split(model_name)[0], model_name)\\\
-          n\",\n                    \"\\n\",\n                    'print(\"Model artifact\
-          \ stored under\", best_model_path)',\n                ],\n            },\n\
-          \            {\n                \"cell_type\": \"markdown\",\n         \
-          \       \"id\": \"cf53ddb3-14af-44e2-9c5d-6636095cb2b5\",\n            \
-          \    \"metadata\": {},\n                \"source\": [\n                \
-          \    '<a id=\"model-insights\"></a>\\n',\n                    \"## Model\
-          \ insights\\n\",\n                    \"\\n\",\n                    \"Display\
-          \ the confusion matrix and features importances for selected model.\",\n\
-          \                ],\n            },\n            {\n                \"cell_type\"\
+          \ os.path.join(local_dir, obj.key)\\n\",\n                    \"       \
+          \ if not os.path.exists(os.path.dirname(target)):\\n\",\n              \
+          \      \"            os.makedirs(os.path.dirname(target))\\n\",\n      \
+          \              \"        if obj.key[-1] == '/':\\n\",\n                \
+          \    \"            continue\\n\",\n                    \"        bucket.download_file(obj.key,\
+          \ target)\\n\",\n                    \"        best_model_path = os.path.join(obj.key.split(model_name)[0],\
+          \ model_name)\\n\",\n                    \"\\n\",\n                    'print(\"\
+          Model artifact stored under\", best_model_path)',\n                ],\n\
+          \            },\n            {\n                \"cell_type\": \"markdown\"\
+          ,\n                \"id\": \"cf53ddb3-14af-44e2-9c5d-6636095cb2b5\",\n \
+          \               \"metadata\": {},\n                \"source\": [\n     \
+          \               '<a id=\"model-insights\"></a>\\n',\n                  \
+          \  \"## Model insights\\n\",\n                    \"\\n\",\n           \
+          \         \"Display the metrics, confusion matrix and features importances\
+          \ for selected model.\",\n                ],\n            },\n         \
+          \   {\n                \"cell_type\": \"markdown\",\n                \"\
+          id\": \"b4d8e270-f49f-4a80-a35a-a81699a88d83\",\n                \"metadata\"\
+          : {},\n                \"source\": [\"### Metrics\\n\", \"\\n\", \"Metrics\
+          \ determined on the basis of test data.\"],\n            },\n          \
+          \  {\n                \"cell_type\": \"code\",\n                \"execution_count\"\
+          : None,\n                \"id\": \"e7bc2f23-3def-4c3b-aa95-d5b25e0bca61\"\
+          ,\n                \"metadata\": {},\n                \"outputs\": [],\n\
+          \                \"source\": [\n                    \"import pandas as pd\\\
+          n\",\n                    \"import json\\n\",\n                    \"\\\
+          n\",\n                    'with open(os.path.join(best_model_path, \"metrics\"\
+          , \"metrics.json\")) as f:\\n',\n                    \"    metrics = pd.json_normalize(json.load(f))\\\
+          n\",\n                    \"\\n\",\n                    \"metrics\",\n \
+          \               ],\n            },\n            {\n                \"cell_type\"\
           : \"markdown\",\n                \"id\": \"72345abd-b419-4f63-8b0b-6d023ddae73b\"\
           ,\n                \"metadata\": {},\n                \"source\": [\"###\
           \ Confusion matrix\"],\n            },\n            {\n                \"\
           cell_type\": \"code\",\n                \"execution_count\": None,\n   \
           \             \"id\": \"bd38da24-a764-48e8-9c0c-9285e5810fe1\",\n      \
           \          \"metadata\": {},\n                \"outputs\": [],\n       \
-          \         \"source\": [\n                    \"import pandas as pd\\n\"\
-          ,\n                    \"\\n\",\n                    'confusion_matrix =\
-          \ pd.read_json(os.path.join(best_model_path, \"metrics\", \"confusion_matrix.json\"\
-          ))\\n',  # noqa: E501\n                    \"confusion_matrix.head()\",\n\
-          \                ],\n            },\n            {\n                \"cell_type\"\
-          : \"markdown\",\n                \"id\": \"cc4f419b-2e28-406c-932b-de43182bef31\"\
-          ,\n                \"metadata\": {},\n                \"source\": [\"###\
-          \ Feature importance\\n\", \"Top ten are displayed.\"],\n            },\n\
-          \            {\n                \"cell_type\": \"code\",\n             \
-          \   \"execution_count\": None,\n                \"id\": \"0a7417fa-396f-4d83-ba20-1df01a3c0e2a\"\
+          \         \"source\": [\n                    'confusion_matrix = pd.read_json(os.path.join(best_model_path,\
+          \ \"metrics\", \"confusion_matrix.json\"))\\n',  # noqa: E501\n        \
+          \            \"confusion_matrix.head()\",\n                ],\n        \
+          \    },\n            {\n                \"cell_type\": \"markdown\",\n \
+          \               \"id\": \"cc4f419b-2e28-406c-932b-de43182bef31\",\n    \
+          \            \"metadata\": {},\n                \"source\": [\"### Feature\
+          \ importance\\n\", \"Top ten are displayed.\"],\n            },\n      \
+          \      {\n                \"cell_type\": \"code\",\n                \"execution_count\"\
+          : None,\n                \"id\": \"0a7417fa-396f-4d83-ba20-1df01a3c0e2a\"\
           ,\n                \"metadata\": {},\n                \"outputs\": [],\n\
           \                \"source\": [\n                    'feature_importance\
           \ = pd.read_json(os.path.join(best_model_path, \"metrics\", \"feature_importance.json\"\
@@ -758,7 +782,7 @@ deploymentSpec:
           \n    sample_row_list = json.loads(sample_row)\n\n    # remove label column\
           \ from sample row\n    sample_row_formatted = [\n        {col: value for\
           \ col, value in row.items() if col != predictor.label} for row in sample_row_list\n\
-          \    ]\n\n    sample_row_idx = 17 + int((problem_type in {\"binary\", \"\
+          \    ]\n\n    sample_row_idx = 19 + int((problem_type in {\"binary\", \"\
           multiclass\"}))\n    notebook[\"cells\"][sample_row_idx][\"source\"][2]\
           \ = notebook[\"cells\"][sample_row_idx][\"source\"][2].replace(\n      \
           \  \"<SAMPLE_ROW>\", str(sample_row_formatted)\n    )\n    notebook_path\

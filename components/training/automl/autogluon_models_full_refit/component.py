@@ -187,7 +187,7 @@ def autogluon_models_full_refit(
                 "source": [
                     "## Notebook content\n",
                     "\n",
-                    "This notebook lets you load a chosen AutoGluon model from S3, and run predictions. \n",  # noqa: E501
+                    "This notebook lets you review the experiment leaderboard for insights into trained model evaluation quality, load a chosen AutoGluon model from S3, and run predictions. \n",  # noqa: E501
                     "\n",
                     "\n",
                     " \U0001f4a1 **Tips:**\n",
@@ -295,7 +295,7 @@ def autogluon_models_full_refit(
                     "\n",
                     "for obj in bucket.objects.filter(Prefix=full_refit_prefix):\n",
                     "    if best_model_subpath in obj.key:\n",
-                    "        target = obj.key if local_dir is None else os.path.join(local_dir, os.path.relpath(obj.key, s3_folder))\n",  # noqa: E501
+                    "        target = obj.key if local_dir is None else os.path.join(local_dir, obj.key)\n",
                     "        if not os.path.exists(os.path.dirname(target)):\n",
                     "            os.makedirs(os.path.dirname(target))\n",
                     "        if obj.key[-1] == '/':\n",
@@ -314,7 +314,29 @@ def autogluon_models_full_refit(
                     '<a id="model-insights"></a>\n',
                     "## Model insights\n",
                     "\n",
-                    "Display the features importances for selected model.",
+                    "Display the metrics and features importances for selected model.",
+                ],
+            },
+            {
+                "cell_type": "markdown",
+                "id": "1df774b4",
+                "metadata": {},
+                "source": ["### Metrics\n", "Metrics determined on the basis of test data."],
+            },
+            {
+                "cell_type": "code",
+                "execution_count": None,
+                "id": "f71f38c1",
+                "metadata": {},
+                "outputs": [],
+                "source": [
+                    "import pandas as pd\n",
+                    "import json\n",
+                    "\n",
+                    'with open(os.path.join(best_model_path, "metrics", "metrics.json")) as f:\n',
+                    "    metrics = pd.json_normalize(json.load(f))\n",
+                    "\n",
+                    "metrics",
                 ],
             },
             {
@@ -457,7 +479,7 @@ def autogluon_models_full_refit(
                 "source": [
                     "## Notebook content\n",
                     "\n",
-                    "This notebook lets you load a chosen AutoGluon model from S3, and run predictions. \n",  # noqa: E501
+                    "This notebook lets you load a chosen AutoGluon model from S3, and run predictions. \n",
                     "\n",
                     "\n",
                     " \U0001f4a1 **Tips:**\n",
@@ -524,7 +546,7 @@ def autogluon_models_full_refit(
                 "outputs": [],
                 "source": [
                     'pipeline_name = "<PIPELINE_NAME>"\n',
-                    'run_id = "<RUN_ID>"\n',
+                    'run_id =  "<RUN_ID>"\n',
                     'model_name = "<MODEL_NAME>"',
                 ],
             },
@@ -565,7 +587,7 @@ def autogluon_models_full_refit(
                     "\n",
                     "for obj in bucket.objects.filter(Prefix=full_refit_prefix):\n",
                     "    if best_model_subpath in obj.key:\n",
-                    "        target = obj.key if local_dir is None else os.path.join(local_dir, os.path.relpath(obj.key, s3_folder))\n",  # noqa: E501
+                    "        target = obj.key if local_dir is None else os.path.join(local_dir, obj.key)\n",
                     "        if not os.path.exists(os.path.dirname(target)):\n",
                     "            os.makedirs(os.path.dirname(target))\n",
                     "        if obj.key[-1] == '/':\n",
@@ -584,7 +606,29 @@ def autogluon_models_full_refit(
                     '<a id="model-insights"></a>\n',
                     "## Model insights\n",
                     "\n",
-                    "Display the confusion matrix and features importances for selected model.",
+                    "Display the metrics, confusion matrix and features importances for selected model.",
+                ],
+            },
+            {
+                "cell_type": "markdown",
+                "id": "b4d8e270-f49f-4a80-a35a-a81699a88d83",
+                "metadata": {},
+                "source": ["### Metrics\n", "\n", "Metrics determined on the basis of test data."],
+            },
+            {
+                "cell_type": "code",
+                "execution_count": None,
+                "id": "e7bc2f23-3def-4c3b-aa95-d5b25e0bca61",
+                "metadata": {},
+                "outputs": [],
+                "source": [
+                    "import pandas as pd\n",
+                    "import json\n",
+                    "\n",
+                    'with open(os.path.join(best_model_path, "metrics", "metrics.json")) as f:\n',
+                    "    metrics = pd.json_normalize(json.load(f))\n",
+                    "\n",
+                    "metrics",
                 ],
             },
             {
@@ -600,8 +644,6 @@ def autogluon_models_full_refit(
                 "metadata": {},
                 "outputs": [],
                 "source": [
-                    "import pandas as pd\n",
-                    "\n",
                     'confusion_matrix = pd.read_json(os.path.join(best_model_path, "metrics", "confusion_matrix.json"))\n',  # noqa: E501
                     "confusion_matrix.head()",
                 ],
@@ -755,7 +797,7 @@ def autogluon_models_full_refit(
         {col: value for col, value in row.items() if col != predictor.label} for row in sample_row_list
     ]
 
-    sample_row_idx = 17 + int((problem_type in {"binary", "multiclass"}))
+    sample_row_idx = 19 + int((problem_type in {"binary", "multiclass"}))
     notebook["cells"][sample_row_idx]["source"][2] = notebook["cells"][sample_row_idx]["source"][2].replace(
         "<SAMPLE_ROW>", str(sample_row_formatted)
     )
