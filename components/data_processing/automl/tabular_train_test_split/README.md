@@ -46,9 +46,10 @@ You can override these by providing the `split_config` dictionary with the corre
 - **Last Verified**: 2026-01-22 10:28:49+00:00
 - **Owners**:
   - Approvers:
-    - None
+    - mprahl
+    - nsingla
   - Reviewers:
-    - None
+    - HumairAK
 
 <!-- custom-content -->
 ## Split Configuration

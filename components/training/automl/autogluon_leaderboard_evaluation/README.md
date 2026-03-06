@@ -37,9 +37,10 @@ to contain metrics at model.path / model.metadata["display_name"] / metrics / me
 - **Last Verified**: 2026-01-22 10:59:58+00:00
 - **Owners**:
   - Approvers:
-    - None
+    - mprahl
+    - nsingla
   - Reviewers:
-    - None
+    - HumairAK
 
 <!-- custom-content -->
 ## Usage Examples 💡

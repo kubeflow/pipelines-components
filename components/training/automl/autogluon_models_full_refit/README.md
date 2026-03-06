@@ -62,9 +62,10 @@ exploration, then the best candidates are refitted on the full dataset for optim
 - **Last Verified**: 2026-01-22 10:31:36+00:00
 - **Owners**:
   - Approvers:
-    - None
+    - mprahl
+    - nsingla
   - Reviewers:
-    - None
+    - HumairAK
 
 <!-- custom-content -->
 ## Usage Examples 💡

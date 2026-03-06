@@ -43,9 +43,10 @@ Authentication uses AWS-style credentials provided via environment variables (e.
 - **Last Verified**: 2026-02-23 14:30:00+00:00
 - **Owners**:
   - Approvers:
-    - None
+    - mprahl
+    - nsingla
   - Reviewers:
-    - None
+    - HumairAK
 
 <!-- custom-content -->
 ## Sampling strategies
