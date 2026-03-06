@@ -178,6 +178,7 @@ def train_model(
             k8s.Configuration.set_default(cfg)
 
             import urllib3
+
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
             return k8s.ApiClient(cfg)

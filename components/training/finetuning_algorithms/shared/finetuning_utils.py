@@ -90,6 +90,7 @@ def init_k8s(log: logging.Logger) -> Optional[object]:
         k8s.Configuration.set_default(cfg)
 
         import urllib3
+
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
         return k8s.ApiClient(cfg)
