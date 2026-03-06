@@ -40,7 +40,7 @@ Authentication uses AWS-style credentials provided via environment variables (e.
 - **Tags**:
   - data-processing
   - automl
-- **Last Verified**: 2026-02-23 14:30:00+00:00
+- **Last Verified**: 2026-03-06 11:05:29+00:00
 - **Owners**:
   - Approvers:
     - mprahl
