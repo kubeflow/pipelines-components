@@ -427,6 +427,7 @@ dev = [
     { name = "docker" },
     { name = "docstring-parser" },
     { name = "jinja2" },
+    { name = "kfp-kubernetes" },
     { name = "packaging" },
     { name = "pip" },
     { name = "pytest" },
@@ -446,6 +447,7 @@ test = [
     { name = "docker" },
     { name = "docstring-parser" },
     { name = "jinja2" },
+    { name = "kfp-kubernetes" },
     { name = "packaging" },
     { name = "pip" },
     { name = "pytest" },
@@ -464,6 +466,7 @@ requires-dist = [
     { name = "kfp", specifier = ">=2.15.2" },
     { name = "kfp-components", extras = ["lint"], marker = "extra == 'dev'" },
     { name = "kfp-components", extras = ["test"], marker = "extra == 'dev'" },
+    { name = "kfp-kubernetes", marker = "extra == 'test'" },
     { name = "packaging", marker = "extra == 'test'" },
     { name = "pip", marker = "extra == 'test'" },
     { name = "pytest", marker = "extra == 'test'" },
@@ -476,6 +479,19 @@ requires-dist = [
     { name = "yamllint", marker = "extra == 'lint'", specifier = "==1.38.0" },
 ]
 provides-extras = ["lint", "test", "dev"]
+
+[[package]]
+name = "kfp-kubernetes"
+version = "2.15.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "kfp" },
+    { name = "protobuf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c5/ea/03ff08b86a50ba456c383c5440d060343bbf454d2bb00ff44a3ed4b833ca/kfp_kubernetes-2.15.2.tar.gz", hash = "sha256:c11c9f7b00db492bbc0daf0d3ff91e4349ce905eb88a9c1403bd9002c2c1113c", size = 18274, upload-time = "2025-12-03T21:35:45.109Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/04/f6/d2d94c1709ed336d696e0f1609ebe99a81cc98974843d64571fca4ce06ce/kfp_kubernetes-2.15.2-py3-none-any.whl", hash = "sha256:0cdb4ff9789233d47119ff5981b9f4c983ac682318df65650d813f8e4ba96e8f", size = 25201, upload-time = "2025-12-03T21:35:43.553Z" },
+]
 
 [[package]]
 name = "kfp-pipeline-spec"

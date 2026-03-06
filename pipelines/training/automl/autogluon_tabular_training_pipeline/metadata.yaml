@@ -1,0 +1,15 @@
+---
+name: autogluon_tabular_training_pipeline
+stability: alpha  # New pipeline without proven track record
+dependencies:
+  kubeflow:
+    - name: Pipelines
+      version: '>=2.15.2'
+    - name: Kubernetes
+      version: ">=1.28.0"
+tags:
+  - training
+  - pipeline
+  - automl
+  - autogluon-tabular-training-pipeline
+lastVerified: 2026-03-06T11:05:29Z
