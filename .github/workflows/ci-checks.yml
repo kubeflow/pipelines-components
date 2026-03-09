@@ -30,14 +30,13 @@ jobs:
       - name: Check for 'needs-ok-to-test' and 'ok-to-test' labels
         id: label_check
         run: |
-          SHOULD_RUN=false
-          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'needs-ok-to-test') }}" == "true" ]]; then
-            echo "Label 'needs-ok-to-test' found. Skipping CI check workflow."
-          elif [[ "${{ contains(github.event.pull_request.labels.*.name, 'ok-to-test') }}" == "true" ]]; then
-            echo "Label 'ok-to-test' found. Continuing workflow."
-            SHOULD_RUN=true
+          SHOULD_RUN=true
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'needs-ok-to-test') }}" == "true" && \
+            "${{ contains(github.event.pull_request.labels.*.name, 'ok-to-test') }}" != "true" ]]; then
+            echo "PR still requires '/ok-to-test'. Skipping CI check workflow."
+            SHOULD_RUN=false
           else
-            echo "Label 'ok-to-test' not found. Skipping CI check workflow."
+            echo "PR is allowed to run CI check workflow."
           fi
           echo "should_run=${SHOULD_RUN}" >> "$GITHUB_OUTPUT"
 
