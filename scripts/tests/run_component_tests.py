@@ -8,7 +8,6 @@ pipeline paths and runs pytest with a two-minute timeout per test.
 from __future__ import annotations
 
 import argparse
-import subprocess
 import sys
 import warnings
 from pathlib import Path
@@ -109,31 +108,6 @@ def _is_member_of_pipeline_or_component(candidate: Path) -> bool:
     return relative.parts and relative.parts[0] in {"components", "pipelines"}
 
 
-def install_component_requirements(test_dirs: Sequence[Path]) -> None:
-    """Install per-component test dependencies from requirements-test.txt.
-
-    Searches for requirements-test.txt in the component directory (parent of
-    the tests/ directory) and installs any found dependencies.
-
-    Args:
-        test_dirs: Discovered tests/ directories.
-    """
-    installed: List[Path] = []
-    for tests_dir in test_dirs:
-        component_dir = tests_dir.parent
-        req_file = component_dir / "requirements-test.txt"
-        if req_file.is_file() and req_file not in installed:
-            print(f"Installing test dependencies from {req_file.relative_to(REPO_ROOT)}")
-            result = subprocess.run(
-                [sys.executable, "-m", "pip", "install", "-q", "-r", str(req_file)],
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode != 0:
-                print(f"⚠️  Failed to install {req_file}: {result.stderr.strip()}")
-            installed.append(req_file)
-
-
 def build_pytest_args(
     test_dirs: Sequence[Path],
     timeout_seconds: int,
@@ -173,8 +147,6 @@ def main() -> int:
     if not test_dirs:
         print("No tests/ directories found under the supplied paths. Nothing to do.")
         return 0
-
-    install_component_requirements(test_dirs)
 
     relative_dirs = ", ".join(str(directory.relative_to(REPO_ROOT)) for directory in test_dirs)
     print(f"Running pytest for: {relative_dirs}")

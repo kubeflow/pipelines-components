@@ -632,6 +632,23 @@ git commit -m "feat(training): add logistic_regression component in sklearn_trai
 
 ### Running Tests Locally
 
+Before running tests, install the project's test dependencies and any
+component-specific packages your component requires at runtime:
+
+```bash
+# Install project-wide test dependencies (from the repo root)
+uv sync --extra test
+
+# Install component-specific runtime dependencies that your tests need.
+# For example, if your component uses sdg-hub and pandas:
+uv pip install "sdg-hub>=0.7.0,<1.0" pandas
+```
+
+> **Note:** The test runner does **not** auto-install component-specific
+> dependencies. Each component's README or `metadata.yaml` lists the packages
+> it needs. Install them into your virtual environment before running the
+> component's tests.
+
 Run these commands from your component/pipeline directory before submitting your contribution:
 
 ```bash
@@ -901,7 +918,10 @@ pytest tests/ --cov=. --cov-report=html
 - **Unit tests**: Should have high coverage of your component's logic
 - **Local runner tests**: Should verify end-to-end component execution
 - **Resource considerations**: Local runner tests require adequate system resources for your component's workload
-- **Dependencies**: Mock external services in unit tests; use real dependencies in local runner tests
+- **Dependencies**: Mock external services in unit tests; use real dependencies in local runner tests.
+  You must manually install any component-specific runtime packages (e.g., `sdg-hub`, `pandas`)
+  into your virtual environment before running the tests -- the test runner does not install them
+  automatically
 - **Cleanup**: Use provided fixtures to ensure proper test environment cleanup
 
 ### Building Custom Container Images
