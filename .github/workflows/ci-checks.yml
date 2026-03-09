@@ -12,9 +12,20 @@ jobs:
     permissions:
       checks: read
       contents: read
+      pull-requests: write
     steps:
       - name: Check out the repository
         uses: actions/checkout@v6
+
+      - name: Reset 'ci-passed' label on PR updates
+        if: github.event.action == 'synchronize' || github.event.action == 'reopened'
+        run: |
+          echo "Removing stale 'ci-passed' label for event: ${{ github.event.action }}"
+          gh pr edit "${{ github.event.pull_request.number }}" \
+            --remove-label "ci-passed" \
+            --repo "$GITHUB_REPOSITORY" || echo "Label not present"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check for 'needs-ok-to-test' and 'ok-to-test' labels
         id: label_check
