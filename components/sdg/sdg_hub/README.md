@@ -232,6 +232,122 @@ For flows with LLM blocks, set these via Kubernetes Secrets:
 - `LLM_API_KEY`: API key for the LLM provider
 - `LLM_API_BASE`: API base URL (optional, for self-hosted models)
 
+## Running on Red Hat OpenShift AI
+
+### Prerequisites
+
+- OpenShift AI with a pipeline server configured in your data science project
+- `oc` CLI logged in to the cluster
+- S3-compatible object storage configured for the pipeline server
+- KFP SDK and kfp-kubernetes installed: `pip install kfp kfp-kubernetes`
+
+### 1. Create Cluster Resources
+
+Create a K8s Secret for your LLM API credentials:
+
+```bash
+oc create secret generic llm-credentials \
+  --from-literal=api_key="<your-api-key>" \
+  -n <namespace>
+```
+
+If using a custom flow YAML, create ConfigMaps for the flow and prompt files:
+
+```bash
+oc create configmap sdg-flow \
+  --from-file=flow.yaml=path/to/your/flow.yaml \
+  -n <namespace>
+
+oc create configmap sdg-prompts \
+  --from-file=prompt.yaml=path/to/your/prompt.yaml \
+  -n <namespace>
+```
+
+### 2. Define and Compile the Pipeline
+
+```python
+from kfp import compiler, dsl
+from kfp.kubernetes import use_config_map_as_volume, use_secret_as_env
+from components.sdg.sdg_hub.component import sdg
+
+
+@dsl.component(
+    base_image="registry.access.redhat.com/ubi9/python-311:latest",
+    packages_to_install=["pandas"],
+)
+def create_sample_data(output_data: dsl.Output[dsl.Dataset]) -> None:
+    """Create sample input data."""
+    import pandas as pd
+
+    data = [
+        {"document": "Python is a programming language.", "domain": "technology"},
+        {"document": "Machine learning is a subset of AI.", "domain": "technology"},
+    ]
+    pd.DataFrame(data).to_json(output_data.path, orient="records", lines=True)
+
+
+@dsl.pipeline(name="sdg-pipeline")
+def sdg_pipeline(model: str = "openai/gpt-4o-mini"):
+    data_task = create_sample_data()
+
+    sdg_task = sdg(
+        input_artifact=data_task.outputs["output_data"],
+        flow_yaml_path="/etc/sdg/flow.yaml",
+        model=model,
+        max_concurrency=1,
+    )
+
+    use_config_map_as_volume(task=sdg_task, config_map_name="sdg-flow", mount_path="/etc/sdg")
+    use_config_map_as_volume(task=sdg_task, config_map_name="sdg-prompts", mount_path="/etc/sdg/prompts")
+    use_secret_as_env(task=sdg_task, secret_name="llm-credentials",
+                      secret_key_to_env={"api_key": "LLM_API_KEY"})
+
+
+# Compile
+compiler.Compiler().compile(sdg_pipeline, package_path="sdg_pipeline.yaml")
+```
+
+> **Note:** Use `registry.access.redhat.com/ubi9/python-311:latest` as the base image.
+> The default `python:3.11` image may hit Docker Hub rate limits on OpenShift clusters.
+
+### 3. Submit the Pipeline
+
+```python
+import kfp
+import os
+
+# Get route: oc get route ds-pipeline-dspa -n <namespace> -o=jsonpath='{.spec.host}'
+# Get token: oc whoami -t
+host = os.environ["KFP_ROUTE"]
+token = os.environ["KFP_TOKEN"]
+
+client = kfp.Client(host=f"https://{host}", existing_token=token, ssl_ca_cert=False)
+
+run = client.create_run_from_pipeline_package(
+    pipeline_file="sdg_pipeline.yaml",
+    run_name="sdg-run",
+    arguments={"model": "openai/gpt-4o-mini"},
+)
+print(f"Run: https://{host}/#/runs/details/{run.run_id}")
+```
+
+To rerun the same pipeline, call `create_run_from_pipeline_package` again — the
+compiled YAML and cluster resources are already in place.
+
+### 4. Monitor
+
+```python
+run = client.get_run(run_id=run.run_id)
+print(run.state)  # RUNNING → SUCCEEDED / FAILED
+```
+
+Or via `oc`:
+
+```bash
+oc get pods -n <namespace> | grep sdg-pipeline
+oc logs <pod-name> -c main -n <namespace>
+```
+
 <!-- custom-content -->
 
 <details>
