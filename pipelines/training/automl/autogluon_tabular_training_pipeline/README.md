@@ -12,13 +12,13 @@ to final model evaluation.
 
 **Pipeline Stages:**
 
-1. **Data Loading**: Loads tabular data from an S3-compatible object storage bucket using AWS credentials configured via
-Kubernetes secrets. The component produces both a tabular_data artifact (for splitting) and a full_dataset artifact (for
-model refitting).
+1. **Data Loading**: Loads tabular (CSV) data from an S3-compatible object storage bucket using AWS credentials
+configured via Kubernetes secrets. The component produces a full_dataset artifact (sampled data from S3), passed to the
+split step.
 
 2. **Data Splitting**: Splits the loaded tabular data into training and test sets using a configurable test size
-(default: 20% test, 80% train). The split is performed on the tabular_data artifact to create separate train and test
-datasets for model training and evaluation.
+(default: 20% test, 80% train). The split is performed on the full_dataset artifact to create sampled_train_dataset and
+sampled_test_dataset for model training and evaluation.
 
 3. **Model Selection**: Trains multiple AutoGluon models on the training data using AutoGluon's ensembling approach
 (stacking with 3 levels and bagging with 2 folds). The component automatically trains various model types including
@@ -37,10 +37,10 @@ selection.
 **Two-Stage Training Benefits:**
 
 - **Efficient Exploration**: Initial model training uses the split training data with efficient ensembling rather than
-expensive hyperparameter optimization - **Optimal Performance**: Final models are refitted on the complete original
-dataset for maximum performance - **Parallel Efficiency**: Top models are refitted in parallel to minimize total
-pipeline execution time - **Production-Ready**: Refitted models are AutoGluon Predictors optimized and ready for
-deployment
+expensive hyperparameter optimization - **Optimal Performance**: Final models are refitted (refit_full) on the
+predictor's training and validation data for maximum performance - **Parallel Efficiency**: Top models are refitted in
+parallel to minimize total pipeline execution time - **Production-Ready**: Refitted models are AutoGluon Predictors
+optimized and ready for deployment
 
 **AutoGluon Ensembling Approach:**
 
@@ -78,6 +78,7 @@ multi-level stacking - Using bootstrap aggregation (bagging) for robustness - Se
   - Approvers:
     - mprahl
     - nsingla
+    - LukaszCmielowski
   - Reviewers:
     - HumairAK
 

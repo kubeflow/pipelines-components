@@ -73,7 +73,7 @@ def automl_data_loader(
         if not access_key and not secret_key:
             raise ValueError(
                 "S3 credentials missing: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be provided via "
-                "the 's3-secret' Kubernetes secret when using s3:// dataset URIs."
+                "a Kubernetes secret or environment configuration when using s3:// dataset URIs."
             )
 
         return boto3.client(

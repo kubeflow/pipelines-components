@@ -64,13 +64,14 @@ packages = [
     "kfp_components.components.data_processing.automl.tabular_train_test_split",
     "kfp_components.components.data_processing.yoda_data_processor",
     "kfp_components.components.deployment",
-    "kfp_components.components.evaluation",
     "kfp_components.components.training",
     "kfp_components.pipelines",
     "kfp_components.pipelines.data_processing",
     "kfp_components.pipelines.deployment",
     "kfp_components.pipelines.evaluation",
     "kfp_components.pipelines.training",
+    "kfp_components.pipelines.training.automl",
+    "kfp_components.pipelines.training.automl.autogluon_tabular_training_pipeline",
 ]
 
 [tool.setuptools.package-dir]

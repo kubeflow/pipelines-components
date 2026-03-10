@@ -21,7 +21,8 @@ from kfp_components.components.training.automl.autogluon_models_selection import
             size="1Gi",  # TODO: change to recommended size
             kubernetes=dsl.KubernetesWorkspaceConfig(
                 pvcSpecPatch={
-                    "storageClassName": "gp3-csi",  # or 'gp3', 'fast', etc.
+                    # use default storage class from the cluster
+                    # "storageClassName": "gp3-csi",
                     "accessModes": ["ReadWriteOnce"],
                 }
             ),
@@ -44,15 +45,14 @@ def autogluon_tabular_training_pipeline(
 
     **Pipeline Stages:**
 
-    1. **Data Loading**: Loads tabular data from an S3-compatible object storage bucket
+    1. **Data Loading**: Loads tabular (CSV) data from an S3-compatible object storage bucket
        using AWS credentials configured via Kubernetes secrets. The component produces
-       both a tabular_data artifact (for splitting) and a full_dataset artifact
-       (for model refitting).
+       a full_dataset artifact (sampled data from S3), passed to the split step.
 
     2. **Data Splitting**: Splits the loaded tabular data into training and test sets
        using a configurable test size (default: 20% test, 80% train). The split is
-       performed on the tabular_data artifact to create separate train and test
-       datasets for model training and evaluation.
+       performed on the full_dataset artifact to create sampled_train_dataset and
+       sampled_test_dataset for model training and evaluation.
 
     3. **Model Selection**: Trains multiple AutoGluon models on the training data using
        AutoGluon's ensembling approach (stacking with 3 levels and bagging with 2 folds).
@@ -77,8 +77,8 @@ def autogluon_tabular_training_pipeline(
 
     - **Efficient Exploration**: Initial model training uses the split training data
       with efficient ensembling rather than expensive hyperparameter optimization
-    - **Optimal Performance**: Final models are refitted on the complete original dataset
-      for maximum performance
+    - **Optimal Performance**: Final models are refitted (refit_full) on the predictor's
+      training and validation data for maximum performance
     - **Parallel Efficiency**: Top models are refitted in parallel to minimize total
       pipeline execution time
     - **Production-Ready**: Refitted models are AutoGluon Predictors optimized and ready

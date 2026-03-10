@@ -48,6 +48,7 @@ You can override these by providing the `split_config` dictionary with the corre
   - Approvers:
     - mprahl
     - nsingla
+    - LukaszCmielowski
   - Reviewers:
     - HumairAK
 

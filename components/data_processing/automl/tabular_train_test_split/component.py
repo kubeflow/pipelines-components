@@ -1,4 +1,4 @@
-from typing import Dict, NamedTuple, Optional
+from typing import NamedTuple, Optional
 
 from kfp import dsl
 
@@ -62,12 +62,14 @@ def tabular_train_test_split(  # noqa: D417
     y = X[label_column]
     X.drop(columns=[label_column], inplace=True)
 
+    stratify_effective = task_type != "regression" and split_config.get("stratify", True)
+
     # Split the data
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
         test_size=test_size,
-        stratify=(y if task_type != "regression" and split_config.get("stratify", True) else None),
+        stratify=(y if stratify_effective else None),
         random_state=random_state,
     )
 
@@ -79,8 +81,13 @@ def tabular_train_test_split(  # noqa: D417
     # Dumps to json string to avoid NaN in the output json
     # Format: '[{"col1": "val1","col2":"val2"},{"col1":"val3","col2":"val4"}]'
     sample_row = X_y_test.head(1).to_json(orient="records")
-    return NamedTuple("outputs", sample_row=Dict, split_config=dict)(
-        sample_row=sample_row, split_config={"test_size": test_size}
+    return NamedTuple("outputs", sample_row=str, split_config=dict)(
+        sample_row=sample_row,
+        split_config={
+            "test_size": test_size,
+            "random_state": random_state,
+            "stratify": stratify_effective,
+        },
     )
 
 

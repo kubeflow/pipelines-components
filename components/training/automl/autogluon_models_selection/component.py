@@ -75,6 +75,14 @@ def models_selection(
             # result.top_models, result.eval_metric, result.predictor_path
             return result
     """  # noqa: E501
+    # Input validation
+    VALID_TASK_TYPES = {"binary", "multiclass", "regression"}
+    if task_type not in VALID_TASK_TYPES:
+        raise ValueError(f"Invalid task_type '{task_type}'. Must be one of {VALID_TASK_TYPES}.")
+
+    if not isinstance(top_n, int) or top_n <= 0:
+        raise ValueError(f"top_n must be a positive integer; got {top_n}.")
+
     import logging
 
     logger = logging.getLogger(__name__)
@@ -112,7 +120,7 @@ def models_selection(
     )
 
     leaderboard = predictor.leaderboard(test_data_df)
-    logger.info(f"Leaderboard:\n\n {leaderboard.to_string()}")
+    logger.info(f"Leaderboard:\n\n {leaderboard.head(top_n).to_string()}")
 
     top_n_models = leaderboard.head(top_n)["model"].values.tolist()
 

@@ -39,6 +39,7 @@ to contain metrics at model.path / model.metadata["display_name"] / metrics / me
   - Approvers:
     - mprahl
     - nsingla
+    - LukaszCmielowski
   - Reviewers:
     - HumairAK
 
