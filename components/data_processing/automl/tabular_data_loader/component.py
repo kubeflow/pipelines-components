@@ -68,7 +68,7 @@ def automl_data_loader(
         if (access_key and not secret_key) or (secret_key and not access_key):
             raise ValueError(
                 "S3 credentials misconfigured: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must either "
-                "both be set and non-empty, or both be unset. Check the 's3-secret' Kubernetes secret."
+                "both be set and non-empty, or both be unset. Check a Kubernetes secret."
             )
         if not access_key and not secret_key:
             raise ValueError(

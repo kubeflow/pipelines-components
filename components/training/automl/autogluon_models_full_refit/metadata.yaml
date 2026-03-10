@@ -4,7 +4,7 @@ stability: alpha  # New component without proven track record
 dependencies:
   kubeflow:
     - name: Pipelines
-      version: '>=2.14.4'
+      version: '>=2.15.2'
 tags:
   - training
   - automl

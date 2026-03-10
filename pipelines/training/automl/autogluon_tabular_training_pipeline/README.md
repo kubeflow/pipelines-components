@@ -36,11 +36,15 @@ selection.
 
 **Two-Stage Training Benefits:**
 
-- **Efficient Exploration**: Initial model training uses the split training data with efficient ensembling rather than
-expensive hyperparameter optimization - **Optimal Performance**: Final models are refitted (refit_full) on the
-predictor's training and validation data for maximum performance - **Parallel Efficiency**: Top models are refitted in
-parallel to minimize total pipeline execution time - **Production-Ready**: Refitted models are AutoGluon Predictors
-optimized and ready for deployment
+- **Efficient Exploration:** Initial model training uses the split training data with efficient ensembling rather than
+expensive hyperparameter optimization.
+
+- **Optimal Performance:** Final models are refitted (`refit_full`) on the predictor's training and validation data for
+maximum performance.
+
+- **Parallel Efficiency:** Top models are refitted in parallel to minimize total pipeline execution time.
+
+- **Production-Ready:** Refitted models are AutoGluon Predictors optimized and ready for deployment.
 
 **AutoGluon Ensembling Approach:**
 

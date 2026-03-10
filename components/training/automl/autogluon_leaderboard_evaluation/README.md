@@ -30,7 +30,7 @@ to contain metrics at model.path / model.metadata["display_name"] / metrics / me
 - **Stability**: alpha
 - **Dependencies**:
   - Kubeflow:
-    - Name: Pipelines, Version: >=2.14.4
+    - Name: Pipelines, Version: >=2.15.2
 - **Tags**:
   - leaderboard
   - automl

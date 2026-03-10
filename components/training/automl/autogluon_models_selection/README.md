@@ -40,7 +40,7 @@ efficiency), then the best candidates are refitted on the full dataset for optim
 - **Stability**: alpha
 - **Dependencies**:
   - Kubeflow:
-    - Name: Pipelines, Version: >=2.14.4
+    - Name: Pipelines, Version: >=2.15.2
 - **Tags**:
   - training
   - automl
