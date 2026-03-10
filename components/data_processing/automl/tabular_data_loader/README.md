@@ -45,7 +45,6 @@ Authentication uses AWS-style credentials provided via environment variables (e.
   - Approvers:
     - mprahl
     - nsingla
-    - LukaszCmielowski
   - Reviewers:
     - HumairAK
 

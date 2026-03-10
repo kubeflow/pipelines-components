@@ -78,7 +78,6 @@ multi-level stacking - Using bootstrap aggregation (bagging) for robustness - Se
   - Approvers:
     - mprahl
     - nsingla
-    - LukaszCmielowski
   - Reviewers:
     - HumairAK
 

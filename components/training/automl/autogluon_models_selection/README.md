@@ -50,7 +50,6 @@ efficiency), then the best candidates are refitted on the full dataset for optim
   - Approvers:
     - mprahl
     - nsingla
-    - LukaszCmielowski
   - Reviewers:
     - HumairAK
 
