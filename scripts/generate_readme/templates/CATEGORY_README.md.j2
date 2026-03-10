@@ -1,11 +1,14 @@
 # {{ category_name }} {{ type_name }}
 
 This directory contains {{ type_name | lower }} in the **{{ category_name }}** category:
+{% if items %}
 
 {% for item in items %}
 - [{{ item.name }}]({{ item.link }}): {{ item.overview }}
 {% endfor %}
+{% endif %}
 {% if subcategories %}
+
 ## Subcategories
 
 {% for sub in subcategories %}

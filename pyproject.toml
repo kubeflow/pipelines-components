@@ -35,6 +35,7 @@ test = [
     "semver",
     "pip",
     "setuptools",
+    "kfp-kubernetes"
 ]
 # Local development (extends test with additional tools)
 dev = [
@@ -52,7 +53,17 @@ Issues = "https://github.com/kubeflow/pipelines-components/issues"
 packages = [
     "kfp_components",
     "kfp_components.components",
+    "kfp_components.components.training",
+    "kfp_components.components.training.automl",
+    "kfp_components.components.training.automl.autogluon_leaderboard_evaluation",
+    "kfp_components.components.training.automl.autogluon_models_full_refit",
+    "kfp_components.components.training.automl.autogluon_models_selection",
+    "kfp_components.components.evaluation",
     "kfp_components.components.data_processing",
+    "kfp_components.components.data_processing.automl",
+    "kfp_components.components.data_processing.automl.tabular_data_loader",
+    "kfp_components.components.data_processing.automl.tabular_train_test_split",
+    "kfp_components.components.data_processing.yoda_data_processor",
     "kfp_components.components.deployment",
     "kfp_components.components.evaluation",
     "kfp_components.components.training",

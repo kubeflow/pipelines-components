@@ -1,0 +1,5 @@
+# Automl
+
+This subcategory contains pipelines in the **Automl** group:
+
+- [Autogluon Tabular Training Pipeline](./autogluon_tabular_training_pipeline/README.md): AutoGluon Tabular Training Pipeline.

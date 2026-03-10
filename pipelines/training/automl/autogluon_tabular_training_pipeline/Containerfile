@@ -1,0 +1,18 @@
+ARG BASE_IMAGE="quay.io/aipcc/base-images/cpu:3.3"
+
+FROM ${BASE_IMAGE}
+
+## TODO: Ensure build isolation
+RUN pip install --index-url https://download.pytorch.org/whl/cpu --no-cache-dir \
+## Install PyTorch CPU-only FIRST (critical to avoid CUDA)
+    "torch==2.9.1" && \
+pip install --extra-index-url https://pypi.org/simple --no-cache-dir \
+## Install rest of the packages
+    "autogluon.tabular==1.5.0" \
+    "boto3==1.42.36" \
+    "pandas==2.3.3" \
+    "scikit-learn==1.7.1" \
+    "catboost==1.2.8" \
+    "fastai==2.8.5" \
+    "lightgbm==4.6.0" \
+    "xgboost==3.1.3" \
