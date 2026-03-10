@@ -455,26 +455,26 @@ deploymentSpec:
           : \"code\",\n                \"execution_count\": None,\n              \
           \  \"id\": \"fa7f736d-0b5c-4988-87a5-4d1a5cde0873\",\n                \"\
           metadata\": {},\n                \"outputs\": [],\n                \"source\"\
-          : [\n                    'pipeline_name = \"<PIPELINE_NAME>\"\\n',\n   \
-          \                 'run_id = \"<RUN_ID>\"\\n',\n                    'model_name\
-          \ = \"<MODEL_NAME>\"',\n                ],\n            },\n           \
-          \ {\n                \"cell_type\": \"markdown\",\n                \"id\"\
-          : \"54525a94-7799-41cc-822e-91bae88b3b78\",\n                \"metadata\"\
-          : {},\n                \"source\": [\n                    '<a id=\"download-trained-model\"\
-          ></a>\\n',\n                    \"## Download trained model\\n\",\n    \
-          \                \"\\n\",\n                    \" \\U0001f4cc **Action:**\
-          \ Ensure the S3 connection is added to the workbench so the notebook can\
-          \ access the results.\",  # noqa: E501\n                ],\n           \
-          \ },\n            {\n                \"cell_type\": \"markdown\",\n    \
-          \            \"id\": \"fba16ca7-b15f-4d7a-95b4-d3cf73163440\",\n       \
-          \         \"metadata\": {},\n                \"source\": [\"Download model\
-          \ binaries and metrics.\"],\n            },\n            {\n           \
-          \     \"cell_type\": \"code\",\n                \"execution_count\": None,\n\
-          \                \"id\": \"e88370df-ecda-453d-913a-9524088ccc36\",\n   \
-          \             \"metadata\": {},\n                \"outputs\": [],\n    \
-          \            \"source\": [\n                    \"import boto3\\n\",\n \
-          \                   \"import os\\n\",\n                    \"\\n\",\n  \
-          \                  \"s3 = boto3.resource('s3', endpoint_url=os.environ['AWS_S3_ENDPOINT'])\\\
+          : [\n                    'pipeline_name = \"<REPLACE_PIPELINE_NAME>\"\\\
+          n',\n                    'run_id = \"<REPLACE_RUN_ID>\"\\n',\n         \
+          \           'model_name = \"<REPLACE_MODEL_NAME>\"',\n                ],\n\
+          \            },\n            {\n                \"cell_type\": \"markdown\"\
+          ,\n                \"id\": \"54525a94-7799-41cc-822e-91bae88b3b78\",\n \
+          \               \"metadata\": {},\n                \"source\": [\n     \
+          \               '<a id=\"download-trained-model\"></a>\\n',\n          \
+          \          \"## Download trained model\\n\",\n                    \"\\n\"\
+          ,\n                    \" \\U0001f4cc **Action:** Ensure the S3 connection\
+          \ is added to the workbench so the notebook can access the results.\", \
+          \ # noqa: E501\n                ],\n            },\n            {\n    \
+          \            \"cell_type\": \"markdown\",\n                \"id\": \"fba16ca7-b15f-4d7a-95b4-d3cf73163440\"\
+          ,\n                \"metadata\": {},\n                \"source\": [\"Download\
+          \ model binaries and metrics.\"],\n            },\n            {\n     \
+          \           \"cell_type\": \"code\",\n                \"execution_count\"\
+          : None,\n                \"id\": \"e88370df-ecda-453d-913a-9524088ccc36\"\
+          ,\n                \"metadata\": {},\n                \"outputs\": [],\n\
+          \                \"source\": [\n                    \"import boto3\\n\"\
+          ,\n                    \"import os\\n\",\n                    \"\\n\",\n\
+          \                    \"s3 = boto3.resource('s3', endpoint_url=os.environ['AWS_S3_ENDPOINT'])\\\
           n\",\n                    \"bucket = s3.Bucket(os.environ['AWS_S3_BUCKET'])\\\
           n\",\n                    \"\\n\",\n                    'full_refit_prefix\
           \ = os.path.join(pipeline_name, run_id, \"autogluon-models-full-refit\"\
@@ -550,14 +550,14 @@ deploymentSpec:
           \  \"id\": \"d6955253-1891-4ff7-8b3e-ffa338d928f8\",\n                \"\
           metadata\": {},\n                \"outputs\": [],\n                \"source\"\
           : [\n                    \"import pandas as pd\\n\",\n                 \
-          \   \"\\n\",\n                    \"score_data = <SAMPLE_ROW>\\n\",\n  \
-          \                  \"score_df = pd.DataFrame(data=score_data)\\n\",\n  \
-          \                  \"score_df.head()\",\n                ],\n          \
-          \  },\n            {\n                \"cell_type\": \"markdown\",\n   \
-          \             \"id\": \"f07e1d71-85e8-4484-877a-5af40547de4f\",\n      \
-          \          \"metadata\": {},\n                \"source\": [\"Predict the\
-          \ values using `predict` method.\"],\n            },\n            {\n  \
-          \              \"cell_type\": \"code\",\n                \"execution_count\"\
+          \   \"\\n\",\n                    \"score_data = <REPLACE_SAMPLE_ROW>\\\
+          n\",\n                    \"score_df = pd.DataFrame(data=score_data)\\n\"\
+          ,\n                    \"score_df.head()\",\n                ],\n      \
+          \      },\n            {\n                \"cell_type\": \"markdown\",\n\
+          \                \"id\": \"f07e1d71-85e8-4484-877a-5af40547de4f\",\n   \
+          \             \"metadata\": {},\n                \"source\": [\"Predict\
+          \ the values using `predict` method.\"],\n            },\n            {\n\
+          \                \"cell_type\": \"code\",\n                \"execution_count\"\
           : None,\n                \"id\": \"8441133b-2984-4ea9-92a1-4e427d25ee1b\"\
           ,\n                \"metadata\": {},\n                \"outputs\": [],\n\
           \                \"source\": [\"predictor.predict(score_df)\"],\n      \
@@ -639,26 +639,26 @@ deploymentSpec:
           : \"code\",\n                \"execution_count\": None,\n              \
           \  \"id\": \"fa7f736d-0b5c-4988-87a5-4d1a5cde0873\",\n                \"\
           metadata\": {},\n                \"outputs\": [],\n                \"source\"\
-          : [\n                    'pipeline_name = \"<PIPELINE_NAME>\"\\n',\n   \
-          \                 'run_id =  \"<RUN_ID>\"\\n',\n                    'model_name\
-          \ = \"<MODEL_NAME>\"',\n                ],\n            },\n           \
-          \ {\n                \"cell_type\": \"markdown\",\n                \"id\"\
-          : \"54525a94-7799-41cc-822e-91bae88b3b78\",\n                \"metadata\"\
-          : {},\n                \"source\": [\n                    '<a id=\"download-trained-model\"\
-          ></a>\\n',\n                    \"## Download trained model\\n\",\n    \
-          \                \"\\n\",\n                    \" \\U0001f4cc **Action:**\
-          \ Ensure the S3 connection is added to the workbench so the notebook can\
-          \ access the results.\",  # noqa: E501\n                ],\n           \
-          \ },\n            {\n                \"cell_type\": \"markdown\",\n    \
-          \            \"id\": \"fba16ca7-b15f-4d7a-95b4-d3cf73163440\",\n       \
-          \         \"metadata\": {},\n                \"source\": [\"Download model\
-          \ binaries and metrics.\"],\n            },\n            {\n           \
-          \     \"cell_type\": \"code\",\n                \"execution_count\": None,\n\
-          \                \"id\": \"e88370df-ecda-453d-913a-9524088ccc36\",\n   \
-          \             \"metadata\": {},\n                \"outputs\": [],\n    \
-          \            \"source\": [\n                    \"import boto3\\n\",\n \
-          \                   \"import os\\n\",\n                    \"\\n\",\n  \
-          \                  \"s3 = boto3.resource('s3', endpoint_url=os.environ['AWS_S3_ENDPOINT'])\\\
+          : [\n                    'pipeline_name = \"<REPLACE_PIPELINE_NAME>\"\\\
+          n',\n                    'run_id =  \"<REPLACE_RUN_ID>\"\\n',\n        \
+          \            'model_name = \"<REPLACE_MODEL_NAME>\"',\n                ],\n\
+          \            },\n            {\n                \"cell_type\": \"markdown\"\
+          ,\n                \"id\": \"54525a94-7799-41cc-822e-91bae88b3b78\",\n \
+          \               \"metadata\": {},\n                \"source\": [\n     \
+          \               '<a id=\"download-trained-model\"></a>\\n',\n          \
+          \          \"## Download trained model\\n\",\n                    \"\\n\"\
+          ,\n                    \" \\U0001f4cc **Action:** Ensure the S3 connection\
+          \ is added to the workbench so the notebook can access the results.\", \
+          \ # noqa: E501\n                ],\n            },\n            {\n    \
+          \            \"cell_type\": \"markdown\",\n                \"id\": \"fba16ca7-b15f-4d7a-95b4-d3cf73163440\"\
+          ,\n                \"metadata\": {},\n                \"source\": [\"Download\
+          \ model binaries and metrics.\"],\n            },\n            {\n     \
+          \           \"cell_type\": \"code\",\n                \"execution_count\"\
+          : None,\n                \"id\": \"e88370df-ecda-453d-913a-9524088ccc36\"\
+          ,\n                \"metadata\": {},\n                \"outputs\": [],\n\
+          \                \"source\": [\n                    \"import boto3\\n\"\
+          ,\n                    \"import os\\n\",\n                    \"\\n\",\n\
+          \                    \"s3 = boto3.resource('s3', endpoint_url=os.environ['AWS_S3_ENDPOINT'])\\\
           n\",\n                    \"bucket = s3.Bucket(os.environ['AWS_S3_BUCKET'])\\\
           n\",\n                    \"\\n\",\n                    'full_refit_prefix\
           \ = os.path.join(pipeline_name, run_id, \"autogluon-models-full-refit\"\
@@ -739,8 +739,8 @@ deploymentSpec:
           \  \"id\": \"d6955253-1891-4ff7-8b3e-ffa338d928f8\",\n                \"\
           metadata\": {},\n                \"outputs\": [],\n                \"source\"\
           : [\n                    \"import pandas as pd\\n\",\n                 \
-          \   \"\\n\",\n                    \"score_data = <SAMPLE_ROW>\\n\",\n  \
-          \                  \"\\n\",\n                    \"score_df = pd.DataFrame(data=score_data)\\\
+          \   \"\\n\",\n                    \"score_data = <REPLACE_SAMPLE_ROW>\\\
+          n\",\n                    \"\\n\",\n                    \"score_df = pd.DataFrame(data=score_data)\\\
           n\",\n                    \"score_df.head()\",\n                ],\n   \
           \         },\n            {\n                \"cell_type\": \"markdown\"\
           ,\n                \"id\": \"f07e1d71-85e8-4484-877a-5af40547de4f\",\n \
@@ -789,24 +789,26 @@ deploymentSpec:
           \ non-empty part\n        tokens = [t for t in pipeline_name.split(\"-\"\
           ) if t]\n        if len(tokens) <= 1:\n            return tokens[0] if tokens\
           \ else \"\"\n        return \"-\".join(tokens[:-1])\n\n    pipeline_name\
-          \ = retrieve_pipeline_name(pipeline_name)\n\n    RUN_ID_INDEX = 6\n    PIPELINE_NAME_INDEX\
-          \ = 6\n    MODEL_NAME_INDEX = 6\n    notebook[\"cells\"][RUN_ID_INDEX][\"\
-          source\"][1] = notebook[\"cells\"][RUN_ID_INDEX][\"source\"][1].replace(\n\
-          \        \"<RUN_ID>\", run_id\n    )\n    notebook[\"cells\"][PIPELINE_NAME_INDEX][\"\
-          source\"][0] = notebook[\"cells\"][PIPELINE_NAME_INDEX][\"source\"][0].replace(\n\
-          \        \"<PIPELINE_NAME>\", pipeline_name\n    )\n    notebook[\"cells\"\
-          ][MODEL_NAME_INDEX][\"source\"][2] = notebook[\"cells\"][MODEL_NAME_INDEX][\"\
-          source\"][2].replace(\n        \"<MODEL_NAME>\", model_name_full\n    )\n\
-          \n    sample_row_list = json.loads(sample_row)\n\n    # remove label column\
-          \ from sample row\n    sample_row_formatted = [\n        {col: value for\
-          \ col, value in row.items() if col != predictor.label} for row in sample_row_list\n\
-          \    ]\n\n    sample_row_idx = 19 + int((problem_type in {\"binary\", \"\
-          multiclass\"}))\n    notebook[\"cells\"][sample_row_idx][\"source\"][2]\
-          \ = notebook[\"cells\"][sample_row_idx][\"source\"][2].replace(\n      \
-          \  \"<SAMPLE_ROW>\", str(sample_row_formatted)\n    )\n    notebook_path\
-          \ = output_path / \"notebooks\"\n    notebook_path.mkdir(parents=True, exist_ok=True)\n\
-          \    with (notebook_path / \"automl_predictor_notebook.ipynb\").open(\"\
-          w\", encoding=\"utf-8\") as f:\n        json.dump(notebook, f)\n\n    model_artifact.metadata[\"\
+          \ = retrieve_pipeline_name(pipeline_name)\n\n    # Replace <REPLACE_RUN_ID>,\
+          \ <REPLACE_PIPELINE_NAME>, <REPLACE_MODEL_NAME>, <REPLACE_SAMPLE_ROW> anywhere\
+          \ in code cells.\n    def replace_placeholder_in_notebook(notebook, replacements):\n\
+          \        for cell in notebook.get(\"cells\", []):\n            if cell.get(\"\
+          cell_type\") != \"code\":\n                continue\n            # Replace\
+          \ in every string of the source list\n            new_source = []\n    \
+          \        for line in cell.get(\"source\", []):\n                for placeholder,\
+          \ value in replacements.items():\n                    line = line.replace(placeholder,\
+          \ value)\n                new_source.append(line)\n            cell[\"source\"\
+          ] = new_source\n        return notebook\n\n    sample_row_list = json.loads(sample_row)\n\
+          \n    # remove label column from sample row\n    sample_row_formatted =\
+          \ [\n        {col: value for col, value in row.items() if col != predictor.label}\
+          \ for row in sample_row_list\n    ]\n\n    replacements = {\n        \"\
+          <REPLACE_RUN_ID>\": run_id,\n        \"<REPLACE_PIPELINE_NAME>\": pipeline_name,\n\
+          \        \"<REPLACE_MODEL_NAME>\": model_name_full,\n        \"<REPLACE_SAMPLE_ROW>\"\
+          : str(sample_row_formatted),\n    }\n    notebook = replace_placeholder_in_notebook(notebook,\
+          \ replacements)\n\n    notebook_path = output_path / \"notebooks\"\n   \
+          \ notebook_path.mkdir(parents=True, exist_ok=True)\n    with (notebook_path\
+          \ / \"automl_predictor_notebook.ipynb\").open(\"w\", encoding=\"utf-8\"\
+          ) as f:\n        json.dump(notebook, f)\n\n    model_artifact.metadata[\"\
           context\"][\"location\"][\"notebook\"] = (\n        f\"{model_name_full}/notebooks/automl_predictor_notebook.ipynb\"\
           \n    )\n\n    return NamedTuple(\"outputs\", model_name=str)(model_name=model_name_full)\n\
           \n"

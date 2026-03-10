@@ -257,9 +257,9 @@ def autogluon_models_full_refit(
                 "metadata": {},
                 "outputs": [],
                 "source": [
-                    'pipeline_name = "<PIPELINE_NAME>"\n',
-                    'run_id = "<RUN_ID>"\n',
-                    'model_name = "<MODEL_NAME>"',
+                    'pipeline_name = "<REPLACE_PIPELINE_NAME>"\n',
+                    'run_id = "<REPLACE_RUN_ID>"\n',
+                    'model_name = "<REPLACE_MODEL_NAME>"',
                 ],
             },
             {
@@ -413,7 +413,7 @@ def autogluon_models_full_refit(
                 "source": [
                     "import pandas as pd\n",
                     "\n",
-                    "score_data = <SAMPLE_ROW>\n",
+                    "score_data = <REPLACE_SAMPLE_ROW>\n",
                     "score_df = pd.DataFrame(data=score_data)\n",
                     "score_df.head()",
                 ],
@@ -549,9 +549,9 @@ def autogluon_models_full_refit(
                 "metadata": {},
                 "outputs": [],
                 "source": [
-                    'pipeline_name = "<PIPELINE_NAME>"\n',
-                    'run_id =  "<RUN_ID>"\n',
-                    'model_name = "<MODEL_NAME>"',
+                    'pipeline_name = "<REPLACE_PIPELINE_NAME>"\n',
+                    'run_id =  "<REPLACE_RUN_ID>"\n',
+                    'model_name = "<REPLACE_MODEL_NAME>"',
                 ],
             },
             {
@@ -712,7 +712,7 @@ def autogluon_models_full_refit(
                 "source": [
                     "import pandas as pd\n",
                     "\n",
-                    "score_data = <SAMPLE_ROW>\n",
+                    "score_data = <REPLACE_SAMPLE_ROW>\n",
                     "\n",
                     "score_df = pd.DataFrame(data=score_data)\n",
                     "score_df.head()",
@@ -792,18 +792,19 @@ def autogluon_models_full_refit(
 
     pipeline_name = retrieve_pipeline_name(pipeline_name)
 
-    RUN_ID_INDEX = 6
-    PIPELINE_NAME_INDEX = 6
-    MODEL_NAME_INDEX = 6
-    notebook["cells"][RUN_ID_INDEX]["source"][1] = notebook["cells"][RUN_ID_INDEX]["source"][1].replace(
-        "<RUN_ID>", run_id
-    )
-    notebook["cells"][PIPELINE_NAME_INDEX]["source"][0] = notebook["cells"][PIPELINE_NAME_INDEX]["source"][0].replace(
-        "<PIPELINE_NAME>", pipeline_name
-    )
-    notebook["cells"][MODEL_NAME_INDEX]["source"][2] = notebook["cells"][MODEL_NAME_INDEX]["source"][2].replace(
-        "<MODEL_NAME>", model_name_full
-    )
+    # Replace <REPLACE_RUN_ID>, <REPLACE_PIPELINE_NAME>, <REPLACE_MODEL_NAME>, <REPLACE_SAMPLE_ROW> anywhere in code cells. # noqa: E501
+    def replace_placeholder_in_notebook(notebook, replacements):
+        for cell in notebook.get("cells", []):
+            if cell.get("cell_type") != "code":
+                continue
+            # Replace in every string of the source list
+            new_source = []
+            for line in cell.get("source", []):
+                for placeholder, value in replacements.items():
+                    line = line.replace(placeholder, value)
+                new_source.append(line)
+            cell["source"] = new_source
+        return notebook
 
     sample_row_list = json.loads(sample_row)
 
@@ -812,10 +813,14 @@ def autogluon_models_full_refit(
         {col: value for col, value in row.items() if col != predictor.label} for row in sample_row_list
     ]
 
-    sample_row_idx = 19 + int((problem_type in {"binary", "multiclass"}))
-    notebook["cells"][sample_row_idx]["source"][2] = notebook["cells"][sample_row_idx]["source"][2].replace(
-        "<SAMPLE_ROW>", str(sample_row_formatted)
-    )
+    replacements = {
+        "<REPLACE_RUN_ID>": run_id,
+        "<REPLACE_PIPELINE_NAME>": pipeline_name,
+        "<REPLACE_MODEL_NAME>": model_name_full,
+        "<REPLACE_SAMPLE_ROW>": str(sample_row_formatted),
+    }
+    notebook = replace_placeholder_in_notebook(notebook, replacements)
+
     notebook_path = output_path / "notebooks"
     notebook_path.mkdir(parents=True, exist_ok=True)
     with (notebook_path / "automl_predictor_notebook.ipynb").open("w", encoding="utf-8") as f:
