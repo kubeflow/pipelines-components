@@ -165,7 +165,7 @@ cd components/data_processing/sdg/sdg_hub
 LLM_API_KEY="<your-api-key>" python shared/run_local.py
 ```
 
-This runs the LLM test flow against `test_data/sdg_hub/sample_input.jsonl` using
+This runs the LLM test flow against `tests/test_data/sample_input.jsonl` using
 `gpt-4o-mini`, prints the generated output, and cleans up the temp directory.
 
 To run with your own data or flow:
