@@ -23,8 +23,8 @@ from component import sdg  # noqa: E402
 from kfp.local import executor_input_utils, task_dispatcher  # noqa: E402
 
 # Paths
-COMPONENT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TEST_DATA = os.path.join(COMPONENT_ROOT, "tests", "test_data")
+COMPONENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TEST_DATA = os.path.join(COMPONENT_DIR, "tests", "test_data")
 INPUT_PATH = os.path.abspath(os.path.join(TEST_DATA, "sample_input.jsonl"))
 FLOW_PATH = os.path.abspath(os.path.join(TEST_DATA, "llm_test_flow.yaml"))
 
@@ -35,7 +35,6 @@ def _patched_construct_executor_input(component_spec, arguments, task_root, bloc
     Removes input artifact keys from the component spec before calling
     the original function, so KFP doesn't reject or try to resolve them.
     """
-    # Remove input artifact definitions so KFP doesn't try to resolve them
     saved_artifacts = dict(component_spec.input_definitions.artifacts)
     component_spec.input_definitions.ClearField("artifacts")
 
@@ -47,16 +46,11 @@ def _patched_construct_executor_input(component_spec, arguments, task_root, bloc
             block_input_artifact=False,
         )
     finally:
-        # Restore the original spec
         for k, v in saved_artifacts.items():
             component_spec.input_definitions.artifacts[k].CopyFrom(v)
 
 
-# Save original and apply patch
 _original_construct = executor_input_utils.construct_executor_input
-executor_input_utils.construct_executor_input = _patched_construct_executor_input
-
-# Also patch run_single_task to set block_input_artifact=False
 _original_run = task_dispatcher.run_single_task_implementation
 
 
@@ -66,45 +60,48 @@ def _patched_run(*args, **kwargs):
     return _original_run(*args, **kwargs)
 
 
-task_dispatcher.run_single_task_implementation = _patched_run
+def main():
+    """Run the SDG component with LLM test flow via patched LocalRunner."""
+    executor_input_utils.construct_executor_input = _patched_construct_executor_input
+    task_dispatcher.run_single_task_implementation = _patched_run
 
-# Initialize KFP LocalRunner
-with tempfile.TemporaryDirectory() as pipeline_root:
-    kfp.local.init(
-        runner=kfp.local.SubprocessRunner(use_venv=False),
-        pipeline_root=pipeline_root,
-    )
+    with tempfile.TemporaryDirectory() as pipeline_root:
+        kfp.local.init(
+            runner=kfp.local.SubprocessRunner(use_venv=False),
+            pipeline_root=pipeline_root,
+        )
 
-    print(f"Input:   {INPUT_PATH}")
-    print(f"Flow:    {FLOW_PATH}")
-    print(f"Output:  {pipeline_root}")
-    print()
+        print(f"Input:   {INPUT_PATH}")
+        print(f"Flow:    {FLOW_PATH}")
+        print(f"Output:  {pipeline_root}")
+        print()
 
-    # Run component through KFP LocalRunner (not python_func)
-    task = sdg(
-        input_pvc_path=INPUT_PATH,
-        flow_yaml_path=FLOW_PATH,
-        model="openai/gpt-4o-mini",
-        max_concurrency=1,
-        temperature=0.7,
-        max_tokens=2048,
-    )
+        task = sdg(
+            input_pvc_path=INPUT_PATH,
+            flow_yaml_path=FLOW_PATH,
+            model="openai/gpt-4o-mini",
+            max_concurrency=1,
+            temperature=0.7,
+            max_tokens=2048,
+        )
 
-    # Find the output artifact
-    output_path = task.outputs["output_artifact"].path
-    metrics_path = task.outputs["output_metrics"].path
+        output_path = task.outputs["output_artifact"].path
+        metrics_path = task.outputs["output_metrics"].path
 
-    # Print results
-    print("\n" + "=" * 60)
-    print("GENERATED OUTPUT")
-    print("=" * 60)
-    df = pd.read_json(output_path, lines=True)
-    pd.set_option("display.max_colwidth", 80)
-    pd.set_option("display.width", 200)
-    print(df.to_string(index=False))
+        print("\n" + "=" * 60)
+        print("GENERATED OUTPUT")
+        print("=" * 60)
+        df = pd.read_json(output_path, lines=True)
+        pd.set_option("display.max_colwidth", 80)
+        pd.set_option("display.width", 200)
+        print(df.to_string(index=False))
 
-    print("\n" + "=" * 60)
-    print("METRICS")
-    print("=" * 60)
-    with open(metrics_path) as f:
-        print(json.dumps(json.load(f), indent=2))
+        print("\n" + "=" * 60)
+        print("METRICS")
+        print("=" * 60)
+        with open(metrics_path) as f:
+            print(json.dumps(json.load(f), indent=2))
+
+
+if __name__ == "__main__":
+    main()
