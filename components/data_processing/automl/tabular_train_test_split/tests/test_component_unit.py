@@ -4,8 +4,6 @@ pandas and sklearn are mocked via sys.modules so the real packages are not requi
 Tests are designed to achieve high coverage of the component source code.
 """
 
-# Assisted-by: Cursor
-
 import sys
 from contextlib import contextmanager
 from unittest import mock

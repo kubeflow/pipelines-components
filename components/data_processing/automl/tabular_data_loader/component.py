@@ -110,11 +110,15 @@ def automl_data_loader(
 
                 if accumulated_size + chunk_memory > max_size_bytes:
                     remaining_bytes = max_size_bytes - accumulated_size
+                    if remaining_bytes <= 0:
+                        # No remaining budget; do not take any more rows
+                        break
                     bytes_per_row = chunk_memory / len(chunk_df) if len(chunk_df) > 0 else 0
                     if bytes_per_row > 0:
-                        rows_to_take = max(1, int(remaining_bytes / bytes_per_row))
-                        chunk_df = chunk_df.head(rows_to_take)
-                        chunk_list.append(chunk_df)
+                        rows_to_take = int(remaining_bytes / bytes_per_row)
+                        if rows_to_take > 0:
+                            chunk_df = chunk_df.head(rows_to_take)
+                            chunk_list.append(chunk_df)
                     break
 
                 chunk_list.append(chunk_df)

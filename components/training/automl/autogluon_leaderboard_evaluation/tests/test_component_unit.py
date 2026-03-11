@@ -1,7 +1,5 @@
 """Tests for the leaderboard_evaluation component."""
 
-# Assisted-by: Cursor
-
 import json
 import shutil
 import tempfile

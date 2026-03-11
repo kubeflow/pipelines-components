@@ -904,21 +904,23 @@ deploymentSpec:
           \ in pd.read_csv(text_stream, chunksize=chunk_size):\n                chunk_memory\
           \ = chunk_df.memory_usage(deep=True).sum()\n\n                if accumulated_size\
           \ + chunk_memory > max_size_bytes:\n                    remaining_bytes\
-          \ = max_size_bytes - accumulated_size\n                    bytes_per_row\
+          \ = max_size_bytes - accumulated_size\n                    if remaining_bytes\
+          \ <= 0:\n                        # No remaining budget; do not take any\
+          \ more rows\n                        break\n                    bytes_per_row\
           \ = chunk_memory / len(chunk_df) if len(chunk_df) > 0 else 0\n         \
           \           if bytes_per_row > 0:\n                        rows_to_take\
-          \ = max(1, int(remaining_bytes / bytes_per_row))\n                     \
-          \   chunk_df = chunk_df.head(rows_to_take)\n                        chunk_list.append(chunk_df)\n\
-          \                    break\n\n                chunk_list.append(chunk_df)\n\
-          \                accumulated_size += chunk_memory\n\n                if\
-          \ accumulated_size >= max_size_bytes:\n                    break\n     \
-          \   except Exception as e:\n            if not chunk_list:\n           \
-          \     raise ValueError(f\"Error reading CSV from S3: {str(e)}\") from e\n\
-          \n        return pd.concat(chunk_list, ignore_index=True) if chunk_list\
-          \ else pd.DataFrame()\n\n    def _sample_stratified(text_stream, chunk_size,\
-          \ max_size_bytes, label_column):\n        \"\"\"Merge batches and subsample\
-          \ proportionally by target column to stay under the size limit.\"\"\"\n\
-          \        subsampled_data = None\n\n        try:\n            for chunk_df\
+          \ = int(remaining_bytes / bytes_per_row)\n                        if rows_to_take\
+          \ > 0:\n                            chunk_df = chunk_df.head(rows_to_take)\n\
+          \                            chunk_list.append(chunk_df)\n             \
+          \       break\n\n                chunk_list.append(chunk_df)\n         \
+          \       accumulated_size += chunk_memory\n\n                if accumulated_size\
+          \ >= max_size_bytes:\n                    break\n        except Exception\
+          \ as e:\n            if not chunk_list:\n                raise ValueError(f\"\
+          Error reading CSV from S3: {str(e)}\") from e\n\n        return pd.concat(chunk_list,\
+          \ ignore_index=True) if chunk_list else pd.DataFrame()\n\n    def _sample_stratified(text_stream,\
+          \ chunk_size, max_size_bytes, label_column):\n        \"\"\"Merge batches\
+          \ and subsample proportionally by target column to stay under the size limit.\"\
+          \"\"\n        subsampled_data = None\n\n        try:\n            for chunk_df\
           \ in pd.read_csv(text_stream, chunksize=chunk_size):\n                if\
           \ label_column not in chunk_df.columns:\n                    raise ValueError(\n\
           \                        f\"Target column '{label_column}' not found in\

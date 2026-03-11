@@ -1,7 +1,5 @@
 """Tests for the autogluon_models_full_refit component."""
 
-# Assisted-by: Cursor
-
 import json
 import shutil
 import sys
