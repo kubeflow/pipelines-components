@@ -50,3 +50,5 @@ jobs:
           else
             echo "No */tests directories found under '${{ matrix.scripts-dir }}'; skipping."
           fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
