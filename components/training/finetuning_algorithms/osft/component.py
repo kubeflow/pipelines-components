@@ -9,9 +9,12 @@ Reusable inline OSFT (Orthogonal Subspace Fine-Tuning) training component.
 - Hardcoded to use mini-trainer backend and OSFT algorithm
 """
 
+import os
 from typing import Optional
 
 from kfp import dsl
+
+_SHARED_DIR = os.path.join(os.path.dirname(__file__), "..", "shared")
 
 
 @dsl.component(
@@ -20,9 +23,8 @@ from kfp import dsl
         "kubernetes",
         "olot",
         "matplotlib",
-        # Shared utilities (logging, K8s init, model persistence, etc.) from the kfp-components package
-        "kfp-components@git+https://github.com/red-hat-data-services/pipelines-components.git@main",
     ],
+    embedded_artifact_path=_SHARED_DIR,
     task_config_passthroughs=[
         dsl.TaskConfigField.RESOURCES,
         dsl.TaskConfigField.KUBERNETES_TOLERATIONS,

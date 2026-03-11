@@ -9,9 +9,12 @@ Reusable inline SFT (Supervised Fine-Tuning) training component.
 - Hardcoded to use instructlab-training backend and SFT algorithm
 """
 
+import os
 from typing import Optional
 
 from kfp import dsl
+
+_SHARED_DIR = os.path.join(os.path.dirname(__file__), "..", "shared")
 
 
 @dsl.component(
@@ -20,9 +23,8 @@ from kfp import dsl
         "kubernetes",
         "olot",
         "matplotlib",
-        # Shared utilities (logging, K8s init, model persistence, etc.) from the kfp-components package
-        "kfp-components@git+https://github.com/red-hat-data-services/pipelines-components.git@main",
     ],
+    embedded_artifact_path=_SHARED_DIR,
     task_config_passthroughs=[
         dsl.TaskConfigField.RESOURCES,
         dsl.TaskConfigField.KUBERNETES_TOLERATIONS,
@@ -103,22 +105,10 @@ def train_model(
     import os
     from typing import Dict
 
-    from kfp_components.components.training.finetuning_algorithms.shared import (
-        compute_nproc,
-        configure_env,
-        create_logger,
-        download_oci_model,
-        extract_metrics_from_jsonl,
-        init_k8s,
-        parse_kv,
-        persist_model,
-        plot_training_loss,
-        prepare_jsonl,
-        resolve_dataset,
-        select_runtime,
-        setup_hf_token,
-        wait_for_training_job,
-    )
+    from data import download_oci_model, prepare_jsonl, resolve_dataset
+    from output import extract_metrics_from_jsonl, persist_model, plot_training_loss
+    from setup import configure_env, create_logger, init_k8s, parse_kv, setup_hf_token
+    from training import compute_nproc, select_runtime, wait_for_training_job
 
     log = create_logger("train_model")
     log.info(f"Initializing SFT training component with: pvc={pvc_path}, model={training_base_model}")
