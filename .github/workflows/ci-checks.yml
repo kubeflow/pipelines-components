@@ -9,6 +9,7 @@ on:
 jobs:
   check_ci_status:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     permissions:
       checks: read
       contents: read

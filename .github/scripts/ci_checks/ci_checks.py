@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import subprocess
 import sys
 import time
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 _PASSING_CONCLUSIONS = frozenset({"success", "neutral", "skipped"})
 
@@ -57,7 +60,7 @@ class GhClient:
         raise ChecksError(f"Check run '{check_name}' not found")
 
 
-def should_run_checks(labels: list[str], *, is_member: bool) -> bool:
+def should_run_checks(labels: list[str], is_member: bool) -> bool:
     """Determine whether CI checks should run based on membership and PR labels."""
     if is_member:
         return True
@@ -82,23 +85,29 @@ def wait_for_checks(
 ) -> None:
     """Poll check runs until all pass or retries are exhausted."""
     if delay > 0:
+        logger.info("Waiting %d seconds before first poll...", delay)
         time.sleep(delay)
 
     for attempt in range(retries):
         if attempt > 0:
             time.sleep(interval)
 
+        logger.info("Poll %d/%d for commit %s", attempt + 1, retries, head_sha[:12])
         data = gh.get_check_runs(repo, head_sha)
         all_runs = data.get("check_runs", [])
         check_runs = [cr for cr in all_runs if cr["id"] != check_run_id]
 
         if not check_runs:
             if all_runs:
+                logger.info("No other check runs found (only self). Done.")
                 return
+            logger.info("No check runs registered yet. Retrying...")
             continue
 
         pending = [cr for cr in check_runs if cr["status"] != "completed"]
         if pending:
+            names = ", ".join(cr["name"] for cr in pending)
+            logger.info("%d pending: %s", len(pending), names)
             continue
 
         failed = [cr for cr in check_runs if cr.get("conclusion") not in _PASSING_CONCLUSIONS]
@@ -106,6 +115,7 @@ def wait_for_checks(
             names = ", ".join(cr["name"] for cr in failed)
             raise ChecksError(f"Check(s) failed: {names}")
 
+        logger.info("All %d check(s) passed.", len(check_runs))
         return
 
     raise ChecksError("Checks did not complete within the retry limit")
@@ -139,6 +149,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point."""
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     args = parse_args(argv)
     labels = [label for label in args.labels.split(",") if label]
     gh = GhClient()
@@ -148,7 +159,7 @@ def main(argv: list[str] | None = None) -> int:
 
     member = gh.is_member(args.repo_owner, args.pr_author)
     if not should_run_checks(labels, is_member=member):
-        print("PR requires '/ok-to-test' approval. Skipping CI checks.")
+        logger.info("PR requires '/ok-to-test' approval. Skipping CI checks.")
         return 0
 
     check_run_id = gh.get_own_check_run_id(args.repo, args.head_sha, args.check_name)
@@ -164,7 +175,7 @@ def main(argv: list[str] | None = None) -> int:
             interval=args.polling_interval,
         )
     except ChecksError as exc:
-        print(f"CI checks failed: {exc}", file=sys.stderr)
+        logger.error("CI checks failed: %s", exc)
         return 1
 
     save_pr_payload(args.output_dir, args.pr_number, args.event_action)

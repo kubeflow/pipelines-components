@@ -38,6 +38,47 @@ def _api_response(*check_runs: dict) -> str:
     return json.dumps({"total_count": len(check_runs), "check_runs": list(check_runs)})
 
 
+class FakeGhClient(GhClient):
+    """A fake GhClient that tracks label state and check run responses."""
+
+    def __init__(
+        self,
+        labels: set[str] | None = None,
+        check_runs_responses: list[dict] | None = None,
+        member: bool = True,
+    ) -> None:
+        """Initialize with optional label state and check run responses."""
+        self.labels = labels if labels is not None else set()
+        self._check_runs_responses = list(check_runs_responses or [])
+        self._poll_count = 0
+        self._member = member
+
+    def remove_label(self, repo: str, pr_number: int, label: str) -> None:
+        """Remove a label from the tracked set."""
+        self.labels.discard(label)
+
+    def get_check_runs(self, repo: str, head_sha: str) -> dict:
+        """Return the next canned check runs response."""
+        if self._poll_count < len(self._check_runs_responses):
+            response = self._check_runs_responses[self._poll_count]
+        else:
+            response = self._check_runs_responses[-1]
+        self._poll_count += 1
+        return response
+
+    def is_member(self, repo_owner: str, username: str) -> bool:
+        """Return the canned membership value."""
+        return self._member
+
+    def get_own_check_run_id(self, repo: str, head_sha: str, check_name: str) -> int:
+        """Return a fixed check run ID by scanning check_runs_responses."""
+        if self._check_runs_responses:
+            for cr in self._check_runs_responses[0].get("check_runs", []):
+                if cr["name"] == check_name:
+                    return cr["id"]
+        raise ChecksError(f"Check run '{check_name}' not found")
+
+
 # ---------------------------------------------------------------------------
 # should_run_checks
 # ---------------------------------------------------------------------------
@@ -82,47 +123,6 @@ class TestShouldRunChecks:
 # ---------------------------------------------------------------------------
 # reset_label
 # ---------------------------------------------------------------------------
-
-
-class FakeGhClient(GhClient):
-    """A fake GhClient that tracks label state and check run responses."""
-
-    def __init__(
-        self,
-        labels: set[str] | None = None,
-        check_runs_responses: list[dict] | None = None,
-        member: bool = True,
-    ) -> None:
-        """Initialize with optional label state and check run responses."""
-        self.labels = labels if labels is not None else set()
-        self._check_runs_responses = list(check_runs_responses or [])
-        self._poll_count = 0
-        self._member = member
-
-    def remove_label(self, repo: str, pr_number: int, label: str) -> None:
-        """Remove a label from the tracked set."""
-        self.labels.discard(label)
-
-    def get_check_runs(self, repo: str, head_sha: str) -> dict:
-        """Return the next canned check runs response."""
-        if self._poll_count < len(self._check_runs_responses):
-            response = self._check_runs_responses[self._poll_count]
-        else:
-            response = self._check_runs_responses[-1]
-        self._poll_count += 1
-        return response
-
-    def is_member(self, repo_owner: str, username: str) -> bool:
-        """Return the canned membership value."""
-        return self._member
-
-    def get_own_check_run_id(self, repo: str, head_sha: str, check_name: str) -> int:
-        """Return a fixed check run ID by scanning check_runs_responses."""
-        if self._check_runs_responses:
-            for cr in self._check_runs_responses[0].get("check_runs", []):
-                if cr["name"] == check_name:
-                    return cr["id"]
-        raise ChecksError(f"Check run '{check_name}' not found")
 
 
 class TestResetLabel:
