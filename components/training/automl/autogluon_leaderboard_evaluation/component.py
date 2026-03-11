@@ -198,9 +198,9 @@ def leaderboard_evaluation(
 
     results = []
     for model in models:
-        eval_results = json.load(
-            (Path(model.path) / model.metadata["display_name"] / "metrics" / "metrics.json").open("r")
-        )
+        metrics_path = Path(model.path) / model.metadata["display_name"] / "metrics" / "metrics.json"
+        with metrics_path.open("r") as f:
+            eval_results = json.load(f)
         display_name = model.metadata["display_name"]
         model_uri = f"{model.uri.rstrip('/')}/{display_name}"
         predictor_uri = f"{model_uri}/predictor/predictor.pkl"

@@ -1,26 +1,27 @@
 """Tests for the autogluon_models_selection component."""
 
-# Assisted-by: Cursor
-
 import sys
 from pathlib import Path
 from unittest import mock
 
 import pytest
 
-# Inject mock modules so @mock.patch("pandas...") and @mock.patch("autogluon...") resolve (yoda-style).
-if "pandas" not in sys.modules:
-    sys.modules["pandas"] = mock.MagicMock()
-if "autogluon" not in sys.modules:
-    _ag = mock.MagicMock()
-    _ag.__path__ = []
-    _ag.__spec__ = None
-    sys.modules["autogluon"] = _ag
-    _m = mock.MagicMock()
-    _m.__spec__ = None
-    sys.modules["autogluon.tabular"] = _m
-
 from ..component import models_selection  # noqa: E402
+
+
+@pytest.fixture(autouse=True, scope="module")
+def isolated_sys_modules():
+    """Patch pandas/autogluon in sys.modules only for this test module; restored on module teardown."""
+    with mock.patch.dict(sys.modules, clear=False) as mocked_modules:
+        mocked_modules["pandas"] = mock.MagicMock()
+        _ag = mock.MagicMock()
+        _ag.__path__ = []
+        _ag.__spec__ = None
+        mocked_modules["autogluon"] = _ag
+        _m = mock.MagicMock()
+        _m.__spec__ = None
+        mocked_modules["autogluon.tabular"] = _m
+        yield
 
 
 def _make_mock_leaderboard(all_model_names):
@@ -108,6 +109,11 @@ class TestModelsSelectionUnitTests:
         assert result.top_models == ["LightGBM_BAG_L1", "NeuralNetFastAI_BAG_L1"]
         assert result.eval_metric == "r2"
         assert result.predictor_path == str(Path(workspace_path) / "autogluon_predictor")
+        assert result.model_config == {
+            "preset": "medium_quality",
+            "eval_metric": "r2",
+            "time_limit": 3600,
+        }
 
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.tabular.TabularPredictor")
@@ -414,7 +420,7 @@ class TestModelsSelectionUnitTests:
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.tabular.TabularPredictor")
     def test_models_selection_sets_metadata_correctly(self, mock_predictor_class, mock_read_csv):
-        """Test that return value (top_models, eval_metric, predictor_path) is correct."""
+        """Test that return value (top_models, eval_metric, predictor_path, model_config) is correct."""
         mock_predictor = mock.MagicMock()
         mock_predictor.eval_metric = "r2"
         mock_predictor.fit.return_value = mock_predictor
@@ -455,6 +461,11 @@ class TestModelsSelectionUnitTests:
         assert len(result.top_models) == 3
         assert result.eval_metric == "r2"
         assert result.predictor_path == str(Path(workspace_path) / "autogluon_predictor")
+        assert result.model_config == {
+            "preset": "medium_quality",
+            "eval_metric": "r2",
+            "time_limit": 3600,
+        }
 
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.tabular.TabularPredictor")
@@ -493,12 +504,48 @@ class TestModelsSelectionUnitTests:
         assert hasattr(result, "top_models")
         assert hasattr(result, "eval_metric")
         assert hasattr(result, "predictor_path")
+        assert hasattr(result, "model_config")
         assert isinstance(result.top_models, list)
         assert isinstance(result.eval_metric, str)
         assert isinstance(result.predictor_path, str)
+        assert isinstance(result.model_config, dict)
         assert result.top_models == ["LightGBM_BAG_L1", "NeuralNetFastAI_BAG_L1"]
         assert result.eval_metric == "r2"
         assert result.predictor_path == str(Path(workspace_path) / "autogluon_predictor")
+        assert result.model_config["preset"] == "medium_quality"
+        assert result.model_config["time_limit"] == 3600
+
+    def test_models_selection_rejects_invalid_task_type(self):
+        """Test that ValueError is raised for invalid task_type."""
+        mock_train_data = mock.MagicMock()
+        mock_train_data.path = "/tmp/train_data.csv"
+        mock_test_data = mock.MagicMock()
+        mock_test_data.path = "/tmp/test_data.csv"
+        with pytest.raises(ValueError, match="Invalid task_type"):
+            models_selection.python_func(
+                label_column="target",
+                task_type="invalid",
+                top_n=2,
+                train_data=mock_train_data,
+                test_data=mock_test_data,
+                workspace_path="/tmp/model",
+            )
+
+    def test_models_selection_rejects_invalid_top_n(self):
+        """Test that ValueError is raised for non-positive top_n."""
+        mock_train_data = mock.MagicMock()
+        mock_train_data.path = "/tmp/train_data.csv"
+        mock_test_data = mock.MagicMock()
+        mock_test_data.path = "/tmp/test_data.csv"
+        with pytest.raises(ValueError, match="top_n must be a positive integer"):
+            models_selection.python_func(
+                label_column="target",
+                task_type="regression",
+                top_n=0,
+                train_data=mock_train_data,
+                test_data=mock_test_data,
+                workspace_path="/tmp/model",
+            )
 
     def test_component_imports_correctly(self):
         """Test that the component can be imported and has required attributes."""

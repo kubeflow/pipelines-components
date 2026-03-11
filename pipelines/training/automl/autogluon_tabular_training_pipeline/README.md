@@ -50,8 +50,15 @@ maximum performance.
 
 The pipeline leverages AutoGluon's unique ensembling strategy that combines multiple model types using stacking and
 bagging rather than traditional hyperparameter optimization. This approach is more efficient and typically produces
-better results for tabular data by automatically: - Training diverse model families - Combining predictions using
-multi-level stacking - Using bootstrap aggregation (bagging) for robustness - Selecting optimal ensemble configurations
+better results for tabular data by automatically:
+
+- Training diverse model families
+
+- Combining predictions using multi-level stacking
+
+- Using bootstrap aggregation (bagging) for robustness
+
+- Selecting optimal ensemble configurations
 
 ## Inputs 📥
 

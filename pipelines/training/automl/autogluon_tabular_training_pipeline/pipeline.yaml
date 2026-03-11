@@ -1,13 +1,7 @@
 ---
 # PIPELINE DEFINITION
 # Name: autogluon-tabular-training-pipeline
-# Description: End-to-end AutoGluon tabular training pipeline implementing a two-stage
-#   approach: first builds and selects top-performing models on sampled data, then
-#   refits them on the full dataset. The pipeline loads data from S3, splits it into
-#   train/test sets, trains multiple AutoGluon models using ensembling (stacking and
-#   bagging), selects the top N performers, refits each on the complete training data
-#   in parallel, and finally evaluates all refitted models to generate a comprehensive
-#   leaderboard with performance metrics.
+# Description: End-to-end AutoGluon tabular training pipeline implementing a two-stage approach: first builds and selects top-performing models on sampled data, then refits them on the full dataset. The pipeline loads data from S3, splits it into train/test sets, trains multiple AutoGluon models using ensembling (stacking and bagging), selects the top N performers, refits each on the complete training data in parallel, and finally evaluates all refitted models to generate a comprehensive leaderboard with performance metrics.
 # Inputs:
 #    label_column: str
 #    task_type: str
@@ -107,7 +101,7 @@ components:
           pipelinechannel--autogluon-models-full-refit-model_artifact:
             artifactSelectors:
               - outputArtifactKey: model_artifact
-                producerSubtask: autogluon-models-full-refit  # yamllint disable-line: indentation
+                producerSubtask: autogluon-models-full-refit
       tasks:
         autogluon-models-full-refit:
           cachingOptions:
@@ -298,7 +292,7 @@ deploymentSpec:
 
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
 
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                           --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
           - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
@@ -414,7 +408,7 @@ deploymentSpec:
           \          \" \\U0001f4a1 **Tips:**\\n\",\n                    \"- Ensure\
           \ the S3 connection to pipeline run results is configured so the notebook\
           \ can access run artifacts.\\n\",  # noqa: E501\n                    \"\
-            - The model name must match one of the models listed in the leaderboard\
+          - The model name must match one of the models listed in the leaderboard\
           \ (the **model** column).\\n\",\n                    \"\\n\",\n        \
           \            \"### Contents\\n\",\n                    \"This notebook contains\
           \ the following parts:\\n\",\n                    \"\\n\",\n           \
@@ -791,25 +785,26 @@ deploymentSpec:
           \ else \"\"\n        return \"-\".join(tokens[:-1])\n\n    pipeline_name\
           \ = retrieve_pipeline_name(pipeline_name)\n\n    # Replace <REPLACE_RUN_ID>,\
           \ <REPLACE_PIPELINE_NAME>, <REPLACE_MODEL_NAME>, <REPLACE_SAMPLE_ROW> anywhere\
-          \ in code cells.\n    def replace_placeholder_in_notebook(notebook, replacements):\n\
-          \        for cell in notebook.get(\"cells\", []):\n            if cell.get(\"\
-          cell_type\") != \"code\":\n                continue\n            # Replace\
-          \ in every string of the source list\n            new_source = []\n    \
-          \        for line in cell.get(\"source\", []):\n                for placeholder,\
-          \ value in replacements.items():\n                    line = line.replace(placeholder,\
-          \ value)\n                new_source.append(line)\n            cell[\"source\"\
-          ] = new_source\n        return notebook\n\n    sample_row_list = json.loads(sample_row)\n\
-          \n    # remove label column from sample row\n    sample_row_formatted =\
-          \ [\n        {col: value for col, value in row.items() if col != predictor.label}\
-          \ for row in sample_row_list\n    ]\n\n    replacements = {\n        \"\
-          <REPLACE_RUN_ID>\": run_id,\n        \"<REPLACE_PIPELINE_NAME>\": pipeline_name,\n\
-          \        \"<REPLACE_MODEL_NAME>\": model_name_full,\n        \"<REPLACE_SAMPLE_ROW>\"\
-          : str(sample_row_formatted),\n    }\n    notebook = replace_placeholder_in_notebook(notebook,\
-          \ replacements)\n\n    notebook_path = output_path / \"notebooks\"\n   \
-          \ notebook_path.mkdir(parents=True, exist_ok=True)\n    with (notebook_path\
-          \ / \"automl_predictor_notebook.ipynb\").open(\"w\", encoding=\"utf-8\"\
-          ) as f:\n        json.dump(notebook, f)\n\n    model_artifact.metadata[\"\
-          context\"][\"location\"][\"notebook\"] = (\n        f\"{model_name_full}/notebooks/automl_predictor_notebook.ipynb\"\
+          \ in code cells. # noqa: E501\n    def replace_placeholder_in_notebook(notebook,\
+          \ replacements):\n        for cell in notebook.get(\"cells\", []):\n   \
+          \         if cell.get(\"cell_type\") != \"code\":\n                continue\n\
+          \            # Replace in every string of the source list\n            new_source\
+          \ = []\n            for line in cell.get(\"source\", []):\n            \
+          \    for placeholder, value in replacements.items():\n                 \
+          \   line = line.replace(placeholder, value)\n                new_source.append(line)\n\
+          \            cell[\"source\"] = new_source\n        return notebook\n\n\
+          \    sample_row_list = json.loads(sample_row)\n\n    # remove label column\
+          \ from sample row\n    sample_row_formatted = [\n        {col: value for\
+          \ col, value in row.items() if col != predictor.label} for row in sample_row_list\n\
+          \    ]\n\n    replacements = {\n        \"<REPLACE_RUN_ID>\": run_id,\n\
+          \        \"<REPLACE_PIPELINE_NAME>\": pipeline_name,\n        \"<REPLACE_MODEL_NAME>\"\
+          : model_name_full,\n        \"<REPLACE_SAMPLE_ROW>\": str(sample_row_formatted),\n\
+          \    }\n    notebook = replace_placeholder_in_notebook(notebook, replacements)\n\
+          \n    notebook_path = output_path / \"notebooks\"\n    notebook_path.mkdir(parents=True,\
+          \ exist_ok=True)\n    with (notebook_path / \"automl_predictor_notebook.ipynb\"\
+          ).open(\"w\", encoding=\"utf-8\") as f:\n        json.dump(notebook, f)\n\
+          \n    model_artifact.metadata[\"context\"][\"location\"][\"notebook\"] =\
+          \ (\n        f\"{model_name_full}/notebooks/automl_predictor_notebook.ipynb\"\
           \n    )\n\n    return NamedTuple(\"outputs\", model_name=str)(model_name=model_name_full)\n\
           \n"
         image: registry.redhat.io/rhoai/odh-pipeline-runtime-datascience-cpu-py312-rhel9@sha256:f9844dc150592a9f196283b3645dda92bd80dfdb3d467fa8725b10267ea5bdbc
@@ -835,7 +830,7 @@ deploymentSpec:
 
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
 
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                           --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
           - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
@@ -876,12 +871,12 @@ deploymentSpec:
           \    if (access_key and not secret_key) or (secret_key and not access_key):\n\
           \            raise ValueError(\n                \"S3 credentials misconfigured:\
           \ AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must either \"\n         \
-          \       \"both be set and non-empty, or both be unset. Check the 's3-secret'\
-          \ Kubernetes secret.\"\n            )\n        if not access_key and not\
-          \ secret_key:\n            raise ValueError(\n                \"S3 credentials\
-          \ missing: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be provided\
-          \ via \"\n                \"a Kubernetes secret or environment configuration\
-          \ when using s3:// dataset URIs.\"\n            )\n\n        return boto3.client(\n\
+          \       \"both be set and non-empty, or both be unset. Check a Kubernetes\
+          \ secret.\"\n            )\n        if not access_key and not secret_key:\n\
+          \            raise ValueError(\n                \"S3 credentials missing:\
+          \ AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be provided via \"\n\
+          \                \"a Kubernetes secret or environment configuration when\
+          \ using s3:// dataset URIs.\"\n            )\n\n        return boto3.client(\n\
           \            \"s3\",\n            endpoint_url=endpoint_url,\n         \
           \   region_name=region_name,\n            aws_access_key_id=access_key,\n\
           \            aws_secret_access_key=secret_key,\n        )\n\n    def _sample_first_n_rows(text_stream,\
@@ -990,7 +985,7 @@ deploymentSpec:
 
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
 
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                           --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
           - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
@@ -1068,11 +1063,12 @@ deploymentSpec:
           \      </div>\n    </header>\n    <div class=\"table-wrapper\">\n    <div\
           \ class=\"table-scroll\">\n    {table_html}\n    </div>\n    </div>\n  </div>\n\
           </body>\n</html>\n\"\"\"\n\n    results = []\n    for model in models:\n\
-          \        eval_results = json.load(\n            (Path(model.path) / model.metadata[\"\
-          display_name\"] / \"metrics\" / \"metrics.json\").open(\"r\")\n        )\n\
-          \        display_name = model.metadata[\"display_name\"]\n        model_uri\
-          \ = f\"{model.uri.rstrip('/')}/{display_name}\"\n        predictor_uri =\
-          \ f\"{model_uri}/predictor/predictor.pkl\"\n        notebook_uri = f\"{model_uri}/notebooks/automl_predictor_notebook.ipynb\"\
+          \        metrics_path = Path(model.path) / model.metadata[\"display_name\"\
+          ] / \"metrics\" / \"metrics.json\"\n        with metrics_path.open(\"r\"\
+          ) as f:\n            eval_results = json.load(f)\n        display_name =\
+          \ model.metadata[\"display_name\"]\n        model_uri = f\"{model.uri.rstrip('/')}/{display_name}\"\
+          \n        predictor_uri = f\"{model_uri}/predictor/predictor.pkl\"\n   \
+          \     notebook_uri = f\"{model_uri}/notebooks/automl_predictor_notebook.ipynb\"\
           \n        results.append(\n            {\n                \"model\": display_name,\n\
           \                **eval_results,\n                \"notebook\": notebook_uri,\n\
           \                \"predictor\": predictor_uri,\n            }\n        )\n\
@@ -1113,7 +1109,7 @@ deploymentSpec:
 
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
 
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                           --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
           - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
@@ -1207,7 +1203,7 @@ deploymentSpec:
 
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
 
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                           --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
           - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
