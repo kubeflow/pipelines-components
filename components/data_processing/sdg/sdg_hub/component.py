@@ -63,8 +63,11 @@ def sdg(
     from sdg_hub.core.utils.error_handling import FlowValidationError
 
     # Configure logging
+    log_level_value = getattr(logging, log_level.upper(), None)
+    if log_level_value is None:
+        log_level_value = logging.INFO
     logging.basicConfig(
-        level=getattr(logging, log_level.upper()),
+        level=log_level_value,
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
     logger = logging.getLogger(__name__)
