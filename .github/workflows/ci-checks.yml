@@ -21,7 +21,7 @@ jobs:
       - name: Set up Python
         uses: ./.github/actions/setup-python-ci
         with:
-          python-version: "3.14"
+          python-version: "3.11"
 
       - name: Run CI checks
         run: |
