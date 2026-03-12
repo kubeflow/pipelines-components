@@ -10,6 +10,7 @@ on:
       - completed
 
 permissions:
+  issues: write
   pull-requests: write
   checks: read
   actions: read
@@ -102,6 +103,17 @@ jobs:
     needs: [fetch_data, reset_ci_passed_label]
     if: needs.fetch_data.outputs.has_artifact == 'true'
     steps:
+      - name: Ensure required labels exist
+        run: |
+          for label in "ci-passed" "needs-ok-to-test" "ok-to-test"; do
+            if ! gh label list --repo "$GITHUB_REPOSITORY" --search "$label" --json name --jq '.[].name' | grep -qx "$label"; then
+              echo "Creating missing label: $label"
+              gh label create "$label" --repo "$GITHUB_REPOSITORY"
+            fi
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Add 'ci-passed' label
         run: |
           echo "Adding 'ci-passed' label to PR #${{ needs.fetch_data.outputs.pr_number }}"
