@@ -71,21 +71,20 @@ class TestAutomlDataLoaderUnitTests:
         body_stream = io.BytesIO(csv_content.encode("utf-8"))
 
         with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}) as mock_s3:
-            full_dataset = mock.MagicMock()
-            full_dataset.path = str(tmp_path / "output.csv")
-
             result = automl_data_loader.python_func(
                 file_key="data/file.csv",
                 bucket_name="my-bucket",
-                full_dataset=full_dataset,
+                workspace_path=str(tmp_path),
             )
 
             assert result is not None
             assert hasattr(result, "sample_config")
             assert result.sample_config["n_samples"] == 3
             mock_s3.get_object.assert_called_once_with(Bucket="my-bucket", Key="data/file.csv")
-        assert (tmp_path / "output.csv").exists()
-        header, rows = _read_csv_path(full_dataset.path)
+        expected_path = str(tmp_path / "datasets" / "full_dataset.csv")
+        assert result.full_dataset_path == expected_path
+        assert (tmp_path / "datasets" / "full_dataset.csv").exists()
+        header, rows = _read_csv_path(result.full_dataset_path)
         assert header == ["a", "b", "c"]
         assert len(rows) == 3
 
@@ -96,19 +95,16 @@ class TestAutomlDataLoaderUnitTests:
         body_stream = io.BytesIO(csv_content.encode("utf-8"))
 
         with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}):
-            full_dataset = mock.MagicMock()
-            full_dataset.path = str(tmp_path / "out.csv")
-
             result = automl_data_loader.python_func(
                 file_key="s3/path/data.csv",
                 bucket_name="bucket",
-                full_dataset=full_dataset,
+                workspace_path=str(tmp_path),
                 sampling_method="first_n_rows",
             )
 
             assert hasattr(result, "sample_config")
             assert result.sample_config["n_samples"] == 2
-        header, rows = _read_csv_path(full_dataset.path)
+        header, rows = _read_csv_path(result.full_dataset_path)
         assert header == ["x", "y", "z"]
         assert len(rows) == 2
 
@@ -119,13 +115,10 @@ class TestAutomlDataLoaderUnitTests:
         body_stream = io.BytesIO(csv_content.encode("utf-8"))
 
         with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}) as mock_s3:
-            full_dataset = mock.MagicMock()
-            full_dataset.path = str(tmp_path / "stratified_out.csv")
-
             result = automl_data_loader.python_func(
                 file_key="data/train.csv",
                 bucket_name="my-bucket",
-                full_dataset=full_dataset,
+                workspace_path=str(tmp_path),
                 sampling_method="stratified",
                 label_column="target",
                 task_type="multiclass",
@@ -134,8 +127,8 @@ class TestAutomlDataLoaderUnitTests:
             assert hasattr(result, "sample_config")
             assert result.sample_config["n_samples"] == 9
             mock_s3.get_object.assert_called_once_with(Bucket="my-bucket", Key="data/train.csv")
-        assert (tmp_path / "stratified_out.csv").exists()
-        header, rows = _read_csv_path(full_dataset.path)
+        assert (tmp_path / "datasets" / "full_dataset.csv").exists()
+        header, rows = _read_csv_path(result.full_dataset_path)
         assert "target" in header
         target_idx = header.index("target")
         target_vals = {row[target_idx] for row in rows}
@@ -146,14 +139,11 @@ class TestAutomlDataLoaderUnitTests:
     def test_component_stratified_requires_label_column(self, tmp_path):
         """Test that sampling_method='stratified' without label_column raises ValueError."""
         with _mock_boto3_and_pandas() as mock_s3:
-            full_dataset = mock.MagicMock()
-            full_dataset.path = str(tmp_path / "out.csv")
-
             with pytest.raises(ValueError, match="label_column must be provided when sampling_method='stratified'"):
                 automl_data_loader.python_func(
                     file_key="data/file.csv",
                     bucket_name="bucket",
-                    full_dataset=full_dataset,
+                    workspace_path=str(tmp_path),
                     sampling_method="stratified",
                     label_column=None,
                     task_type="binary",
@@ -168,14 +158,11 @@ class TestAutomlDataLoaderUnitTests:
         body_stream = io.BytesIO(csv_content.encode("utf-8"))
 
         with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}):
-            full_dataset = mock.MagicMock()
-            full_dataset.path = str(tmp_path / "out.csv")
-
             with pytest.raises(ValueError, match=r"Error reading CSV from S3"):
                 automl_data_loader.python_func(
                     file_key="data/file.csv",
                     bucket_name="bucket",
-                    full_dataset=full_dataset,
+                    workspace_path=str(tmp_path),
                     sampling_method="stratified",
                     label_column="label",
                     task_type="binary",
@@ -188,13 +175,10 @@ class TestAutomlDataLoaderUnitTests:
         body_stream = io.BytesIO(csv_content.encode("utf-8"))
 
         with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}):
-            full_dataset = mock.MagicMock()
-            full_dataset.path = str(tmp_path / "out.csv")
-
             result = automl_data_loader.python_func(
                 file_key="data/file.csv",
                 bucket_name="bucket",
-                full_dataset=full_dataset,
+                workspace_path=str(tmp_path),
                 sampling_method="stratified",
                 label_column="target",
                 task_type="binary",
@@ -202,7 +186,7 @@ class TestAutomlDataLoaderUnitTests:
 
             assert hasattr(result, "sample_config")
             assert result.sample_config["n_samples"] >= 2
-        header, rows = _read_csv_path(full_dataset.path)
+        header, rows = _read_csv_path(result.full_dataset_path)
         target_idx = header.index("target")
         for row in rows:
             assert row[target_idx] != ""  # no NA/empty in target
@@ -215,20 +199,17 @@ class TestAutomlDataLoaderUnitTests:
         body_stream = io.BytesIO(csv_content.encode("utf-8"))
 
         with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}) as mock_s3:
-            full_dataset = mock.MagicMock()
-            full_dataset.path = str(tmp_path / "random_out.csv")
-
             result = automl_data_loader.python_func(
                 file_key="data/file.csv",
                 bucket_name="my-bucket",
-                full_dataset=full_dataset,
+                workspace_path=str(tmp_path),
                 sampling_method="random",
             )
 
             assert result.sample_config["n_samples"] == 4
             mock_s3.get_object.assert_called_once_with(Bucket="my-bucket", Key="data/file.csv")
-        assert (tmp_path / "random_out.csv").exists()
-        header, rows = _read_csv_path(full_dataset.path)
+        assert (tmp_path / "datasets" / "full_dataset.csv").exists()
+        header, rows = _read_csv_path(result.full_dataset_path)
         assert header == ["a", "b", "c"]
         assert len(rows) == 4
 
@@ -251,21 +232,16 @@ class TestAutomlDataLoaderUnitTests:
             MockedDataFrame.BYTES_PER_ROW = 500_000_000
 
             with _mock_boto3_and_pandas(get_object_side_effect=get_object):
-                full_dataset1 = mock.MagicMock()
-                full_dataset1.path = str(tmp_path / "out1.csv")
-                full_dataset2 = mock.MagicMock()
-                full_dataset2.path = str(tmp_path / "out2.csv")
-
                 result1 = automl_data_loader.python_func(
                     file_key="data/file.csv",
                     bucket_name="bucket",
-                    full_dataset=full_dataset1,
+                    workspace_path=str(tmp_path / "ws1"),
                     sampling_method="random",
                 )
                 result2 = automl_data_loader.python_func(
                     file_key="data/file.csv",
                     bucket_name="bucket",
-                    full_dataset=full_dataset2,
+                    workspace_path=str(tmp_path / "ws2"),
                     sampling_method="random",
                 )
 
@@ -273,8 +249,8 @@ class TestAutomlDataLoaderUnitTests:
             n2 = result2.sample_config["n_samples"]
             assert n1 == n2, "Same random_state should yield same sample size"
             assert n1 == 2, "Downsampling should have been triggered (2 rows * 0.5 GB/row = 1 GB)"
-            _, rows1 = _read_csv_path(full_dataset1.path)
-            _, rows2 = _read_csv_path(full_dataset2.path)
+            _, rows1 = _read_csv_path(result1.full_dataset_path)
+            _, rows2 = _read_csv_path(result2.full_dataset_path)
             assert rows1 == rows2, "Same random_state should yield identical rows"
         finally:
             MockedDataFrame.BYTES_PER_ROW = original_bytes_per_row
@@ -288,18 +264,15 @@ class TestAutomlDataLoaderUnitTests:
         body_stream = io.BytesIO(csv_content.encode("utf-8"))
 
         with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}):
-            full_dataset = mock.MagicMock()
-            full_dataset.path = str(tmp_path / "random_multi.csv")
-
             result = automl_data_loader.python_func(
                 file_key="data/large.csv",
                 bucket_name="bucket",
-                full_dataset=full_dataset,
+                workspace_path=str(tmp_path),
                 sampling_method="random",
             )
 
             assert result.sample_config["n_samples"] == 15000
-        assert (tmp_path / "random_multi.csv").exists()
-        header_out, rows_out = _read_csv_path(full_dataset.path)
+        assert (tmp_path / "datasets" / "full_dataset.csv").exists()
+        header_out, rows_out = _read_csv_path(result.full_dataset_path)
         assert header_out == ["col1", "col2"]
         assert len(rows_out) == 15000

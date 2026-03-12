@@ -24,7 +24,7 @@ efficiency), then the best candidates are refitted on the full dataset for optim
 | `label_column` | `str` | `None` | Name of the target/label column in train and test datasets. |
 | `task_type` | `str` | `None` | ML task type: "binary", "multiclass", or "regression"; drives metrics and model types. |
 | `top_n` | `int` | `None` | Number of top-performing models to select from the leaderboard (positive integer). |
-| `train_data` | `dsl.Input[dsl.Dataset]` | `None` | Dataset artifact (CSV) with training data; must include label_column and features. |
+| `train_data_path` | `str` | `None` | Path to the training data CSV (on PVC workspace); must include label_column and features. |
 | `test_data` | `dsl.Input[dsl.Dataset]` | `None` | Dataset artifact (CSV) for evaluation and leaderboard; schema must match train_data. |
 | `workspace_path` | `str` | `None` | Workspace directory where TabularPredictor is saved (workspace_path/autogluon_predictor). |
 
@@ -65,12 +65,12 @@ from kfp import dsl
 from kfp_components.components.training.automl.autogluon_models_selection import models_selection
 
 @dsl.pipeline(name="automl-models-selection-pipeline")
-def my_pipeline(train_dataset, test_dataset):
+def my_pipeline(train_data_path, test_dataset):
     selection_task = models_selection(
         label_column="price",
         task_type="regression",
         top_n=3,
-        train_data=train_dataset,
+        train_data_path=train_data_path,
         test_data=test_dataset,
         workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
     )
@@ -84,7 +84,7 @@ selection_task = models_selection(
     label_column="target",
     task_type="multiclass",
     top_n=5,
-    train_data=train_test_split_task.outputs["sampled_train_dataset"],
+    train_data_path=train_test_split_task.outputs["models_selection_train_path"],
     test_data=train_test_split_task.outputs["sampled_test_dataset"],
     workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
 )

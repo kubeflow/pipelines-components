@@ -25,15 +25,16 @@ def autogluon_models_full_refit(
     sampling_config: Optional[dict] = None,
     split_config: Optional[dict] = None,
     model_config: Optional[dict] = None,
+    extra_train_data_path: str = "",
 ) -> NamedTuple("outputs", model_name=str):
     """Refit a specific AutoGluon model on the full training dataset.
 
     This component takes a trained AutoGluon TabularPredictor, loaded from
     predictor_path, and refits a specific model, identified by model_name, on
-    the full training data. By default AutoGluon refit_full uses the
-    predictor's training and validation data; the test_dataset is used for
-    evaluation and for writing metrics. The refitted model is saved with the
-    suffix "_FULL" appended to model_name.
+    the full training data. When extra_train_data_path is provided, the extra
+    training data is loaded and passed to refit_full as train_data_extra. The
+    test_dataset is used for evaluation and for writing metrics. The refitted
+    model is saved with the suffix "_FULL" appended to model_name.
 
     Artifacts are written under model_artifact.path in a directory named
     <model_name>_FULL (e.g. LightGBM_BAG_L1_FULL). The layout is:
@@ -71,6 +72,7 @@ def autogluon_models_full_refit(
         run_id: Pipeline run ID (used in the generated notebook).
         sample_row: JSON list of row objects for example input in the notebook; label column is stripped.
         model_artifact: Output Model; artifacts under model_artifact.path/<model_name>_FULL (predictor/, metrics/, notebooks/).
+        extra_train_data_path: Optional path to extra training data CSV (on PVC workspace) passed to refit_full.
 
     Returns:
         NamedTuple with model_name (refitted name with "_FULL" suffix); artifacts written to model_artifact.
@@ -115,6 +117,7 @@ def autogluon_models_full_refit(
     model_config = model_config or {}
 
     test_dataset_df = pd.read_csv(test_dataset.path)
+    extra_train_df = pd.read_csv(extra_train_data_path) if extra_train_data_path else None
 
     predictor = TabularPredictor.load(predictor_path)
 
@@ -143,8 +146,8 @@ def autogluon_models_full_refit(
     predictor_clone = predictor.clone(path=output_path / "predictor", return_clone=True, dirs_exist_ok=True)
     predictor_clone.delete_models(models_to_keep=[model_name])
 
-    # by default, autogluon refit on training + validation data
-    predictor_clone.refit_full(model=model_name)
+    # refit on training + validation data, optionally with extra training data
+    predictor_clone.refit_full(model=model_name, train_data_extra=extra_train_df)
 
     predictor_clone.set_model_best(model=model_name_full, save_trainer=True)
     predictor_clone.save_space()

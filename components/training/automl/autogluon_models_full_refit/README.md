@@ -7,9 +7,9 @@
 Refit a specific AutoGluon model on the full training dataset.
 
 This component takes a trained AutoGluon TabularPredictor, loaded from predictor_path, and refits a specific model,
-identified by model_name, on the full training data. By default AutoGluon refit_full uses the predictor's training and
-validation data; the test_dataset is used for evaluation and for writing metrics. The refitted model is saved with the
-suffix "_FULL" appended to model_name.
+identified by model_name, on the full training data. When extra_train_data_path is provided, the extra training data is
+loaded and passed to refit_full as train_data_extra. The test_dataset is used for evaluation and for writing metrics.
+The refitted model is saved with the suffix "_FULL" appended to model_name.
 
 Artifacts are written under model_artifact.path in a directory named <model_name>_FULL (e.g. LightGBM_BAG_L1_FULL). The
 layout is:
@@ -47,6 +47,7 @@ exploration, then the best candidates are refitted on the full dataset for optim
 | `sampling_config` | `Optional[dict]` | `None` | Data sampling config (stored in artifact metadata). |
 | `split_config` | `Optional[dict]` | `None` | Data split config (stored in artifact metadata). |
 | `model_config` | `Optional[dict]` | `None` | Model training config (stored in artifact metadata). |
+| `extra_train_data_path` | `str` | `""` | Optional path to extra training data CSV (on PVC workspace) passed to refit_full. |
 
 ## Outputs 📤
 
@@ -78,7 +79,7 @@ exploration, then the best candidates are refitted on the full dataset for optim
 
 ### Refit a single model (typical in a ParallelFor)
 
-Usually used after `models_selection`; refit each top model with the test dataset used for evaluation. Use pipeline placeholders for name and run ID:
+Usually used after `models_selection`; refit each top model with the test dataset used for evaluation and extra training data from the split step. Use pipeline placeholders for name and run ID:
 
 ```python
 from kfp import dsl
@@ -97,6 +98,7 @@ def my_pipeline(selection_task, split_task, loader_task):
             pipeline_name=dsl.PIPELINE_JOB_RESOURCE_NAME_PLACEHOLDER,
             run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
             sample_row=split_task.outputs["sample_row"],
+            extra_train_data_path=split_task.outputs["extra_train_data_path"],
         )
     return refit_task
 ```
@@ -111,6 +113,22 @@ refit_task = autogluon_models_full_refit(
     sampling_config={"n_samples": 10000},
     split_config={"test_size": 0.2, "random_state": 42},
     model_config={"eval_metric": "r2", "time_limit": 300},
+    pipeline_name="my-automl-pipeline",
+    run_id="run-123",
+    sample_row='[{"feature1": 1.0, "target": 0.5}]',
+    extra_train_data_path="/workspace/datasets/extra_train_dataset.csv",
+)
+```
+
+### Refit without extra training data
+
+When `extra_train_data_path` is empty (default), `refit_full` uses only the predictor's training and validation data:
+
+```python
+refit_task = autogluon_models_full_refit(
+    model_name="LightGBM_BAG_L1",
+    test_dataset=test_dataset,
+    predictor_path="/workspace/autogluon_predictor",
     pipeline_name="my-automl-pipeline",
     run_id="run-123",
     sample_row='[{"feature1": 1.0, "target": 0.5}]',

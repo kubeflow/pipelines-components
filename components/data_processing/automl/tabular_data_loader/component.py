@@ -9,11 +9,11 @@ from kfp import dsl
 def automl_data_loader(
     file_key: str,
     bucket_name: str,
-    full_dataset: dsl.Output[dsl.Dataset],
+    workspace_path: str,
     sampling_method: Optional[str] = None,
     label_column: Optional[str] = None,
     task_type: str = "regression",
-) -> NamedTuple("outputs", sample_config=dict):
+) -> NamedTuple("outputs", sample_config=dict, full_dataset_path=str):
     """Automl Data Loader component.
 
     Loads tabular (CSV) data from S3 in batches, sampling up to 1GB of data.
@@ -22,19 +22,19 @@ def automl_data_loader(
 
     The Tabular Data Loader is typically the first step in the AutoML pipeline.
     It streams CSV data from an S3 bucket, optionally samples it using
-    one of the supported strategies, and writes the result to an output dataset artifact.
+    one of the supported strategies, and writes the result to the PVC workspace.
     Authentication uses AWS-style credentials provided via environment variables (e.g. from a Kubernetes secret).
 
     Args:
         file_key: S3 object key of the CSV file.
         bucket_name: S3 bucket name containing the file.
+        workspace_path: PVC workspace directory where the full dataset CSV will be written.
         label_column: Column name for labels/target (used for stratified sampling).
-        full_dataset: Output dataset artifact for the sampled data.
         sampling_method: "first_n_rows", "stratified", or "random"; if None, derived from task_type.
         task_type: "binary", "multiclass", or "regression" (default); used when sampling_method is None.
 
     Returns:
-        NamedTuple: Contains a sample configuration dictionary.
+        NamedTuple: Contains a sample configuration dictionary and the full dataset path.
     """
     import io
     import logging
@@ -241,10 +241,18 @@ def automl_data_loader(
     n_samples = len(sampled_dataframe)
     logger.info("Read %d rows from s3://%s/%s (sampling_method=%s)", n_samples, bucket_name, file_key, sampling_method)
 
-    # Save the sampled dataframe to the output artifact
-    sampled_dataframe.to_csv(full_dataset.path, index=False)
+    # Save the sampled dataframe to the PVC workspace
+    from pathlib import Path
 
-    return NamedTuple("outputs", sample_config=dict)(sample_config={"n_samples": n_samples})
+    datasets_dir = Path(workspace_path) / "datasets"
+    datasets_dir.mkdir(parents=True, exist_ok=True)
+    full_dataset_path = str(datasets_dir / "full_dataset.csv")
+    sampled_dataframe.to_csv(full_dataset_path, index=False)
+
+    return NamedTuple("outputs", sample_config=dict, full_dataset_path=str)(
+        sample_config={"n_samples": n_samples},
+        full_dataset_path=full_dataset_path,
+    )
 
 
 if __name__ == "__main__":

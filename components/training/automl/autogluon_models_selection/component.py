@@ -18,7 +18,7 @@ def models_selection(
     label_column: str,
     task_type: str,
     top_n: int,
-    train_data: dsl.Input[dsl.Dataset],
+    train_data_path: str,
     test_data: dsl.Input[dsl.Dataset],
     workspace_path: str,
 ) -> NamedTuple("outputs", top_models=List[str], eval_metric=str, predictor_path=str, model_config=dict):
@@ -43,7 +43,7 @@ def models_selection(
         label_column: Name of the target/label column in train and test datasets.
         task_type: ML task type: "binary", "multiclass", or "regression"; drives metrics and model types.
         top_n: Number of top-performing models to select from the leaderboard (positive integer).
-        train_data: Dataset artifact (CSV) with training data; must include label_column and features.
+        train_data_path: Path to the training data CSV (on PVC workspace); must include label_column and features.
         test_data: Dataset artifact (CSV) for evaluation and leaderboard; schema must match train_data.
         workspace_path: Workspace directory where TabularPredictor is saved (workspace_path/autogluon_predictor).
 
@@ -62,13 +62,13 @@ def models_selection(
         )
 
         @dsl.pipeline(name="model-selection-pipeline")
-        def selection_pipeline(train_data, test_data, workspace_path):
+        def selection_pipeline(train_data_path, test_data, workspace_path):
             "Select top 3 models from training."
             result = models_selection(
                 label_column="price",
                 task_type="regression",
                 top_n=3,
-                train_data=train_data,
+                train_data_path=train_data_path,
                 test_data=test_data,
                 workspace_path=workspace_path,
             )
@@ -97,7 +97,7 @@ def models_selection(
     DEFAULT_TIME_LIMIT = 60 * 60  # 60 * 60 = 3600 seconds = 1 hour
 
     # Read the data
-    train_data_df = pd.read_csv(train_data.path)
+    train_data_df = pd.read_csv(train_data_path)
     test_data_df = pd.read_csv(test_data.path)
 
     eval_metric = "r2" if task_type == "regression" else "accuracy"

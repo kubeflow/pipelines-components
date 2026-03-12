@@ -10,8 +10,8 @@ Loads tabular (CSV) data from S3 in batches, sampling up to 1GB of data. The com
 efficiently handle large files without loading the entire dataset into memory at once.
 
 The Tabular Data Loader is typically the first step in the AutoML pipeline. It streams CSV data from an S3 bucket,
-optionally samples it using one of the supported strategies, and writes the result to an output dataset artifact.
-Authentication uses AWS-style credentials provided via environment variables (e.g. from a Kubernetes secret).
+optionally samples it using one of the supported strategies, and writes the result to the PVC workspace. Authentication
+uses AWS-style credentials provided via environment variables (e.g. from a Kubernetes secret).
 
 ## Inputs 📥
 
@@ -19,7 +19,7 @@ Authentication uses AWS-style credentials provided via environment variables (e.
 |-----------|------|---------|-------------|
 | `file_key` | `str` | `None` | S3 object key of the CSV file. |
 | `bucket_name` | `str` | `None` | S3 bucket name containing the file. |
-| `full_dataset` | `dsl.Output[dsl.Dataset]` | `None` | Output dataset artifact for the sampled data. |
+| `workspace_path` | `str` | `None` | PVC workspace directory where the full dataset CSV will be written. |
 | `sampling_method` | `Optional[str]` | `None` | "first_n_rows", "stratified", or "random"; if None, derived from task_type. |
 | `label_column` | `Optional[str]` | `None` | Column name for labels/target (used for stratified sampling). |
 | `task_type` | `str` | `regression` | "binary", "multiclass", or "regression" (default); used when sampling_method is None. |
@@ -28,7 +28,7 @@ Authentication uses AWS-style credentials provided via environment variables (e.
 
 | Name | Type | Description |
 |------|------|-------------|
-| Output | `NamedTuple('outputs', sample_config=dict)` | Contains a sample configuration dictionary. |
+| Output | `NamedTuple('outputs', sample_config=dict, full_dataset_path=str)` | Contains a sample configuration dictionary and the full dataset path. |
 
 ## Metadata 🗂️
 
@@ -80,9 +80,11 @@ def my_pipeline():
     load_task = automl_data_loader(
         bucket_name="my-ml-bucket",
         file_key="data/train.csv",
+        workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
         label_column="target",
         task_type="regression",
     )
+    # load_task.outputs["full_dataset_path"] contains the PVC path to the dataset CSV
     return load_task
 ```
 
@@ -92,7 +94,7 @@ def my_pipeline():
 load_task = automl_data_loader(
     bucket_name="my-ml-bucket",
     file_key="data/train.csv",
-    full_dataset=...,
+    workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
     sampling_method="first_n_rows",
 )
 ```
@@ -103,9 +105,10 @@ load_task = automl_data_loader(
 load_task = automl_data_loader(
     bucket_name="my-ml-bucket",
     file_key="data/train.csv",
-    full_dataset=...,
+    workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
     sampling_method="stratified",
     label_column="target",
+    task_type="binary",
 )
 ```
 
