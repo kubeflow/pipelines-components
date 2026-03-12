@@ -18,16 +18,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: ./.github/actions/setup-python-ci
-        with:
-          python-version: "3.11"
-
       - name: Run CI checks
         run: |
           LABELS="${{ join(github.event.pull_request.labels.*.name, ',') }}"
 
-          uv run python3 .github/scripts/ci_checks/ci_checks.py \
+          python3 .github/scripts/ci_checks/ci_checks.py \
             --pr-number "${{ github.event.pull_request.number }}" \
             --repo "${GITHUB_REPOSITORY}" \
             --repo-owner "${GITHUB_REPOSITORY_OWNER}" \
