@@ -84,8 +84,8 @@ selection_task = models_selection(
     label_column="target",
     task_type="multiclass",
     top_n=5,
-    train_data_path=train_test_split_task.outputs["models_selection_train_path"],
-    test_data=train_test_split_task.outputs["sampled_test_dataset"],
+    train_data_path=data_loader_task.outputs["models_selection_train_path"],
+    test_data=data_loader_task.outputs["sampled_test_dataset"],
     workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
 )
 # Use selection_task.outputs["top_models"], selection_task.outputs["eval_metric"],

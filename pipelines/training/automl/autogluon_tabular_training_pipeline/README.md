@@ -18,27 +18,25 @@ evaluation component). The workspace is provisioned via ``PipelineConfig.workspa
 
 **Pipeline Stages:**
 
-1. **Data Loading**: Loads tabular (CSV) data from an S3-compatible object storage bucket using AWS credentials
-configured via Kubernetes secrets. The sampled dataset is written to the PVC workspace at
-``{workspace_path}/datasets/full_dataset.csv``; its path is returned as ``full_dataset_path`` for downstream steps.
+1. **Data Loading & Splitting**: Loads tabular (CSV) data from an S3-compatible object storage bucket using AWS
+credentials configured via Kubernetes secrets. The component samples the data (up to 1GB), then performs a two-stage
+split: *Primary split** (default 80/20): separates a *test set* (20%, written to an S3 artifact) from the *train
+portion* (80%). **Secondary split** (default 30/70 of the train portion): produces ``models_selection_train.csv`` (30%,
+used for model selection) and ``extra_train_dataset.csv`` (70%, passed to ``refit_full`` as extra data). Both train CSVs
+are written to the PVC workspace under ``{workspace_path}/datasets/``. For classification tasks the splits are
+stratified by the label column.
 
-2. **Data Splitting**: Performs two successive splits on the loaded dataset: **Primary split** (default 80/20):
-separates a *test set* (20%, written to an S3 artifact) from the *train portion* (80%), **Secondary split** (default
-30/70 of the train portion): produces ``models_selection_train.csv`` (30%, used for model selection) and
-``extra_train_dataset.csv`` (70%, passed to ``refit_full`` as extra data). Both train CSVs are written to the PVC
-workspace under ``{workspace_path}/datasets/``. For classification tasks the splits are stratified by the label column.
-
-3. **Model Selection**: Trains multiple AutoGluon models on the *selection train* data using AutoGluon's ensembling
+2. **Model Selection**: Trains multiple AutoGluon models on the *selection train* data using AutoGluon's ensembling
 approach (stacking with 3 levels and bagging with 2 folds). The component automatically trains various model types
 including neural networks, tree-based models (XGBoost, LightGBM, CatBoost), and linear models. All models are evaluated
 on the test set and ranked by performance. The top N models are selected for the refitting stage.
 
-4. **Model Refitting**: Refits each of the top N selected models on the predictor's training and validation data,
+3. **Model Refitting**: Refits each of the top N selected models on the predictor's training and validation data,
 augmented with the *extra train* split via ``refit_full(train_data_extra=...)``. This stage runs in parallel (with
 parallelism of 2) to efficiently retrain multiple models. Each refitted model is saved with a "_FULL" suffix and
 optimized for deployment by removing unnecessary models and files.
 
-5. **Leaderboard Evaluation**: Aggregates evaluation results from all refitted model artifacts (each refit component
+4. **Leaderboard Evaluation**: Aggregates evaluation results from all refitted model artifacts (each refit component
 writes metrics to model_artifact.path / model_name_FULL / metrics). The leaderboard component reads these pre-computed
 metrics and generates an HTML-formatted leaderboard ranking models by their performance metrics for comparison and
 selection.
@@ -114,7 +112,6 @@ The pipeline writes data to two storage locations:
 ```text
 {workspace_path}/
 └── datasets/
-    ├── full_dataset.csv              # Sampled dataset from S3 (data loader output) - removed after train_test_split component
     ├── models_selection_train.csv    # 30% of the train portion (used for model selection)
     └── extra_train_dataset.csv       # 70% of the train portion (passed to refit_full)
 ```
@@ -138,14 +135,14 @@ The pipeline writes data to two storage locations:
     │               │   └── confusion_matrix.json  # for classification tasks only
     │               └── notebooks/
     │                   └── automl_predictor_notebook.ipynb   # Jupyter notebook for inference & exploration
-    └── tabular-train-test-split/
+    └── automl-data-loader/
         └── <task_id>/
             └── sampled_test_dataset/            # Test split (S3 artifact)
 ```
 
 - **leaderboard-evaluation**: Contains the HTML leaderboard artifact summarizing all model results.
 - **autogluon-models-full-refit**: Each top-N model refit task writes its model artifact here, under `<ModelName>_FULL`, including the saved TabularPredictor and associated metrics.
-- **tabular-train-test-split**: Stores the test dataset S3 artifact used for evaluation; the training splits live on the PVC workspace instead.
+- **automl-data-loader**: Stores the test dataset S3 artifact used for evaluation; the training splits live on the PVC workspace instead.
 
 *Note*: There is one `autogluon-models-full-refit/<task_id>/model_artifact/<ModelName>_FULL` directory for each selected top-N model (parallel execution). Each contains an independently saved and refitted AutoGluon predictor.
 
@@ -168,7 +165,7 @@ Each refit task writes a Model artifact whose `metadata` is set by the autogluon
 
 | Key | Type | Description |
 | ----- | ------ | ----------- |
-| `data_config` | `dict` | `sampling_config` and `split_config` from the pipeline (data loader and train-test split settings). |
+| `data_config` | `dict` | `sampling_config` and `split_config` from the data loader component. |
 | `task_type` | `str` | Problem type: `"regression"`, `"binary"`, or `"multiclass"`. |
 | `label_column` | `str` | Name of the target/label column. |
 | `model_config` | `dict` | Model training configuration (e.g. preset, eval_metric, time limit) from the selection stage. |

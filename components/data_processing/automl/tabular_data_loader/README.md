@@ -6,12 +6,23 @@
 
 Automl Data Loader component.
 
-Loads tabular (CSV) data from S3 in batches, sampling up to 1GB of data. The component reads data in chunks to
-efficiently handle large files without loading the entire dataset into memory at once.
+Loads tabular (CSV) data from S3 in batches, sampling up to 1GB of data, then splits the sampled data into test,
+selection-train, and extra-train sets.
 
-The Tabular Data Loader is typically the first step in the AutoML pipeline. It streams CSV data from an S3 bucket,
-optionally samples it using one of the supported strategies, and writes the result to the PVC workspace. Authentication
-uses AWS-style credentials provided via environment variables (e.g. from a Kubernetes secret).
+The component reads data in chunks to efficiently handle large files without loading the entire dataset into memory at
+once. After sampling, it performs a two-stage split:
+
+1. **Primary split** (default 80/20): separates a *test set* (20%, written to the ``sampled_test_dataset`` S3 artifact)
+from the *train portion* (80%).
+
+2. **Secondary split** (default 30/70 of the train portion): produces ``models_selection_train.csv`` (30%, used for
+model selection) and ``extra_train_dataset.csv`` (70%, passed to ``refit_full`` as extra data). Both are written to the
+PVC workspace under ``{workspace_path}/datasets/``.
+
+For **regression** tasks the split is random; for **binary** and **multiclass** tasks the split is **stratified** by the
+label column by default.
+
+Authentication uses AWS-style credentials provided via environment variables (e.g. from a Kubernetes secret).
 
 ## Inputs 📥
 
@@ -19,16 +30,19 @@ uses AWS-style credentials provided via environment variables (e.g. from a Kuber
 |-----------|------|---------|-------------|
 | `file_key` | `str` | `None` | S3 object key of the CSV file. |
 | `bucket_name` | `str` | `None` | S3 bucket name containing the file. |
-| `workspace_path` | `str` | `None` | PVC workspace directory where the full dataset CSV will be written. |
+| `workspace_path` | `str` | `None` | PVC workspace directory where train CSVs will be written. |
+| `label_column` | `str` | `None` | Name of the label/target column in the dataset. |
+| `sampled_test_dataset` | `dsl.Output[dsl.Dataset]` | `None` | Output dataset artifact for the test split. |
 | `sampling_method` | `Optional[str]` | `None` | "first_n_rows", "stratified", or "random"; if None, derived from task_type. |
-| `label_column` | `Optional[str]` | `None` | Column name for labels/target (used for stratified sampling). |
 | `task_type` | `str` | `regression` | "binary", "multiclass", or "regression" (default); used when sampling_method is None. |
+| `split_config` | `Optional[dict]` | `None` | Split configuration dictionary. Available keys: "test_size" (float), "random_state" (int), "stratify" (bool). |
+| `selection_train_size` | `float` | `0.3` | Fraction of the train portion used for model selection (default 0.3). |
 
 ## Outputs 📤
 
 | Name | Type | Description |
 |------|------|-------------|
-| Output | `NamedTuple('outputs', sample_config=dict, full_dataset_path=str)` | Contains a sample configuration dictionary and the full dataset path. |
+| Output | `NamedTuple('outputs', sample_config=dict, split_config=dict, sample_row=str, models_selection_train_path=str, extra_train_data_path=str)` | Contains sample config, split config, a sample row, and paths to selection-train and extra-train CSVs. |
 
 ## Metadata 🗂️
 
@@ -59,6 +73,26 @@ Available values for the `sampling_method` parameter are:
 
 If `sampling_method` is not set, it is automatically derived from `task_type` (`"random"` for regression, `"stratified"` for classification).
 
+## Split Configuration
+
+The `split_config` dictionary parameter supports:
+
+```python
+{
+    "test_size": 0.2,       # Proportion of dataset for test split (default: 0.2)
+    "random_state": 42,     # Random seed for reproducibility (default: 42)
+    "stratify": True        # Use stratified split for binary/multiclass (default: True)
+}
+```
+
+- **Regression**: `stratify` is ignored; the split is always random.
+- **Binary / multiclass**: If `stratify` is `True` (default), the split is stratified by `label_column`; if `False`, the split is random.
+
+The `selection_train_size` parameter (default: 0.3) controls the secondary split of the train portion:
+
+- 30% of train data goes to `models_selection_train.csv` (used for model selection).
+- 70% of train data goes to `extra_train_dataset.csv` (passed to `refit_full` as extra training data).
+
 ## Credentials
 
 S3 access uses environment variables (e.g. from a Kubernetes secret):
@@ -67,9 +101,9 @@ S3 access uses environment variables (e.g. from a Kubernetes secret):
 
 ## Usage Examples 💡
 
-### Basic usage (default: sampling from task_type)
+### Basic usage (regression)
 
-With default parameters, `sampling_method` is derived from `task_type` (e.g. regression → random sampling):
+With default parameters, `sampling_method` is derived from `task_type` (e.g. regression -> random sampling). The data is sampled from S3 and split into train/test sets:
 
 ```python
 from kfp import dsl
@@ -81,11 +115,40 @@ def my_pipeline():
         bucket_name="my-ml-bucket",
         file_key="data/train.csv",
         workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
-        label_column="target",
+        label_column="price",
         task_type="regression",
     )
-    # load_task.outputs["full_dataset_path"] contains the PVC path to the dataset CSV
+    # load_task.outputs["models_selection_train_path"] - PVC path for model selection training
+    # load_task.outputs["extra_train_data_path"] - PVC path for extra training data (refit_full)
+    # load_task.outputs["sampled_test_dataset"] - S3 artifact for test evaluation
+    # load_task.outputs["sample_row"] - JSON string with one sample row from test set
     return load_task
+```
+
+### Classification with stratified split
+
+```python
+load_task = automl_data_loader(
+    bucket_name="my-ml-bucket",
+    file_key="data/train.csv",
+    workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
+    label_column="target",
+    task_type="binary",
+    split_config={"test_size": 0.2, "stratify": True},
+)
+```
+
+### Custom split configuration
+
+```python
+load_task = automl_data_loader(
+    bucket_name="my-ml-bucket",
+    file_key="data/train.csv",
+    workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
+    label_column="target",
+    task_type="regression",
+    split_config={"test_size": 0.25, "random_state": 123},
+)
 ```
 
 ### Explicit sampling method
@@ -95,6 +158,7 @@ load_task = automl_data_loader(
     bucket_name="my-ml-bucket",
     file_key="data/train.csv",
     workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
+    label_column="target",
     sampling_method="first_n_rows",
 )
 ```

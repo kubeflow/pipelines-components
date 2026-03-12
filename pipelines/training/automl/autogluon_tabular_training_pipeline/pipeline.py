@@ -1,6 +1,5 @@
 from kfp import dsl
 from kfp_components.components.data_processing.automl.tabular_data_loader import automl_data_loader
-from kfp_components.components.data_processing.automl.tabular_train_test_split import tabular_train_test_split
 from kfp_components.components.training.automl.autogluon_leaderboard_evaluation import leaderboard_evaluation
 from kfp_components.components.training.automl.autogluon_models_full_refit import autogluon_models_full_refit
 from kfp_components.components.training.automl.autogluon_models_selection import models_selection
@@ -52,37 +51,33 @@ def autogluon_tabular_training_pipeline(
 
     **Pipeline Stages:**
 
-    1. **Data Loading**: Loads tabular (CSV) data from an S3-compatible object storage
-       bucket using AWS credentials configured via Kubernetes secrets. The sampled
-       dataset is written to the PVC workspace at
-       ``{workspace_path}/datasets/full_dataset.csv``; its path is returned as
-       ``full_dataset_path`` for downstream steps.
-
-    2. **Data Splitting**: Performs two successive splits on the loaded dataset:
-        **Primary split** (default 80/20): separates a *test set* (20%, written to an
-         S3 artifact) from the *train portion* (80%),
+    1. **Data Loading & Splitting**: Loads tabular (CSV) data from an S3-compatible
+       object storage bucket using AWS credentials configured via Kubernetes secrets.
+       The component samples the data (up to 1GB), then performs a two-stage split:
+       *Primary split** (default 80/20): separates a *test set* (20%, written to an
+         S3 artifact) from the *train portion* (80%).
          **Secondary split** (default 30/70 of the train portion): produces
          ``models_selection_train.csv`` (30%, used for model selection) and
          ``extra_train_dataset.csv`` (70%, passed to ``refit_full`` as extra data).
          Both train CSVs are written to the PVC workspace under
          ``{workspace_path}/datasets/``. For classification tasks the splits are
-        stratified by the label column.
+         stratified by the label column.
 
-    3. **Model Selection**: Trains multiple AutoGluon models on the *selection train*
+    2. **Model Selection**: Trains multiple AutoGluon models on the *selection train*
        data using AutoGluon's ensembling approach (stacking with 3 levels and bagging
        with 2 folds). The component automatically trains various model types including
        neural networks, tree-based models (XGBoost, LightGBM, CatBoost), and linear
        models. All models are evaluated on the test set and ranked by performance. The
        top N models are selected for the refitting stage.
 
-    4. **Model Refitting**: Refits each of the top N selected models on the predictor's
+    3. **Model Refitting**: Refits each of the top N selected models on the predictor's
        training and validation data, augmented with the *extra train* split via
        ``refit_full(train_data_extra=...)``. This stage runs in parallel (with
        parallelism of 2) to efficiently retrain multiple models. Each refitted model is
        saved with a "_FULL" suffix and optimized for deployment by removing unnecessary
        models and files.
 
-    5. **Leaderboard Evaluation**: Aggregates evaluation results from all refitted model
+    4. **Leaderboard Evaluation**: Aggregates evaluation results from all refitted model
        artifacts (each refit component writes metrics to model_artifact.path /
        model_name_FULL / metrics). The leaderboard component reads these pre-computed
        metrics and generates an HTML-formatted leaderboard ranking models by their
@@ -152,7 +147,7 @@ def autogluon_tabular_training_pipeline(
     """  # noqa: E501
     from kfp.kubernetes import use_secret_as_env
 
-    tabular_loader_task = automl_data_loader(
+    data_loader_task = automl_data_loader(
         bucket_name=train_data_bucket_name,
         file_key=train_data_file_key,
         workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
@@ -161,7 +156,7 @@ def autogluon_tabular_training_pipeline(
     )
 
     use_secret_as_env(
-        tabular_loader_task,
+        data_loader_task,
         secret_name=train_data_secret_name,
         secret_key_to_env={
             "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
@@ -172,21 +167,14 @@ def autogluon_tabular_training_pipeline(
         optional=True,  # Mark as optional to not block the pipeline. If needed, error will be raised by component
     )
 
-    train_test_split_task = tabular_train_test_split(
-        dataset_path=tabular_loader_task.outputs["full_dataset_path"],
-        task_type=task_type,
-        label_column=label_column,
-        workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
-    )
-
     # Stage 1: Model Selection
     # Train multiple models on sampled data and select top N performers
 
     selection_task = models_selection(
         label_column=label_column,
         task_type=task_type,
-        train_data_path=train_test_split_task.outputs["models_selection_train_path"],
-        test_data=train_test_split_task.outputs["sampled_test_dataset"],
+        train_data_path=data_loader_task.outputs["models_selection_train_path"],
+        test_data=data_loader_task.outputs["sampled_test_dataset"],
         top_n=top_n,
         workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
     )
@@ -197,15 +185,15 @@ def autogluon_tabular_training_pipeline(
     with dsl.ParallelFor(items=selection_task.outputs["top_models"], parallelism=2) as model_name:
         refit_full_task = autogluon_models_full_refit(
             model_name=model_name,
-            test_dataset=train_test_split_task.outputs["sampled_test_dataset"],
+            test_dataset=data_loader_task.outputs["sampled_test_dataset"],
             predictor_path=selection_task.outputs["predictor_path"],
-            sampling_config=tabular_loader_task.outputs["sample_config"],
-            split_config=train_test_split_task.outputs["split_config"],
+            sampling_config=data_loader_task.outputs["sample_config"],
+            split_config=data_loader_task.outputs["split_config"],
             model_config=selection_task.outputs["model_config"],
             pipeline_name=dsl.PIPELINE_JOB_RESOURCE_NAME_PLACEHOLDER,
             run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
-            sample_row=train_test_split_task.outputs["sample_row"],
-            extra_train_data_path=train_test_split_task.outputs["extra_train_data_path"],
+            sample_row=data_loader_task.outputs["sample_row"],
+            extra_train_data_path=data_loader_task.outputs["extra_train_data_path"],
         )
 
     # Generate leaderboard
