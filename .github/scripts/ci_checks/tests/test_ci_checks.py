@@ -302,6 +302,22 @@ class TestWaitForChecks:
             wait_for_checks(gh, "owner/repo", "abc123", check_run_id=999, delay=0, retries=2, interval=5)
         assert gh.get_check_runs.call_count == 2
 
+    def test_many_check_runs_all_evaluated(self):
+        """All check runs are evaluated, not just the first page worth."""
+        gh = MagicMock(spec=GhClient)
+        runs = [_make_check_run(i, f"check-{i}", "completed", "success") for i in range(50)]
+        runs.append(_make_check_run(99, "late-failure", "completed", "failure"))
+        gh.get_check_runs.return_value = json.loads(_api_response(*runs))
+        with pytest.raises(ChecksError, match="late-failure"):
+            wait_for_checks(gh, "owner/repo", "abc123", check_run_id=999, delay=0, retries=1, interval=0)
+
+    def test_many_check_runs_all_pass(self):
+        """Large batch of passing check runs succeeds."""
+        gh = MagicMock(spec=GhClient)
+        runs = [_make_check_run(i, f"check-{i}", "completed", "success") for i in range(50)]
+        gh.get_check_runs.return_value = json.loads(_api_response(*runs))
+        wait_for_checks(gh, "owner/repo", "abc123", check_run_id=999, delay=0, retries=1, interval=0)
+
 
 # ---------------------------------------------------------------------------
 # GhClient
@@ -329,7 +345,7 @@ class TestGhClient:
         client.get_check_runs("owner/repo", "abc123")
         mock_run.assert_called_once()
         cmd = mock_run.call_args[0][0]
-        assert cmd == ["gh", "api", "repos/owner/repo/commits/abc123/check-runs"]
+        assert cmd == ["gh", "api", "--paginate", "repos/owner/repo/commits/abc123/check-runs"]
 
     @patch("ci_checks.ci_checks.subprocess.run")
     def test_is_member_returns_true_on_success(self, mock_run):

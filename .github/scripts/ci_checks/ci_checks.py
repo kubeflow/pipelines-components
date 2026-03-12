@@ -32,7 +32,7 @@ class GhClient:
     def get_check_runs(self, repo: str, head_sha: str) -> dict:
         """Return parsed JSON from the GitHub check-runs API."""
         result = subprocess.run(
-            ["gh", "api", f"repos/{repo}/commits/{head_sha}/check-runs"],
+            ["gh", "api", "--paginate", f"repos/{repo}/commits/{head_sha}/check-runs"],
             capture_output=True,
             text=True,
             check=True,
