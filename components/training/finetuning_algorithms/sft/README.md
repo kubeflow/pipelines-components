@@ -9,7 +9,7 @@ Train model using SFT (Supervised Fine-Tuning). Outputs model artifact and metri
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| --------- | ---- | ------- | ----------- |
 | `pvc_path` | `str` | `None` | Workspace PVC root path (use dsl.WORKSPACE_PATH_PLACEHOLDER). |
 | `output_model` | `dsl.Output[dsl.Model]` | `None` | Output model artifact. |
 | `output_metrics` | `dsl.Output[dsl.Metrics]` | `None` | Output training metrics artifact. |
@@ -43,7 +43,7 @@ Train model using SFT (Supervised Fine-Tuning). Outputs model artifact and metri
 ## Outputs 📤
 
 | Name | Type | Description |
-|------|------|-------------|
+| ---- | ---- | ----------- |
 | Output | `str` |  |
 
 ## Metadata 🗂️
