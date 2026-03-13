@@ -29,6 +29,7 @@ jobs:
             --event-action "${{ github.event.action }}" \
             --labels "${LABELS}" \
             --author-association "${{ github.event.pull_request.author_association }}" \
+            --author-login "${{ github.event.pull_request.user.login }}" \
             --head-sha "${{ github.event.pull_request.head.sha }}" \
             --check-name "check_ci_status" \
             --delay 5 \

@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 _PASSING_CONCLUSIONS = frozenset({"success", "neutral", "skipped"})
 _TRUSTED_ASSOCIATIONS = frozenset({"MEMBER", "OWNER", "COLLABORATOR"})
+_TRUSTED_BOT_LOGINS = frozenset({"dependabot[bot]"})
 
 
 class ChecksError(Exception):
@@ -54,9 +55,16 @@ def is_trusted_association(author_association: str) -> bool:
     return author_association in _TRUSTED_ASSOCIATIONS
 
 
-def should_run_checks(labels: list[str], *, author_association: str) -> bool:
-    """Determine whether CI checks should run based on author association and PR labels."""
+def is_trusted_bot(author_login: str) -> bool:
+    """Return True if *author_login* is a known trusted bot account."""
+    return author_login in _TRUSTED_BOT_LOGINS
+
+
+def should_run_checks(labels: list[str], *, author_association: str, author_login: str = "") -> bool:
+    """Determine whether CI checks should run based on author association, login, and PR labels."""
     if is_trusted_association(author_association):
+        return True
+    if is_trusted_bot(author_login):
         return True
     return "ok-to-test" in labels
 
@@ -131,6 +139,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--event-action", required=True)
     parser.add_argument("--labels", required=True, help="Comma-separated list of PR labels")
     parser.add_argument("--author-association", required=True, help="GitHub author_association value")
+    parser.add_argument("--author-login", default="", help="GitHub login of the PR author")
     parser.add_argument("--head-sha", required=True)
     parser.add_argument("--check-name", required=True)
     parser.add_argument("--delay", type=int, required=True, help="Seconds to wait before first poll")
@@ -150,7 +159,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.event_action in ("synchronize", "reopened"):
         reset_label(gh, args.repo, args.pr_number, labels)
 
-    if not should_run_checks(labels, author_association=args.author_association):
+    if not should_run_checks(labels, author_association=args.author_association, author_login=args.author_login):
         logger.info("PR requires '/ok-to-test' approval. Skipping CI checks.")
         return 0
 

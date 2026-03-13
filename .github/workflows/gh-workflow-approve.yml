@@ -21,6 +21,7 @@ jobs:
       github.event.pull_request.author_association == 'MEMBER' ||
       github.event.pull_request.author_association == 'OWNER' ||
       github.event.pull_request.author_association == 'COLLABORATOR' ||
+      github.event.pull_request.user.login == 'dependabot[bot]' ||
       contains(github.event.pull_request.labels.*.name, 'ok-to-test')
     runs-on: ubuntu-24.04
 
@@ -39,22 +40,28 @@ jobs:
           echo "Author Association: $AUTHOR_ASSOCIATION"
           echo "::endgroup::"
 
+          TRUSTED_BOTS="dependabot[bot]"
+
           # MEMBER = org member, OWNER = org owner, COLLABORATOR = invited collaborator
           if [[ "$AUTHOR_ASSOCIATION" == "MEMBER" || \
             "$AUTHOR_ASSOCIATION" == "OWNER" || \
             "$AUTHOR_ASSOCIATION" == "COLLABORATOR" ]]; then
             echo "::notice::Author '$PR_AUTHOR' is a trusted contributor (association: $AUTHOR_ASSOCIATION)."
             echo "::notice::Auto-approving workflow runs."
-            echo "is_member=true" >> "$GITHUB_OUTPUT"
+            echo "is_trusted=true" >> "$GITHUB_OUTPUT"
+          elif echo "$TRUSTED_BOTS" | grep -qxF "$PR_AUTHOR"; then
+            echo "::notice::Author '$PR_AUTHOR' is a trusted bot."
+            echo "::notice::Auto-approving workflow runs."
+            echo "is_trusted=true" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::Author '$PR_AUTHOR' is not a trusted contributor (association: $AUTHOR_ASSOCIATION)."
             echo "::notice::Checking for 'ok-to-test' label."
-            echo "is_member=false" >> "$GITHUB_OUTPUT"
+            echo "is_trusted=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Approve Pending Workflow Runs
         if: |
-          steps.membership-check.outputs.is_member == 'true' ||
+          steps.membership-check.outputs.is_trusted == 'true' ||
           contains(github.event.pull_request.labels.*.name, 'ok-to-test')
         uses: actions/github-script@v8
         with:

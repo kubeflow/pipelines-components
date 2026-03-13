@@ -14,6 +14,7 @@ from ..ci_checks import (
     ChecksError,
     GhClient,
     is_trusted_association,
+    is_trusted_bot,
     main,
     reset_label,
     should_run_checks,
@@ -98,6 +99,19 @@ class TestIsTrustedAssociation:
         assert is_trusted_association(assoc) is False
 
 
+class TestIsTrustedBot:
+    """Test the is_trusted_bot helper."""
+
+    def test_dependabot_is_trusted(self):
+        """dependabot[bot] is a trusted bot."""
+        assert is_trusted_bot("dependabot[bot]") is True
+
+    @pytest.mark.parametrize("login", ["random-user", "renovate[bot]", "", "dependabot"])
+    def test_other_logins_are_not_trusted(self, login):
+        """Non-trusted logins return False."""
+        assert is_trusted_bot(login) is False
+
+
 class TestShouldRunChecks:
     """Test the should_run_checks function (author association + label logic)."""
 
@@ -140,6 +154,21 @@ class TestShouldRunChecks:
     def test_member_pr_with_unrelated_labels(self):
         """Member PR with only unrelated labels -- CI should still run."""
         assert should_run_checks(["bug", "enhancement"], author_association="MEMBER") is True
+
+    def test_dependabot_pr_runs_checks(self):
+        """Dependabot PR -- CI should run even with CONTRIBUTOR association."""
+        assert should_run_checks([], author_association="CONTRIBUTOR", author_login="dependabot[bot]") is True
+
+    def test_dependabot_pr_without_ok_to_test_label(self):
+        """Dependabot PR without ok-to-test label -- CI should still run."""
+        assert (
+            should_run_checks(["dependencies"], author_association="CONTRIBUTOR", author_login="dependabot[bot]")
+            is True
+        )
+
+    def test_non_trusted_bot_without_label(self):
+        """Unknown bot without ok-to-test label -- CI should NOT run."""
+        assert should_run_checks([], author_association="CONTRIBUTOR", author_login="renovate[bot]") is False
 
 
 # ---------------------------------------------------------------------------
@@ -651,6 +680,32 @@ class TestCLIIntegration:
                 "ok-to-test",
                 "--author-association",
                 "NONE",
+                "--output-dir",
+                output_dir,
+                *self._BASE_ARGS,
+            ]
+        )
+        assert result == 0
+        assert Path(output_dir, "pr_number").read_text().strip() == "10"
+
+    @patch("ci_checks.ci_checks.GhClient")
+    def test_dependabot_pr_runs_checks_and_saves_payload(self, mock_gh_client_cls, tmp_path):
+        """Dependabot PR (CONTRIBUTOR association): checks run, payload saved."""
+        fake = FakeGhClient(check_runs_responses=self._ALL_PASS)
+        mock_gh_client_cls.return_value = fake
+        output_dir = str(tmp_path / "pr")
+        result = main(
+            [
+                "--pr-number",
+                "10",
+                "--event-action",
+                "opened",
+                "--labels",
+                "",
+                "--author-association",
+                "CONTRIBUTOR",
+                "--author-login",
+                "dependabot[bot]",
                 "--output-dir",
                 output_dir,
                 *self._BASE_ARGS,
