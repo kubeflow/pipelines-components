@@ -193,9 +193,9 @@ def autogluon_models_full_refit(
     problem_type = predictor.problem_type
     match problem_type:
         case "regression":
-            notebook_file = "regression_notebook.json"
+            notebook_file = "regression_notebook.ipynb"
         case "binary" | "multiclass":
-            notebook_file = "classification_notebook.json"
+            notebook_file = "classification_notebook.ipynb"
         case _:
             raise ValueError(f"Invalid problem type: {problem_type}")
 

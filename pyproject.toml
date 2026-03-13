@@ -56,7 +56,6 @@ packages = [
     "kfp_components.components.training.automl",
     "kfp_components.components.training.automl.autogluon_leaderboard_evaluation",
     "kfp_components.components.training.automl.autogluon_models_full_refit",
-    "kfp_components.components.training.automl.autogluon_models_full_refit.notebook_templates",
     "kfp_components.components.training.automl.autogluon_models_selection",
     "kfp_components.components.evaluation",
     "kfp_components.components.data_processing",
@@ -80,6 +79,7 @@ packages = [
 
 [tool.setuptools.package-data]
 "*" = ["*.yaml", "*.yml", "*.json"]
+"kfp_components.components.training.automl.autogluon_models_full_refit" = ["notebook_templates/*.ipynb"]
 
 [tool.ruff]
 line-length = 120

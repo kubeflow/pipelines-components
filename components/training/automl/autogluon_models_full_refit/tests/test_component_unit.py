@@ -89,9 +89,9 @@ def mock_notebooks(tmp_path):
     """Create a temp directory with minimal notebook .ipynb files for the notebooks parameter."""
     notebooks_dir = tmp_path / "notebooks_input"
     notebooks_dir.mkdir()
-    with open(notebooks_dir / "regression_notebook.json", "w") as f:
+    with open(notebooks_dir / "regression_notebook.ipynb", "w") as f:
         json.dump(_MINIMAL_REGRESSION_NOTEBOOK, f)
-    with open(notebooks_dir / "classification_notebook.json", "w") as f:
+    with open(notebooks_dir / "classification_notebook.ipynb", "w") as f:
         json.dump(_MINIMAL_CLASSIFICATION_NOTEBOOK, f)
     artifact = mock.MagicMock()
     artifact.path = str(notebooks_dir)
