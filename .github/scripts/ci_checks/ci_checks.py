@@ -166,7 +166,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     check_run_id = gh.get_own_check_run_id(args.repo, args.head_sha, args.check_name)
-    ignore_checks = frozenset(name for name in args.ignore_checks.split(",") if name)
+    ignore_checks = frozenset(name.strip() for name in args.ignore_checks.split(",") if name.strip())
 
     try:
         wait_for_checks(

@@ -308,6 +308,27 @@ class TestWaitForChecks:
             ignore_checks=frozenset({"Agent"}),
         )
 
+    def test_ignore_checks_excludes_multiple_named_checks(self):
+        """Multiple checks listed in ignore_checks are all excluded."""
+        gh = MagicMock(spec=GhClient)
+        gh.get_check_runs.return_value = json.loads(
+            _api_response(
+                _make_check_run(100, "lint", "completed", "success"),
+                _make_check_run(200, "Agent", "in_progress"),
+                _make_check_run(300, "CodeQL", "in_progress"),
+            )
+        )
+        wait_for_checks(
+            gh,
+            "owner/repo",
+            "abc123",
+            check_run_id=999,
+            delay=0,
+            retries=1,
+            interval=0,
+            ignore_checks=frozenset({"Agent", "CodeQL"}),
+        )
+
     def test_mixed_passing_statuses(self):
         """Mixed success, neutral, and skipped -- all treated as passing."""
         gh = MagicMock(spec=GhClient)
@@ -737,6 +758,42 @@ class TestCLIIntegration:
         )
         assert result == 0
         assert Path(output_dir, "pr_number").read_text().strip() == "10"
+
+    @patch("ci_checks.ci_checks.GhClient")
+    def test_ignore_checks_with_whitespace(self, mock_gh_client_cls, tmp_path):
+        """--ignore-checks trims whitespace so 'Agent, CodeQL' works correctly."""
+        all_pass_with_agent = [
+            json.loads(
+                _api_response(
+                    _make_check_run(999, "check_ci_status", "in_progress"),
+                    _make_check_run(100, "lint", "completed", "success"),
+                    _make_check_run(200, "Agent", "in_progress"),
+                    _make_check_run(300, "CodeQL", "in_progress"),
+                )
+            ),
+        ]
+        fake = FakeGhClient(check_runs_responses=all_pass_with_agent)
+        mock_gh_client_cls.return_value = fake
+        output_dir = str(tmp_path / "pr")
+        result = main(
+            [
+                "--pr-number",
+                "10",
+                "--event-action",
+                "opened",
+                "--labels",
+                "",
+                "--author-association",
+                "MEMBER",
+                "--output-dir",
+                output_dir,
+                *self._BASE_ARGS,
+                "--ignore-checks",
+                " Agent , CodeQL ",
+            ]
+        )
+        assert result == 0
+        assert Path(output_dir, "pr_number").exists()
 
     @patch("ci_checks.ci_checks.GhClient")
     def test_wait_for_checks_failure_prevents_payload_save(self, mock_gh_client_cls, tmp_path):
