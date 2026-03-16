@@ -23,6 +23,7 @@ jobs:
         run: |
           LABELS="${{ join(github.event.pull_request.labels.*.name, ',') }}"
 
+          # "Agent" is the Copilot code review check
           python3 .github/scripts/ci_checks/ci_checks.py \
             --pr-number "${{ github.event.pull_request.number }}" \
             --repo "${GITHUB_REPOSITORY}" \
@@ -32,6 +33,7 @@ jobs:
             --author-login "${{ github.event.pull_request.user.login }}" \
             --head-sha "${{ github.event.pull_request.head.sha }}" \
             --check-name "check_ci_status" \
+            --ignore-checks "Agent" \
             --delay 5 \
             --retries 10 \
             --polling-interval 5 \

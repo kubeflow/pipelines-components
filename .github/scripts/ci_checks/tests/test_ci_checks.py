@@ -288,6 +288,26 @@ class TestWaitForChecks:
         )
         wait_for_checks(gh, "owner/repo", "abc123", check_run_id=999, delay=0, retries=3, interval=10)
 
+    def test_ignore_checks_excludes_named_checks(self):
+        """Checks listed in ignore_checks are excluded from evaluation."""
+        gh = MagicMock(spec=GhClient)
+        gh.get_check_runs.return_value = json.loads(
+            _api_response(
+                _make_check_run(100, "lint", "completed", "success"),
+                _make_check_run(200, "Agent", "in_progress"),
+            )
+        )
+        wait_for_checks(
+            gh,
+            "owner/repo",
+            "abc123",
+            check_run_id=999,
+            delay=0,
+            retries=1,
+            interval=0,
+            ignore_checks=frozenset({"Agent"}),
+        )
+
     def test_mixed_passing_statuses(self):
         """Mixed success, neutral, and skipped -- all treated as passing."""
         gh = MagicMock(spec=GhClient)
@@ -482,6 +502,10 @@ class TestCLIIntegration:
         "abc123",
         "--check-name",
         "check_ci_status",
+        "--author-login",
+        "",
+        "--ignore-checks",
+        "",
         "--delay",
         "0",
         "--retries",
@@ -704,11 +728,11 @@ class TestCLIIntegration:
                 "",
                 "--author-association",
                 "CONTRIBUTOR",
-                "--author-login",
-                "dependabot[bot]",
                 "--output-dir",
                 output_dir,
                 *self._BASE_ARGS,
+                "--author-login",
+                "dependabot[bot]",
             ]
         )
         assert result == 0
