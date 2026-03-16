@@ -84,6 +84,7 @@ def wait_for_checks(
     delay: int,
     retries: int,
     interval: int,
+    ignore_checks: frozenset[str] = frozenset(),
 ) -> None:
     """Poll check runs until all pass or retries are exhausted."""
     if delay > 0:
@@ -97,7 +98,7 @@ def wait_for_checks(
         logger.info("Poll %d/%d for commit %s", attempt + 1, retries, head_sha[:12])
         data = gh.get_check_runs(repo, head_sha)
         all_runs = data.get("check_runs", [])
-        check_runs = [cr for cr in all_runs if cr["id"] != check_run_id]
+        check_runs = [cr for cr in all_runs if cr["id"] != check_run_id and cr["name"] not in ignore_checks]
 
         if not check_runs:
             if all_runs:
@@ -139,12 +140,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--event-action", required=True)
     parser.add_argument("--labels", required=True, help="Comma-separated list of PR labels")
     parser.add_argument("--author-association", required=True, help="GitHub author_association value")
-    parser.add_argument("--author-login", default="", help="GitHub login of the PR author")
+    parser.add_argument("--author-login", required=True, help="GitHub login of the PR author")
     parser.add_argument("--head-sha", required=True)
     parser.add_argument("--check-name", required=True)
     parser.add_argument("--delay", type=int, required=True, help="Seconds to wait before first poll")
     parser.add_argument("--retries", type=int, required=True)
     parser.add_argument("--polling-interval", type=int, required=True, help="Seconds between polls")
+    parser.add_argument("--ignore-checks", required=True, help="Comma-separated check names to exclude from polling")
     parser.add_argument("--output-dir", required=True)
     return parser.parse_args(argv)
 
@@ -164,6 +166,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     check_run_id = gh.get_own_check_run_id(args.repo, args.head_sha, args.check_name)
+    ignore_checks = frozenset(name for name in args.ignore_checks.split(",") if name)
 
     try:
         wait_for_checks(
@@ -174,6 +177,7 @@ def main(argv: list[str] | None = None) -> int:
             delay=args.delay,
             retries=args.retries,
             interval=args.polling_interval,
+            ignore_checks=ignore_checks,
         )
     except ChecksError as exc:
         logger.error("CI checks failed: %s", exc)
