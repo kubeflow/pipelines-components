@@ -7,4 +7,5 @@ This directory contains components in the **Training** category:
 ## Subcategories
 
 - [Automl](./automl/README.md)
+- [Autorag](./autorag/README.md)
 - [Finetuning Algorithms](./finetuning_algorithms/README.md)

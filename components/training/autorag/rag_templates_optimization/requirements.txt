@@ -1,0 +1,15 @@
+
+
+ai4rag@https://github.com/IBM/ai4rag/archive/refs/heads/dev.zip
+kfp[kubernetes] ~= 2.14
+PyYAML
+langchain-text-splitters
+docling[ort]
+docling-ibm-models
+openpyxl>=3.1.5
+xlrd>=2.0.1
+odfpy>=1.4.1
+huggingface_hub>=0.23.0
+boto3>=1.42.0
+numpy
+pandas>=2.0

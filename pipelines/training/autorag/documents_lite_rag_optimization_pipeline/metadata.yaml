@@ -1,0 +1,28 @@
+---
+name: documents_rag_optimization_pipeline
+stability: alpha  # New pipeline without proven track record
+dependencies:
+  kubeflow:
+    - name: Pipelines
+      version: '>=2.15.2'
+  external_services:
+    - name: ai4rag
+      version: ">=1.0.0"
+    - name: llama-stack API
+      version: ">=1.0.0"
+    - name: RHOAI Connections API
+      version: ">=1.0.0"
+    - name: Milvus
+      version: ">=2.0.0"
+    - name: Milvus Lite
+      version: ">=2.0.0"
+    - name: MLFlow
+      version: ">=2.0.0"
+    - name: docling
+      version: ">=1.0.0"
+tags:
+  - training
+  - pipeline
+  - autorag
+  - rag-optimization
+lastVerified: 2026-01-23T14:57:32Z

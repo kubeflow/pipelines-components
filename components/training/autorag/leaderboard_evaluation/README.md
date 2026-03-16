@@ -1,0 +1,39 @@
+# Leaderboard Evaluation ✨
+
+> ⚠️ **Stability: alpha** — This asset is not yet stable and may change.
+
+## Overview 🧾
+
+Build an HTML leaderboard artifact from RAG pattern evaluation results.
+
+Reads pattern.json from each subdirectory of rag_patterns (produced by rag_templates_optimization) and generates a single HTML table: Pattern_Name, mean_* metrics (e.g. mean_answer_correctness, mean_faithfulness), then config columns (chunking.*, embeddings.model_id, retrieval.* including
+search_mode ("hybrid" | "vector" per ai4rag), ranker_strategy, generation.model_id). Writes the HTML to html_artifact.path.
+
+## Inputs 📥
+
+| Parameter | Type | Default | Description |
+| --------- | ---- | ------- | ----------- |
+| `rag_patterns` | `dsl.InputPath(dsl.Artifact)` | `None` | Path to the directory of RAG patterns; each subdir contains pattern.json (pattern_name, indexing_params, rag_params, scores, execution_time, final_score). |
+| `html_artifact` | `dsl.Output[dsl.HTML]` | `None` | Output HTML artifact; the leaderboard table is written to html_artifact.path (single file). |
+| `optimization_metric` | `str` | `faithfulness` | Name of the metric used to rank patterns (e.g. faithfulness, answer_correctness, context_correctness). Shown in the leaderboard subtitle. Defaults to "faithfulness". |
+
+## Metadata 🗂️
+
+- **Name**: leaderboard_evaluation
+- **Stability**: alpha
+- **Dependencies**:
+  - Kubeflow:
+    - Name: Pipelines, Version: >=2.15.2
+- **Tags**:
+  - training
+  - autorag
+  - html-artifact
+  - leaderboard
+  - evaluation
+- **Last Verified**: 2026-02-10 00:00:00+00:00
+- **Owners**:
+  - Approvers:
+    - LukaszCmielowski
+  - Reviewers:
+    - filip-komarzyniec
+    - witold-nowogorski

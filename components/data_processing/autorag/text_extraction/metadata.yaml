@@ -1,0 +1,15 @@
+---
+name: text_extraction
+stability: alpha  # New component without proven track record
+dependencies:
+  kubeflow:
+    - name: Pipelines
+      version: '>=2.15.2'
+  external_services:
+    - name: docling
+      version: ">=1.0.0"
+tags:
+  - data-processing
+  - autorag
+  - text-extraction
+lastVerified: 2026-01-23T10:29:57Z

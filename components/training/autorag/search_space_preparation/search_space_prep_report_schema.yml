@@ -1,0 +1,4 @@
+---
+search_space:
+  - inference_model_id:
+  - embedding_model:
