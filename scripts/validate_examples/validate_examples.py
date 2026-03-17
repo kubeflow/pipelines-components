@@ -66,8 +66,7 @@ def discover_example_files(targets: Sequence[Path]) -> List[Path]:
                 relative = candidate.relative_to(REPO_ROOT)
             except ValueError:
                 warnings.warn(
-                    f"Unable to determine relative path for {candidate} "
-                    f"relative to repo root {REPO_ROOT}. Skipping.",
+                    f"Unable to determine relative path for {candidate} relative to repo root {REPO_ROOT}. Skipping.",
                 )
                 continue
             if relative.parts and relative.parts[0] in {"components", "pipelines"}:

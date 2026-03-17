@@ -44,7 +44,7 @@ def prepare_yoda_dataset(
     # Split the dataset into train and eval sets
     print(
         f"Splitting dataset with {len(dataset)} rows into train ({train_split_ratio:.1%}) "
-        f"and eval ({(1-train_split_ratio):.1%}) sets"
+        f"and eval ({(1 - train_split_ratio):.1%}) sets"
     )
     split_dataset = dataset.train_test_split(test_size=1 - train_split_ratio, seed=42)
 

@@ -218,7 +218,7 @@ class ReadmeWriter:
         # Include custom content in comparison if it exists
         custom_content = self._extract_custom_content()
         if custom_content:
-            readme_content = f"{readme_content}\n\n{custom_content}"
+            readme_content = f"{readme_content}\n{custom_content}"
 
         actual_content = self._read_file_content(self.readme_file)
         has_diff = self._has_diff(readme_content, actual_content)
@@ -239,7 +239,7 @@ class ReadmeWriter:
 
         # Append custom content if it was found
         if custom_content:
-            readme_content = f"{readme_content}\n\n{custom_content}"
+            readme_content = f"{readme_content}\n{custom_content}"
             logger.info("Preserved custom content from existing README")
 
         # Ensure parent directories exist for custom output paths
