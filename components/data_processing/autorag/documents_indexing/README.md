@@ -6,8 +6,7 @@
 
 Index extracted text into a vector store with optional batch processing.
 
-Reads markdown files from extracted_text, chunks them, embeds via Llama Stack, and adds them to the vector store. When
-batch_size > 0, processes documents in batches to limit memory use and allow progress on large inputs.
+Reads markdown files from extracted_text, chunks them, embeds via Llama Stack, and adds them to the vector store. When batch_size > 0, processes documents in batches to limit memory use and allow progress on large inputs.
 
 ## Inputs 📥
 
