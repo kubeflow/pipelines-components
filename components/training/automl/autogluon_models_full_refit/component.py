@@ -118,6 +118,24 @@ def autogluon_models_full_refit(
     import pandas as pd
     from autogluon.tabular import TabularPredictor
 
+    # Input validation
+    for param, value in (
+        ("model_name", model_name),
+        ("predictor_path", predictor_path),
+        ("pipeline_name", pipeline_name),
+        ("run_id", run_id),
+        ("sample_row", sample_row),
+    ):
+        if not isinstance(value, str) or not value.strip():
+            raise TypeError(f"{param} must be a non-empty string.")
+
+    if sampling_config is not None and not isinstance(sampling_config, dict):
+        raise TypeError("sampling_config must be a dictionary or None.")
+    if split_config is not None and not isinstance(split_config, dict):
+        raise TypeError("split_config must be a dictionary or None.")
+    if model_config is not None and not isinstance(model_config, dict):
+        raise TypeError("model_config must be a dictionary or None.")
+
     sampling_config = sampling_config or {}
     split_config = split_config or {}
     model_config = model_config or {}
@@ -239,7 +257,15 @@ def autogluon_models_full_refit(
             cell["source"] = new_source
         return notebook
 
-    sample_row_list = json.loads(sample_row)
+    if sample_row:
+        try:
+            sample_row_list = json.loads(sample_row)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"sample_row must be valid JSON array: {e}")
+        if not isinstance(sample_row_list, list):
+            raise ValueError("sample_row must be a JSON array list of row objects).")
+    else:
+        sample_row_list = []
 
     # remove label column from sample row
     sample_row_formatted = [

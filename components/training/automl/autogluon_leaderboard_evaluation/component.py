@@ -47,6 +47,12 @@ def leaderboard_evaluation(
 
     import pandas as pd
 
+    # Input validation
+    if not isinstance(eval_metric, str) or not eval_metric.strip():
+        raise TypeError("eval_metric must be a non-empty string.")
+    if not isinstance(models, list) or len(models) == 0:
+        raise TypeError("models must be a non-empty list.")
+
     # Modified theme colors for a lighter look. Only :root CSS vars are changed.
     def _build_leaderboard_html(table_html: str, eval_metric: str, best_model_name: str, num_models: int) -> str:
         """Build a styled HTML document for the leaderboard (lighter theme)."""

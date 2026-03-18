@@ -554,3 +554,174 @@ class TestAutogluonModelsFullRefitUnitTests:
         assert callable(autogluon_models_full_refit)
         assert hasattr(autogluon_models_full_refit, "python_func")
         assert hasattr(autogluon_models_full_refit, "component_spec")
+
+    def test_full_refit_rejects_empty_model_name(self, mock_notebooks):
+        """Test that TypeError is raised when model_name is empty."""
+        mock_test_dataset = mock.MagicMock()
+        mock_test_dataset.path = "/tmp/test.csv"
+        mock_model_artifact = mock.MagicMock()
+        mock_model_artifact.path = "/tmp/out"
+        mock_model_artifact.metadata = {}
+        with pytest.raises(TypeError, match=r"model_name must be a non-empty string\."):
+            autogluon_models_full_refit.python_func(
+                model_name="  ",
+                test_dataset=mock_test_dataset,
+                predictor_path="/tmp/predictor",
+                pipeline_name=PIPELINE_NAME,
+                run_id=RUN_ID,
+                sample_row=SAMPLE_ROW,
+                model_artifact=mock_model_artifact,
+                notebooks=mock_notebooks,
+            )
+
+    def test_full_refit_rejects_empty_predictor_path(self, mock_notebooks):
+        """Test that TypeError is raised when predictor_path is empty."""
+        mock_test_dataset = mock.MagicMock()
+        mock_test_dataset.path = "/tmp/test.csv"
+        mock_model_artifact = mock.MagicMock()
+        mock_model_artifact.path = "/tmp/out"
+        mock_model_artifact.metadata = {}
+        with pytest.raises(TypeError, match=r"predictor_path must be a non-empty string\."):
+            autogluon_models_full_refit.python_func(
+                model_name="LightGBM_BAG_L1",
+                test_dataset=mock_test_dataset,
+                predictor_path="",
+                pipeline_name=PIPELINE_NAME,
+                run_id=RUN_ID,
+                sample_row=SAMPLE_ROW,
+                model_artifact=mock_model_artifact,
+                notebooks=mock_notebooks,
+            )
+
+    def test_full_refit_rejects_invalid_sampling_config_type(self, mock_notebooks):
+        """Test that TypeError is raised when sampling_config is not a dict or None."""
+        mock_test_dataset = mock.MagicMock()
+        mock_test_dataset.path = "/tmp/test.csv"
+        mock_model_artifact = mock.MagicMock()
+        mock_model_artifact.metadata = {}
+        with pytest.raises(TypeError, match=r"sampling_config must be a dictionary or None\."):
+            autogluon_models_full_refit.python_func(
+                model_name="LightGBM_BAG_L1",
+                test_dataset=mock_test_dataset,
+                predictor_path="/tmp/predictor",
+                sampling_config="invalid",
+                split_config={},
+                model_config={},
+                pipeline_name=PIPELINE_NAME,
+                run_id=RUN_ID,
+                sample_row=SAMPLE_ROW,
+                model_artifact=mock_model_artifact,
+                notebooks=mock_notebooks,
+            )
+
+    def test_full_refit_rejects_invalid_split_config_type(self, mock_notebooks):
+        """Test that TypeError is raised when split_config is not a dict or None."""
+        mock_test_dataset = mock.MagicMock()
+        mock_test_dataset.path = "/tmp/test.csv"
+        mock_model_artifact = mock.MagicMock()
+        mock_model_artifact.metadata = {}
+        with pytest.raises(TypeError, match=r"split_config must be a dictionary or None\."):
+            autogluon_models_full_refit.python_func(
+                model_name="LightGBM_BAG_L1",
+                test_dataset=mock_test_dataset,
+                predictor_path="/tmp/predictor",
+                sampling_config={},
+                split_config=[],
+                model_config={},
+                pipeline_name=PIPELINE_NAME,
+                run_id=RUN_ID,
+                sample_row=SAMPLE_ROW,
+                model_artifact=mock_model_artifact,
+                notebooks=mock_notebooks,
+            )
+
+    def test_full_refit_rejects_invalid_model_config_type(self, mock_notebooks):
+        """Test that TypeError is raised when model_config is not a dict or None."""
+        mock_test_dataset = mock.MagicMock()
+        mock_test_dataset.path = "/tmp/test.csv"
+        mock_model_artifact = mock.MagicMock()
+        mock_model_artifact.metadata = {}
+        with pytest.raises(TypeError, match=r"model_config must be a dictionary or None\."):
+            autogluon_models_full_refit.python_func(
+                model_name="LightGBM_BAG_L1",
+                test_dataset=mock_test_dataset,
+                predictor_path="/tmp/predictor",
+                sampling_config={},
+                split_config={},
+                model_config="invalid",
+                pipeline_name=PIPELINE_NAME,
+                run_id=RUN_ID,
+                sample_row=SAMPLE_ROW,
+                model_artifact=mock_model_artifact,
+                notebooks=mock_notebooks,
+            )
+
+    @mock.patch("pandas.read_csv")
+    @mock.patch("autogluon.tabular.TabularPredictor")
+    def test_full_refit_rejects_invalid_sample_row_json(
+            self, mock_predictor_class, mock_read_csv, mock_notebooks, tmp_path
+    ):
+        """Test that TypeError is raised when sample_row is not valid JSON."""
+        mock_predictor = mock.MagicMock()
+        mock_predictor_clone = mock.MagicMock()
+        mock_predictor.clone.return_value = mock_predictor_clone
+        mock_predictor_class.load.return_value = mock_predictor
+        mock_predictor.problem_type = "regression"
+        mock_predictor.label = "target"
+        mock_read_csv.return_value = mock.MagicMock()
+        mock_predictor_clone.evaluate.return_value = {"r2": 0.9}
+        mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
+
+        mock_test_dataset = mock.MagicMock()
+        mock_test_dataset.path = "/tmp/test.csv"
+        mock_model_artifact = mock.MagicMock()
+        mock_model_artifact.path = str(tmp_path / "out")
+        mock_model_artifact.metadata = {}
+        Path(mock_model_artifact.path).mkdir(parents=True, exist_ok=True)
+
+        with pytest.raises(TypeError, match=r"sample_row must be valid JSON"):
+            autogluon_models_full_refit.python_func(
+                model_name="LightGBM_BAG_L1",
+                test_dataset=mock_test_dataset,
+                predictor_path="/tmp/predictor",
+                pipeline_name=PIPELINE_NAME,
+                run_id=RUN_ID,
+                sample_row="not valid json",
+                model_artifact=mock_model_artifact,
+                notebooks=mock_notebooks,
+            )
+
+    @mock.patch("pandas.read_csv")
+    @mock.patch("autogluon.tabular.TabularPredictor")
+    def test_full_refit_rejects_sample_row_not_list(
+            self, mock_predictor_class, mock_read_csv, mock_notebooks, tmp_path
+    ):
+        """Test that ValueError is raised when sample_row is valid JSON but not a list."""
+        mock_predictor = mock.MagicMock()
+        mock_predictor_clone = mock.MagicMock()
+        mock_predictor.clone.return_value = mock_predictor_clone
+        mock_predictor_class.load.return_value = mock_predictor
+        mock_predictor.problem_type = "regression"
+        mock_predictor.label = "target"
+        mock_read_csv.return_value = mock.MagicMock()
+        mock_predictor_clone.evaluate.return_value = {"r2": 0.9}
+        mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
+
+        mock_test_dataset = mock.MagicMock()
+        mock_test_dataset.path = "/tmp/test.csv"
+        mock_model_artifact = mock.MagicMock()
+        mock_model_artifact.path = str(tmp_path / "out")
+        mock_model_artifact.metadata = {}
+        Path(mock_model_artifact.path).mkdir(parents=True, exist_ok=True)
+
+        with pytest.raises(ValueError, match=r"sample_row must be a JSON array"):
+            autogluon_models_full_refit.python_func(
+                model_name="LightGBM_BAG_L1",
+                test_dataset=mock_test_dataset,
+                predictor_path="/tmp/predictor",
+                pipeline_name=PIPELINE_NAME,
+                run_id=RUN_ID,
+                sample_row='{"key": "value"}',
+                model_artifact=mock_model_artifact,
+                notebooks=mock_notebooks,
+            )

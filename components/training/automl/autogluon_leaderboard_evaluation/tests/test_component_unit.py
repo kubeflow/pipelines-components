@@ -6,6 +6,8 @@ import tempfile
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
 from ..component import leaderboard_evaluation
 
 
@@ -241,3 +243,46 @@ class TestLeaderboardEvaluationUnitTests:
                 Path(tmp_path).unlink(missing_ok=True)
         finally:
             shutil.rmtree(model_dir, ignore_errors=True)
+
+    @mock.patch.dict("sys.modules", {"pandas": mock.MagicMock()})
+    def test_leaderboard_evaluation_rejects_empty_eval_metric(self):
+        """Test that TypeError is raised when eval_metric is empty or not a string."""
+        mock_model = mock.MagicMock()
+        mock_model.path = "/tmp/model"
+        mock_model.metadata = {"display_name": "Model1"}
+        mock_html = mock.MagicMock()
+        mock_html.path = "/tmp/out.html"
+
+        with pytest.raises(TypeError, match=r"eval_metric must be a non-empty string\."):
+            leaderboard_evaluation.python_func(
+                models=[mock_model],
+                eval_metric="",
+                html_artifact=mock_html,
+            )
+
+        with pytest.raises(TypeError, match=r"eval_metric must be a non-empty string\."):
+            leaderboard_evaluation.python_func(
+                models=[mock_model],
+                eval_metric="   ",
+                html_artifact=mock_html,
+            )
+
+    @mock.patch.dict("sys.modules", {"pandas": mock.MagicMock()})
+    def test_leaderboard_evaluation_rejects_empty_models_list(self):
+        """Test that TypeError is raised when models is empty or not a list."""
+        mock_html = mock.MagicMock()
+        mock_html.path = "/tmp/out.html"
+
+        with pytest.raises(TypeError, match=r"models must be a non-empty list\."):
+            leaderboard_evaluation.python_func(
+                models=[],
+                eval_metric="root_mean_squared_error",
+                html_artifact=mock_html,
+            )
+
+        with pytest.raises(TypeError, match=r"models must be a non-empty list\."):
+            leaderboard_evaluation.python_func(
+                models="not_a_list",
+                eval_metric="root_mean_squared_error",
+                html_artifact=mock_html,
+            )

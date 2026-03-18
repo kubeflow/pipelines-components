@@ -77,11 +77,18 @@ def models_selection(
     """  # noqa: E501
     # Input validation
     VALID_TASK_TYPES = {"binary", "multiclass", "regression"}
-    if task_type not in VALID_TASK_TYPES:
-        raise ValueError(f"Invalid task_type '{task_type}'. Must be one of {VALID_TASK_TYPES}.")
+    TOP_N_MAX = 10
 
-    if not isinstance(top_n, int) or top_n <= 0:
-        raise ValueError(f"top_n must be a positive integer; got {top_n}.")
+    if not isinstance(label_column, str) or not label_column.strip():
+        raise TypeError("label_column must be a non-empty string.")
+    if task_type not in VALID_TASK_TYPES:
+        raise ValueError(f"task_type must be one of {VALID_TASK_TYPES}; got {task_type!r}.")
+    if not isinstance(top_n, int) or top_n <= 0 or top_n > TOP_N_MAX:
+        raise TypeError(f"top_n must be an integer in the range (0, {TOP_N_MAX}; got {top_n}.")
+    if not train_data_path or not isinstance(train_data_path, str) or not train_data_path.strip():
+        raise TypeError("train_data_path must be a non-empty string.")
+    if not workspace_path or not isinstance(workspace_path, str) or not workspace_path.strip():
+        raise TypeError("workspace_path must be a non-empty string.")
 
     import logging
 
