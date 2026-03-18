@@ -46,7 +46,7 @@ This component wraps the SDG Hub SDK to execute composable data generation flows
 ```python
 from components.data_processing.sdg.sdg_hub import sdg
 from kfp import dsl
-from kfp_kubernetes import mount_pvc, use_secret_as_env
+from kfp.kubernetes import mount_pvc, use_secret_as_env
 
 @dsl.pipeline(name="sdg-pipeline")
 def my_pipeline():
@@ -78,7 +78,7 @@ Chain SDG with upstream components by consuming their output artifacts:
 ```python
 from components.data_processing.sdg.sdg_hub import sdg
 from kfp import dsl
-from kfp_kubernetes import use_secret_as_env
+from kfp.kubernetes import use_secret_as_env
 
 @dsl.component(packages_to_install=["pandas"])
 def preprocess_data(output_data: dsl.Output[dsl.Dataset]) -> None:
@@ -112,7 +112,7 @@ Export generated data to a PVC for archival or external access:
 ```python
 from components.data_processing.sdg.sdg_hub import sdg
 from kfp import dsl
-from kfp_kubernetes import mount_pvc, use_secret_as_env
+from kfp.kubernetes import mount_pvc, use_secret_as_env
 
 @dsl.pipeline(name="sdg-export-pipeline")
 def export_pipeline():

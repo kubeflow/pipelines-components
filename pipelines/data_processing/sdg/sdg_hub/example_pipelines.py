@@ -12,7 +12,7 @@ and configuring the SDG component for different scenarios.
 """
 
 from kfp import dsl
-from kfp_kubernetes import mount_pvc, use_secret_as_env
+from kfp.kubernetes import mount_pvc, use_secret_as_env
 
 from components.data_processing.sdg.sdg_hub.component import sdg
 
