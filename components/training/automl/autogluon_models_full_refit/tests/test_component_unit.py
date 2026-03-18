@@ -659,7 +659,7 @@ class TestAutogluonModelsFullRefitUnitTests:
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.tabular.TabularPredictor")
     def test_full_refit_rejects_invalid_sample_row_json(
-            self, mock_predictor_class, mock_read_csv, mock_notebooks, tmp_path
+        self, mock_predictor_class, mock_read_csv, mock_notebooks, tmp_path
     ):
         """Test that TypeError is raised when sample_row is not valid JSON."""
         mock_predictor = mock.MagicMock()
@@ -694,7 +694,7 @@ class TestAutogluonModelsFullRefitUnitTests:
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.tabular.TabularPredictor")
     def test_full_refit_rejects_sample_row_not_list(
-            self, mock_predictor_class, mock_read_csv, mock_notebooks, tmp_path
+        self, mock_predictor_class, mock_read_csv, mock_notebooks, tmp_path
     ):
         """Test that ValueError is raised when sample_row is valid JSON but not a list."""
         mock_predictor = mock.MagicMock()
