@@ -18,9 +18,9 @@ import pytest
 
 def _skip_if_no_rag_integration_config():
     """Return True if integration config is not set (skip test)."""
-    from integration_config import DOCRAG_INTEGRATION_CONFIG
+    from integration_config import DOCRAG_LITE_INTEGRATION_CONFIG
 
-    return DOCRAG_INTEGRATION_CONFIG is None
+    return DOCRAG_LITE_INTEGRATION_CONFIG is None
 
 
 # Pipeline display name in KFP (from pipeline decorator)
