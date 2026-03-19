@@ -23,7 +23,7 @@ def _write(path: Path, content: str) -> Path:
 
 
 def _make_workflow(tmp_path: Path, contexts: list[str]) -> Path:
-    includes = "\n".join(f"        - context: {ctx}\n          dockerfile: {ctx}/Containerfile" for ctx in contexts)
+    includes = "\n".join(f"        - name: {ctx}\n          context: {ctx}" for ctx in contexts)
     content = f"""\
 jobs:
   build:
