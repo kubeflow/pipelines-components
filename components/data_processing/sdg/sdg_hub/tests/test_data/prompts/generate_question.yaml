@@ -1,3 +1,4 @@
+---
 - role: system
   content: You are a helpful assistant that generates a short question about the given text.
 
