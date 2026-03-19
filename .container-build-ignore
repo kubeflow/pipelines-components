@@ -1,0 +1,7 @@
+# List directories containing Containerfiles/Dockerfiles that should NOT
+# be validated against the container-build matrix (e.g. local-dev only)
+#
+# One path per line, relative to the repo root.
+#
+# Example:
+# docs/examples/local-dev
