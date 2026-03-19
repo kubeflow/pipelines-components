@@ -171,6 +171,14 @@ class ChangeDetector:
         filtered_files = self._apply_filter(changed_files, filter_pattern)
         components, pipelines = self._parse_changed_files(filtered_files)
 
+        # Filtering and all existence checks happen on the current working tree.
+        # The script always treats the working directory as "head" (e.g. default head_ref="HEAD"),
+        # so filtering for existing assets (via os.path.isdir) checks what is actually present
+        # in the workspace at the time of execution. Git diffs are always base_ref..head_ref, with
+        # "head_ref" being what is checked out locally, which matches CI usage (actions/checkout@v6
+        # leaves the workspace on the commit being tested).
+        components, pipelines = self._filter_existing_assets(components, pipelines)
+
         return DetectionResult(
             components=components,
             pipelines=pipelines,
@@ -228,6 +236,24 @@ class ChangeDetector:
                 pipelines.add(f"pipelines/{match.group(1)}/{match.group(2)}")
 
         return sorted(components), sorted(pipelines)
+
+    def _filter_existing_assets(self, components: list[str], pipelines: list[str]) -> tuple[list[str], list[str]]:
+        """Keep only component and pipeline paths that exist as directories at HEAD.
+
+        When a whole component or pipeline is removed, deleted file paths still
+        parse to asset paths; this filter excludes those so CI does not try to
+        run tests for removed assets.
+
+        Args:
+            components: List of component paths (e.g. components/cat/name).
+            pipelines: List of pipeline paths (e.g. pipelines/cat/name).
+
+        Returns:
+            Tuple of (existing_components, existing_pipelines).
+        """
+        existing_components = [c for c in components if os.path.isdir(c)]
+        existing_pipelines = [p for p in pipelines if os.path.isdir(p)]
+        return existing_components, existing_pipelines
 
 
 class OutputWriter:

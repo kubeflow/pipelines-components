@@ -3,10 +3,12 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, call
+import os as _real_os
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
+from .. import detect
 from ..detect import ChangeDetector, GitClient
 
 
@@ -217,6 +219,95 @@ class TestParseChangedFiles:
             "components/training/sklearn_trainer/logistic_regression",
             "components/training/sklearn_trainer/random_forest",
         ]
+
+
+class TestFilterExistingAssets:
+    """Test that removed (deleted) components and pipelines are skipped."""
+
+    def test_removed_component_is_skipped(self):
+        """When a whole component is removed, it is not reported as changed."""
+        git = MagicMock(spec=GitClient)
+        git.fetch_branch.return_value = None
+        git.get_changed_files.return_value = [
+            "components/training/removed_trainer/component.py",
+            "components/training/removed_trainer/README.md",
+        ]
+        detector = ChangeDetector(git_client=git)
+
+        def isdir(path: str) -> bool:
+            if path == "components/training/removed_trainer":
+                return False
+            return _real_os.path.isdir(path)
+
+        with patch.object(detect.os.path, "isdir", side_effect=isdir):
+            result = detector.detect("origin/HEAD", "HEAD")
+
+        assert result.components == []
+        assert result.pipelines == []
+        assert result.has_changes is False
+
+    def test_removed_pipeline_is_skipped(self):
+        """When a whole pipeline is removed, it is not reported as changed."""
+        git = MagicMock(spec=GitClient)
+        git.fetch_branch.return_value = None
+        git.get_changed_files.return_value = [
+            "pipelines/etl/removed_flow/pipeline.py",
+        ]
+        detector = ChangeDetector(git_client=git)
+
+        def isdir(path: str) -> bool:
+            if path == "pipelines/etl/removed_flow":
+                return False
+            return _real_os.path.isdir(path)
+
+        with patch.object(detect.os.path, "isdir", side_effect=isdir):
+            result = detector.detect("origin/HEAD", "HEAD")
+
+        assert result.components == []
+        assert result.pipelines == []
+        assert result.has_changes is False
+
+    def test_removed_subcategory_component_is_skipped(self):
+        """When a whole subcategory component (4-segment path) is removed, it is not reported as changed."""
+        git = MagicMock(spec=GitClient)
+        git.fetch_branch.return_value = None
+        git.get_changed_files.return_value = [
+            "components/training/sklearn/logistic_regression/component.py",
+        ]
+        detector = ChangeDetector(git_client=git)
+
+        def isdir(path: str) -> bool:
+            if path == "components/training/sklearn/logistic_regression":
+                return False
+            return _real_os.path.isdir(path)
+
+        with patch.object(detect.os.path, "isdir", side_effect=isdir):
+            result = detector.detect("origin/HEAD", "HEAD")
+
+        assert result.components == []
+        assert result.pipelines == []
+        assert result.has_changes is False
+
+    def test_existing_and_removed_mixed_only_existing_reported(self):
+        """When one asset is removed and another exists, only the existing one is reported."""
+        git = MagicMock(spec=GitClient)
+        git.fetch_branch.return_value = None
+        git.get_changed_files.return_value = [
+            "components/training/removed/component.py",
+            "components/training/kept/component.py",
+        ]
+        detector = ChangeDetector(git_client=git)
+
+        def isdir(path: str) -> bool:
+            if path in ("components/training/removed", "components/training/kept"):
+                return path == "components/training/kept"
+            return _real_os.path.isdir(path)
+
+        with patch.object(detect.os.path, "isdir", side_effect=isdir):
+            result = detector.detect("origin/HEAD", "HEAD")
+
+        assert result.components == ["components/training/kept"]
+        assert result.has_changed_components is True
 
 
 if __name__ == "__main__":
