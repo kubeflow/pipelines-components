@@ -8,25 +8,22 @@ on:
       - "**/Dockerfile"
       - ".github/workflows/container-build.yml"
       - ".github/scripts/check_container_build_matrix/**"
-
+      - ".container-build-ignore"
 jobs:
-  check-matrix:
+  check-container-build-matrix:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Python and uv
+        uses: ./.github/actions/setup-python-ci
         with:
           python-version: "3.11"
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-
-      - name: Run matrix check unit tests
+      - name: Run matrix check script
         run: uv run python -m check_container_build_matrix.check_container_build_matrix
         working-directory: .github/scripts
 
-      - name: Run unit tests
-        run: pytest -v
+      - name: Run unit tests with pytest
+        run: uv run pytest -v
         working-directory: .github/scripts

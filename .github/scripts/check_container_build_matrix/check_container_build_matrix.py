@@ -59,13 +59,16 @@ def parse_matrix_contexts(workflow_path: Path) -> set[str]:
     """Extract context values from jobs.build.strategy.matrix.include."""
     with open(workflow_path) as f:
         workflow = yaml.safe_load(f)
-
+    if not isinstance(workflow, dict):
+        return set()
     includes = workflow.get("jobs", {}).get("build", {}).get("strategy", {}).get("matrix", {}).get("include", [])
     if not isinstance(includes, list):
         return set()
 
     contexts = set()
     for entry in includes:
+        if not isinstance(entry, dict):
+            continue
         if "context" in entry:
             contexts.add(str(Path(entry["context"])))
     return contexts
@@ -101,7 +104,11 @@ def check(
             results.append({"file": str(cf.relative_to(repo_root)), "status": "ok"})
         else:
             all_matched = False
-            suggestion = f"  - context: {rel_dir}\n    dockerfile: {cf.relative_to(repo_root)}"
+            suggestion = (
+                "  - name: REPLACE_WITH_UNIQUE_NAME\n"
+                f"    context: {rel_dir}\n"
+                f"    dockerfile: {cf.relative_to(repo_root)}"
+            )
             results.append(
                 {
                     "file": str(cf.relative_to(repo_root)),
