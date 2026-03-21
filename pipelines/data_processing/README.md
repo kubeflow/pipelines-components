@@ -2,6 +2,4 @@
 
 This directory contains pipelines in the **Data Processing** category:
 
-## Subcategories
-
-- [Sdg](./sdg/README.md)
+- [Sdg Hub](./sdg/README.md): Run SDG LLM test flow end-to-end.

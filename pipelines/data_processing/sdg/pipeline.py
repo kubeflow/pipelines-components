@@ -7,7 +7,7 @@ and produces generated output as a KFP artifact.
 from kfp import compiler, dsl
 from kfp_kubernetes import use_config_map_as_volume, use_secret_as_env
 
-from components.data_processing.sdg.sdg_hub.component import sdg
+from components.data_processing.sdg.component import sdg
 
 # Use UBI Python image accessible from OpenShift (avoids Docker Hub rate limits)
 BASE_IMAGE = "registry.access.redhat.com/ubi9/python-311:latest"

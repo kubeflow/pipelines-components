@@ -11,8 +11,7 @@ import os
 import sys
 import tempfile
 
-# The component module lives one level up (sdg_hub/), so add it to sys.path
-# when running this script directly (e.g. python shared/run_local.py).
+# The component module lives in the parent sdg/ directory.
 _COMPONENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _COMPONENT_DIR not in sys.path:
     sys.path.insert(0, _COMPONENT_DIR)
@@ -23,8 +22,7 @@ from component import sdg  # noqa: E402
 from kfp.local import executor_input_utils, task_dispatcher  # noqa: E402
 
 # Paths
-COMPONENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TEST_DATA = os.path.join(COMPONENT_DIR, "tests", "test_data")
+TEST_DATA = os.path.join(_COMPONENT_DIR, "tests", "test_data")
 INPUT_PATH = os.path.abspath(os.path.join(TEST_DATA, "sample_input.jsonl"))
 FLOW_PATH = os.path.abspath(os.path.join(TEST_DATA, "llm_test_flow.yaml"))
 
