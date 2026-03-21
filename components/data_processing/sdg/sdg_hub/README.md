@@ -62,7 +62,6 @@ metrics.
 
 - **Documentation**: [https://github.com/Red-Hat-AI-Innovation-Team/sdg_hub](https://github.com/Red-Hat-AI-Innovation-Team/sdg_hub)
 
-
 <!-- custom-content -->
 
 ## Outputs
@@ -200,7 +199,7 @@ LLM_API_KEY="<your-api-key>" pytest components/data_processing/sdg/sdg_hub/tests
 
 ## Running on Red Hat OpenShift AI
 
-### Prerequisites
+### OpenShift AI Prerequisites
 
 - OpenShift AI with a pipeline server configured in your data science project
 - `oc` CLI logged in to the cluster
@@ -289,9 +288,9 @@ oc logs <pod-name> -c main -n <namespace>
 <details>
 <summary><h2>Architecture Design Document</h2></summary>
 
-# SDG Hub KFP Component Architecture Design
+## SDG Hub KFP Component Architecture Design
 
-## Document Information
+### Document Information
 
 | Field | Value |
 |-------|-------|
@@ -302,7 +301,7 @@ oc logs <pod-name> -c main -n <namespace>
 
 ---
 
-## Table of Contents
+### Table of Contents
 
 1. [Overview](#1-overview)
 2. [Background & Motivation](#2-background--motivation)
@@ -317,9 +316,9 @@ oc logs <pod-name> -c main -n <namespace>
 
 ---
 
-## 1. Overview
+### 1. Overview
 
-### 1.1 What We Are Building
+#### 1.1 What We Are Building
 
 A **Kubeflow Pipelines (KFP) component** that wraps the SDG Hub SDK to enable synthetic data generation within Kubernetes-native ML pipelines. This component allows users to:
 
@@ -327,7 +326,7 @@ A **Kubeflow Pipelines (KFP) component** that wraps the SDG Hub SDK to enable sy
 - Generate synthetic training data at production scale
 - Integrate seamlessly with upstream data preparation and downstream model training components
 
-### 1.2 Component at a Glance
+#### 1.2 Component at a Glance
 
 ```mermaid
 graph TB
@@ -351,7 +350,7 @@ graph TB
     end
 ```
 
-### 1.3 Design Principles
+#### 1.3 Design Principles
 
 | Principle | Description |
 |-----------|-------------|
@@ -363,9 +362,9 @@ graph TB
 
 ---
 
-## 2. Background & Motivation
+### 2. Background & Motivation
 
-### 2.1 What is SDG Hub?
+#### 2.1 What is SDG Hub?
 
 SDG Hub is a Python framework for synthetic data generation using composable blocks and flows:
 
@@ -381,7 +380,7 @@ flowchart LR
     D --> E[Output Dataset]
 ```
 
-### 2.2 Why a KFP Component?
+#### 2.2 Why a KFP Component?
 
 **Problem:** Organizations need to generate synthetic training data as part of their ML pipelines, but:
 
@@ -400,7 +399,7 @@ flowchart LR
 | **Checkpointing** | Resume interrupted jobs, survive pod restarts |
 | **Observability** | Native KFP metrics, logging, artifact tracking |
 
-### 2.3 Target Use Cases
+#### 2.3 Target Use Cases
 
 ```mermaid
 flowchart LR
@@ -411,11 +410,12 @@ flowchart LR
 ```
 
 Examples:
+
 - **Knowledge tuning**: document -> QA pairs -> fine-tune LLM
 - **Instruction tuning**: seed data -> diverse examples -> train
 - **Data augmentation**: small dataset -> expanded dataset -> train
 
-### 2.4 Non-Goals
+#### 2.4 Non-Goals
 
 The following are explicitly **out of scope** for this component:
 
@@ -426,9 +426,9 @@ The following are explicitly **out of scope** for this component:
 
 ---
 
-## 3. Component Scope & Granularity
+### 3. Component Scope & Granularity
 
-### 3.1 Decision Summary
+#### 3.1 Decision Summary
 
 | Aspect | Decision |
 |--------|----------|
@@ -436,7 +436,7 @@ The following are explicitly **out of scope** for this component:
 | **Flow Selection** | Support both built-in flows and custom YAML |
 | **Scope** | Production execution only |
 
-### 3.2 Selected: Single Monolithic Component
+#### 3.2 Selected: Single Monolithic Component
 
 One component handles everything: flow selection, model config, execution.
 
@@ -452,12 +452,13 @@ graph TB
 ```
 
 **Why Selected:**
+
 - Simple to use - one component does it all
 - Fewer artifacts passed between components
 - Matches production pattern: "run this flow on this data"
 - Validation is built into `flow.generate()`
 
-### 3.3 Rejected Options
+#### 3.3 Rejected Options
 
 | Option | Why Rejected |
 |--------|--------------|
@@ -466,9 +467,9 @@ graph TB
 
 ---
 
-## 4. Input Data Interface
+### 4. Input Data Interface
 
-### 4.1 Decision Summary
+#### 4.1 Decision Summary
 
 | Aspect | Decision |
 |--------|----------|
@@ -477,7 +478,7 @@ graph TB
 | **File Format** | JSONL only |
 | **Checkpoint Resume** | Via checkpoint PVC path |
 
-### 4.2 Input Architecture
+#### 4.2 Input Architecture
 
 The component uses **KFP Artifacts as the primary interface** for pipeline composition and tracking. PVC is an "import" option that gets converted to artifacts internally.
 
@@ -501,9 +502,9 @@ flowchart TB
 
 **Priority:** Artifact > PVC Path
 
-### 4.3 Input Flow Details
+#### 4.3 Input Flow Details
 
-#### Option A: KFP Artifact (Native - Preferred)
+##### Option A: KFP Artifact (Native - Preferred)
 
 ```mermaid
 sequenceDiagram
@@ -516,7 +517,7 @@ sequenceDiagram
     Note over SDG: Native pipeline composition<br/>Tracked in KFP UI
 ```
 
-#### Option B: PVC Import
+##### Option B: PVC Import
 
 ```mermaid
 sequenceDiagram
@@ -529,7 +530,7 @@ sequenceDiagram
     Note over SDG: Data pre-staged on shared storage<br/>No transfer overhead for large datasets
 ```
 
-### 4.4 Why This Design?
+#### 4.4 Why This Design?
 
 | Alternative | Why Rejected |
 |-------------|--------------|
@@ -538,14 +539,14 @@ sequenceDiagram
 
 **Selected: Hybrid with Import/Export** because it provides KFP native tracking while supporting external data sources.
 
-### 4.5 File Format Decision
+#### 4.5 File Format Decision
 
 | Format | Decision | Rationale |
 |--------|----------|-----------|
 | **JSONL** | Supported | Human-readable, matches SDK checkpoint format, simple |
 | **Parquet/CSV** | Not supported | Adds complexity; JSONL sufficient for production |
 
-### 4.6 Checkpoint Resume
+#### 4.6 Checkpoint Resume
 
 The component supports resuming interrupted jobs via checkpoints stored on PVC.
 
@@ -580,7 +581,7 @@ flowchart TB
 
 **Why PVC for Checkpoints:** PVC persists across pod restarts; KFP temp paths and EmptyDir do not.
 
-### 4.7 Component Interface (Input Parameters)
+#### 4.7 Component Interface (Input Parameters)
 
 ```python
 @component
@@ -598,9 +599,9 @@ def sdg(
 ):
 ```
 
-### 4.8 Usage Examples
+#### 4.8 Usage Examples
 
-#### Example 1: Input from Upstream Component
+##### Example 1: Input from Upstream Component
 
 ```python
 @dsl.pipeline
@@ -617,7 +618,7 @@ def training_pipeline():
     )
 ```
 
-#### Example 2: Input from PVC
+##### Example 2: Input from PVC
 
 ```python
 sdg_task = sdg(
@@ -626,7 +627,7 @@ sdg_task = sdg(
 )
 ```
 
-#### Example 3: Resume from Checkpoint
+##### Example 3: Resume from Checkpoint
 
 ```python
 sdg_task = sdg(
@@ -640,9 +641,9 @@ sdg_task = sdg(
 
 ---
 
-## 5. Output Data Interface
+### 5. Output Data Interface
 
-### 5.1 Decision Summary
+#### 5.1 Decision Summary
 
 | Aspect | Decision |
 |--------|----------|
@@ -651,7 +652,7 @@ sdg_task = sdg(
 | **Output Structure** | Nested: `{path}/{flow_id}/{timestamp}/generated.jsonl` |
 | **Metrics** | KFP Metrics artifact (native) |
 
-### 5.2 Output Architecture
+#### 5.2 Output Architecture
 
 The component **always produces a KFP Artifact** for native pipeline composition. Users can **optionally export** to PVC for external access.
 
@@ -679,7 +680,7 @@ flowchart TB
     style D fill:#90EE90
 ```
 
-### 5.3 Why Always Produce KFP Artifact?
+#### 5.3 Why Always Produce KFP Artifact?
 
 | Benefit | Description |
 |---------|-------------|
@@ -688,11 +689,11 @@ flowchart TB
 | **Lineage** | KFP tracks artifact provenance automatically |
 | **Consistency** | Same interface regardless of input source |
 
-### 5.4 Optional PVC Export
+#### 5.4 Optional PVC Export
 
 When `export_to_pvc=True`, output is **also** written to PVC:
 
-```
+```text
 {export_path}/{flow_id}/{timestamp}/generated.jsonl
 
 Example:
@@ -700,10 +701,11 @@ Example:
 ```
 
 **Nested structure rationale:**
+
 - `flow_id`: Identifies which flow produced the output
 - `timestamp`: Supports multiple runs without overwriting
 
-### 5.5 KFP Metrics
+#### 5.5 KFP Metrics
 
 The component produces metrics visible in KFP UI:
 
@@ -715,7 +717,7 @@ metrics.log_metric("successful_blocks", 8)
 metrics.log_metric("failed_blocks", 0)
 ```
 
-### 5.6 Component Interface (Output Parameters)
+#### 5.6 Component Interface (Output Parameters)
 
 ```python
 @component
@@ -730,9 +732,9 @@ def sdg(
 ):
 ```
 
-### 5.7 Usage Examples
+#### 5.7 Usage Examples
 
-#### Example 1: Output to Downstream Component Only
+##### Example 1: Output to Downstream Component Only
 
 ```python
 @dsl.pipeline
@@ -747,7 +749,7 @@ def training_pipeline():
     )
 ```
 
-#### Example 2: Output to Both Artifact and PVC
+##### Example 2: Output to Both Artifact and PVC
 
 ```python
 sdg_task = sdg(
@@ -762,9 +764,9 @@ sdg_task = sdg(
 
 ---
 
-## 6. Flow Selection & Configuration
+### 6. Flow Selection & Configuration
 
-### 6.1 Decision Summary
+#### 6.1 Decision Summary
 
 | Aspect | Decision |
 |--------|----------|
@@ -775,7 +777,7 @@ sdg_task = sdg(
 | **Override Priority** | Flow YAML → Component-level → Block-level |
 | **Flow Validation** | No pre-validation; rely on generate() fail-fast |
 
-### 6.2 Flow Selection Modes
+#### 6.2 Flow Selection Modes
 
 The component supports two mutually exclusive modes for specifying which flow to run:
 
@@ -803,7 +805,7 @@ flowchart TB
 
 **Priority:** If both provided, `flow_yaml_path` takes precedence.
 
-### 6.3 Custom Flow YAML from ConfigMap
+#### 6.3 Custom Flow YAML from ConfigMap
 
 Custom flow YAML files are mounted into the container from Kubernetes ConfigMaps. This follows K8s-native configuration patterns.
 
@@ -830,7 +832,7 @@ sequenceDiagram
 
 **Note:** PVC paths also work since the component just reads from a file path. ConfigMap is the recommended approach for K8s-native configuration management.
 
-#### ConfigMap Example
+##### ConfigMap Example
 
 ```yaml
 # K8s ConfigMap definition
@@ -862,7 +864,7 @@ data:
           max_tokens: 2048
 ```
 
-#### Pipeline Usage with ConfigMap
+##### Pipeline Usage with ConfigMap
 
 ```python
 from kfp import dsl
@@ -884,7 +886,7 @@ def training_pipeline():
     )
 ```
 
-### 6.4 Parameter Override System
+#### 6.4 Parameter Override System
 
 The component implements a three-tier parameter override system that mirrors the SDK's behavior while adding a component-level tier for convenience.
 
@@ -901,7 +903,7 @@ flowchart LR
 2. **Component-Level Params**: Global LLM parameters passed to the component
 3. **Block-Level Overrides**: Per-block settings in `runtime_params` dict
 
-### 6.5 Component-Level LLM Parameters
+#### 6.5 Component-Level LLM Parameters
 
 The component exposes common LLM parameters at the component level for convenience. These are applied globally to all LLM blocks, then can be overridden per-block via `runtime_params`.
 
@@ -920,7 +922,7 @@ The component exposes common LLM parameters at the component level for convenien
 - **Discoverability**: Visible in component interface documentation
 - **SDK Consistency**: Matches parameters available on SDK blocks
 
-### 6.6 Runtime Parameters (Block-Level Overrides)
+#### 6.6 Runtime Parameters (Block-Level Overrides)
 
 The `runtime_params` parameter accepts a flat dict matching the SDK's interface. Keys are block names, values are parameter dicts.
 
@@ -950,7 +952,7 @@ runtime_params = {
 
 **Selected: Flat dict** for SDK consistency and simplicity.
 
-### 6.7 Flow Validation
+#### 6.7 Flow Validation
 
 The component does **not** perform pre-validation (dry_run) before execution.
 
@@ -961,7 +963,7 @@ The component does **not** perform pre-validation (dry_run) before execution.
 - Flows used in production are pre-tested during development
 - Clear error messages from `generate()` are sufficient for debugging
 
-### 6.8 Component Interface (Flow & Params)
+#### 6.8 Component Interface (Flow & Params)
 
 ```python
 @component
@@ -987,9 +989,9 @@ def sdg(
 ):
 ```
 
-### 6.9 Usage Examples
+#### 6.9 Usage Examples
 
-#### Example 1: Built-in Flow with Component-Level Params
+##### Example 1: Built-in Flow with Component-Level Params
 
 ```python
 sdg_task = sdg(
@@ -1002,7 +1004,7 @@ sdg_task = sdg(
 )
 ```
 
-#### Example 2: Custom Flow from ConfigMap
+##### Example 2: Custom Flow from ConfigMap
 
 ```python
 @dsl.pipeline
@@ -1021,7 +1023,7 @@ def custom_flow_pipeline():
     )
 ```
 
-#### Example 3: Component-Level + Block-Level Overrides
+##### Example 3: Component-Level + Block-Level Overrides
 
 ```python
 sdg_task = sdg(
@@ -1047,15 +1049,16 @@ sdg_task = sdg(
 ```
 
 In this example:
+
 - `gen_detailed_summary` uses temperature=0.5, max_tokens=4096
 - `question_generation` uses temperature=0.9, max_tokens=2048 (component default)
 - Other LLM blocks use temperature=0.7, max_tokens=2048 (component defaults)
 
 ---
 
-## 7. Model/LLM Configuration
+### 7. Model/LLM Configuration
 
-### 7.1 Decision Summary
+#### 7.1 Decision Summary
 
 | Aspect | Decision |
 |--------|----------|
@@ -1064,7 +1067,7 @@ In this example:
 | **Secret Structure** | `api_key` and `api_base` keys |
 | **Multiple Models** | Not supported (SDK limitation) |
 
-### 7.2 Model Identifier
+#### 7.2 Model Identifier
 
 The `model` parameter accepts a LiteLLM format string that specifies both the provider and model.
 
@@ -1084,11 +1087,12 @@ model = "hosted_vllm/meta-llama/Llama-3.3-70B-Instruct"
 | **Anthropic** | `anthropic/{model}` | `anthropic/claude-3-opus` |
 
 **Why simple string (not structured dict):**
+
 - LiteLLM already encodes provider in the model string
 - Matches SDK interface
 - Simple and familiar
 
-### 7.3 Credential Storage with K8s Secrets
+#### 7.3 Credential Storage with K8s Secrets
 
 Credentials are stored in Kubernetes Secrets and mounted as environment variables using KFP's native `kubernetes.use_secret_as_env()`. The component internally reads these environment variables (`LLM_API_KEY`, `LLM_API_BASE`) without requiring a component parameter.
 
@@ -1123,7 +1127,7 @@ flowchart TB
 | **ConfigMap** | Not designed for sensitive data; no encryption at rest |
 | **External vault** | Adds complexity; K8s Secrets sufficient for most cases |
 
-### 7.4 Secret Structure
+#### 7.4 Secret Structure
 
 Secrets are mounted as environment variables with standardized names (`LLM_API_KEY`, `LLM_API_BASE`). The component reads these via `os.environ.get()` internally.
 
@@ -1140,7 +1144,7 @@ stringData:
   api_base: "https://api.example.com/v1"
 ```
 
-### 7.5 Secret Mounting in Pipelines
+#### 7.5 Secret Mounting in Pipelines
 
 Secrets are mounted as environment variables via the pipeline definition using KFP's native Kubernetes extension. The component reads these environment variables internally.
 
@@ -1180,7 +1184,7 @@ api_base = os.environ.get("LLM_API_BASE")
 # Configure LiteLLM with these credentials
 ```
 
-### 7.6 Multiple Model Support
+#### 7.6 Multiple Model Support
 
 The component supports **only a single model configuration** per execution.
 
@@ -1197,7 +1201,7 @@ flowchart LR
 
 Use separate SDG component instances in sequence, each with its own model configuration.
 
-### 7.7 Component Interface (Model Parameters)
+#### 7.7 Component Interface (Model Parameters)
 
 ```python
 @component
@@ -1214,9 +1218,9 @@ def sdg(
 ):
 ```
 
-### 7.8 Usage Examples
+#### 7.8 Usage Examples
 
-#### Example 1: vLLM Endpoint
+##### Example 1: vLLM Endpoint
 
 ```yaml
 # Secret
@@ -1248,7 +1252,7 @@ def pipeline():
     )
 ```
 
-#### Example 2: OpenAI API
+##### Example 2: OpenAI API
 
 ```yaml
 # Secret
@@ -1282,9 +1286,9 @@ def pipeline():
 
 ---
 
-## 8. Execution Configuration
+### 8. Execution Configuration
 
-### 8.1 Decision Summary
+#### 8.1 Decision Summary
 
 | Aspect | Decision |
 |--------|----------|
@@ -1294,7 +1298,7 @@ def pipeline():
 | **Resource Limits** | Use KFP native methods (no component params) |
 | **Timeout** | Use KFP native methods (no component params) |
 
-### 8.2 Concurrency Control
+#### 8.2 Concurrency Control
 
 The `max_concurrency` parameter limits parallel LLM requests to avoid rate limiting.
 
@@ -1303,11 +1307,12 @@ max_concurrency: int = 10  # Conservative default
 ```
 
 **Why 10 as default:**
+
 - Safe for most LLM providers without hitting rate limits
 - Users can increase for high-throughput endpoints (e.g., self-hosted vLLM)
 - Users can decrease for providers with strict rate limits
 
-### 8.3 Checkpointing Configuration
+#### 8.3 Checkpointing Configuration
 
 Checkpointing saves progress to PVC, enabling resume after interruption.
 
@@ -1333,16 +1338,18 @@ flowchart LR
 | `save_freq` | int | 100 | Save checkpoint every N completed samples |
 
 **Why `save_freq=100`:**
+
 - Balances data loss risk (max 99 samples) with I/O overhead
 - Reasonable for most dataset sizes
 - Users can adjust based on sample processing time
 
 **Checkpoint behavior:**
+
 1. If `checkpoint_pvc_path` is None: No checkpointing (simpler, faster)
 2. If path provided: Checkpoints saved every `save_freq` samples
 3. On start: Automatically loads existing checkpoints and resumes
 
-### 8.4 Logging Configuration
+#### 8.4 Logging Configuration
 
 Log level is controlled via a component parameter for easy pipeline configuration.
 
@@ -1351,16 +1358,18 @@ log_level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR
 ```
 
 **Why component parameter (not env var only):**
+
 - Visible in KFP UI and pipeline definition
 - Easy to adjust per pipeline run
 - More discoverable than environment variables
 
 **Log output:**
+
 - Logs go to stdout/stderr (K8s native)
 - KFP captures and displays in task logs
 - No separate log aggregation required
 
-### 8.5 Resource Configuration
+#### 8.5 Resource Configuration
 
 Resource requests and limits are configured using **KFP's native methods**, not component parameters.
 
@@ -1388,7 +1397,7 @@ def pipeline():
 
 **Selected: KFP native** because it's consistent with KFP patterns and avoids duplication.
 
-### 8.6 Timeout Configuration
+#### 8.6 Timeout Configuration
 
 Execution timeout is configured using **KFP's native method**.
 
@@ -1403,7 +1412,7 @@ def pipeline():
 
 **Why KFP native:** Same rationale as resource configuration - avoids duplication, consistent with KFP patterns.
 
-### 8.7 Component Interface (Execution Parameters)
+#### 8.7 Component Interface (Execution Parameters)
 
 ```python
 @component
@@ -1425,9 +1434,9 @@ def sdg(
 ):
 ```
 
-### 8.8 Usage Examples
+#### 8.8 Usage Examples
 
-#### Example 1: Default Execution Settings
+##### Example 1: Default Execution Settings
 
 ```python
 sdg_task = sdg(
@@ -1438,7 +1447,7 @@ sdg_task = sdg(
 )
 ```
 
-#### Example 2: High-Throughput with Checkpointing
+##### Example 2: High-Throughput with Checkpointing
 
 ```python
 @dsl.pipeline
@@ -1471,7 +1480,7 @@ def high_throughput_pipeline():
     )
 ```
 
-#### Example 3: Conservative Settings for Rate-Limited API
+##### Example 3: Conservative Settings for Rate-Limited API
 
 ```python
 sdg_task = sdg(
@@ -1490,9 +1499,9 @@ sdg_task = sdg(
 
 ---
 
-## 9. Error Handling & Observability
+### 9. Error Handling & Observability
 
-### 9.1 Decision Summary
+#### 9.1 Decision Summary
 
 | Aspect | Decision |
 |--------|----------|
@@ -1502,7 +1511,7 @@ sdg_task = sdg(
 | **Log Format** | Human-readable (standard Python logging) |
 | **Progress Reporting** | Periodic log messages |
 
-### 9.2 Failure Behavior
+#### 9.2 Failure Behavior
 
 The component uses **fail-fast** semantics: stop on first unrecoverable error and save checkpoint if enabled.
 
@@ -1519,6 +1528,7 @@ flowchart TB
 ```
 
 **Why fail-fast:**
+
 - Simple and predictable behavior
 - Checkpoints preserve progress before failure
 - KFP handles task-level retries natively
@@ -1530,22 +1540,23 @@ flowchart TB
 |-------------|------------------|
 | **Best-effort (skip failures)** | May produce incomplete data silently; harder to debug |
 
-### 9.3 Retry Logic
+#### 9.3 Retry Logic
 
 The component **uses SDK defaults** for retry behavior. The SDK uses `tenacity` for transient error handling (rate limits, timeouts).
 
 **Why not expose retry params:**
+
 - SDK defaults are well-tuned for common providers
 - Reduces component surface area
 - Users rarely need to customize retry behavior
 
-### 9.4 KFP Metrics
+#### 9.4 KFP Metrics
 
 > **Note:** The current implementation logs three core metrics: `input_rows`, `output_rows`, `execution_time_seconds`. Extended metrics below are planned for future releases.
 
 The component produces extended metrics via `Output[Metrics]`, visible in KFP UI.
 
-#### Metrics Reference
+##### Metrics Reference
 
 | Metric | Type | Description |
 |--------|------|-------------|
@@ -1570,7 +1581,7 @@ The component produces extended metrics via `Output[Metrics]`, visible in KFP UI
 
 **Note:** LLM token metrics depend on SDK exposing this data. If not available, they will be omitted.
 
-#### Metrics Usage Example
+##### Metrics Usage Example
 
 ```python
 # Inside component implementation
@@ -1601,11 +1612,11 @@ def log_metrics(metrics: Metrics, stats: dict):
         metrics.log_metric("tokens_completion_total", stats["tokens_completion"])
 ```
 
-### 9.5 Logging Configuration
+#### 9.5 Logging Configuration
 
 The component uses **human-readable** log format for easy viewing in KFP UI.
 
-```
+```text
 # Log output example
 2025-01-21 14:30:52 INFO  [sdg] Starting flow: extractive-summary-qa
 2025-01-21 14:30:52 INFO  [sdg] Input: 1000 samples
@@ -1620,15 +1631,17 @@ The component uses **human-readable** log format for easy viewing in KFP UI.
 ```
 
 **Why human-readable (not JSON):**
+
 - Easier to read in KFP task logs UI
 - Standard Python logging is familiar
 - JSON structured logs add complexity with minimal benefit for this use case
 
-### 9.6 Progress Reporting
+#### 9.6 Progress Reporting
 
 The component logs progress **periodically** during execution.
 
 **Progress log frequency:**
+
 - Log every `save_freq` samples (aligned with checkpointing)
 - Always log start and completion
 - Log errors with context
@@ -1648,16 +1661,17 @@ def log_progress(current: int, total: int, start_time: float):
 ```
 
 **Example output:**
-```
+
+```text
 Progress: 100/1000 samples (10%) [8.3 samples/sec, ETA: 108s]
 Progress: 200/1000 samples (20%) [8.5 samples/sec, ETA: 94s]
 ```
 
-### 9.7 Error Messages
+#### 9.7 Error Messages
 
 When failures occur, the component provides actionable error messages:
 
-```
+```text
 # Error message examples
 ERROR [sdg] LLM API error: Rate limit exceeded (429).
       Retried 3 times, giving up. Checkpoint saved at /mnt/checkpoints/checkpoint_0005.jsonl
@@ -1672,11 +1686,11 @@ ERROR [sdg] Block 'generate_qa' failed: Invalid JSON in LLM response.
 
 ---
 
-## 10. Container & Packaging
+### 10. Container & Packaging
 
 > **Note:** The current implementation uses `packages_to_install` for simplicity. Migration to a pre-baked base image is planned for production deployments.
 
-### 10.1 Decision Summary
+#### 10.1 Decision Summary
 
 | Aspect | Decision |
 |--------|----------|
@@ -1686,7 +1700,7 @@ ERROR [sdg] Block 'generate_qa' failed: Invalid JSON in LLM response.
 | **Distribution** | Python package + auto-generated YAML |
 | **Registry** | Mirror to Quay.io and GHCR |
 
-### 10.2 Base Image
+#### 10.2 Base Image
 
 The component uses Red Hat Universal Base Image (UBI) for enterprise compatibility.
 
@@ -1709,12 +1723,13 @@ ENTRYPOINT ["python", "-m", "sdg_hub.kfp"]
 | **Custom base** | Extra maintenance; UBI provides what we need |
 
 **Selected: UBI 9** for:
+
 - Enterprise certification (OpenShift/RHOAI alignment)
 - Security scanning and CVE patching
 - FIPS compliance capability
 - Red Hat support
 
-### 10.3 Dependency Management
+#### 10.3 Dependency Management
 
 All dependencies are **pre-baked** into the container image at build time.
 
@@ -1737,16 +1752,17 @@ flowchart LR
 | **`packages_to_install`** | 30-60s pip install overhead per run; network dependency; version resolution risk |
 
 **Benefits of pre-baked:**
+
 - Fast startup (no download/install step)
 - No network dependency at runtime
 - Exact version reproducibility
 - Reliable in air-gapped environments
 
-### 10.4 Image Versioning
+#### 10.4 Image Versioning
 
 Container images follow the **same semantic versioning as the SDK**.
 
-```
+```text
 quay.io/redhat-ai-innovation/sdg-hub-kfp:v1.0.0
 quay.io/redhat-ai-innovation/sdg-hub-kfp:v1.0.1
 quay.io/redhat-ai-innovation/sdg-hub-kfp:v1.1.0
@@ -1763,11 +1779,12 @@ quay.io/redhat-ai-innovation/sdg-hub-kfp:v1.1.0
 | `sha-abc1234` | Git SHA for exact build traceability |
 
 **Why match SDK versioning:**
+
 - Clear compatibility: component `v1.2.0` uses SDK `v1.2.0`
 - Single version number to communicate
 - Aligned release process
 
-### 10.5 Component Distribution
+#### 10.5 Component Distribution
 
 The component is distributed via **Python package** with **auto-generated YAML** for flexibility.
 
@@ -1788,7 +1805,7 @@ flowchart TB
     style A fill:#90EE90
 ```
 
-#### Python Package (Primary)
+##### Python Package (Primary)
 
 Users install the package and import the component:
 
@@ -1808,12 +1825,13 @@ def my_pipeline():
 ```
 
 **Benefits:**
+
 - IDE autocomplete and type hints
 - Docstring documentation
 - Version managed via pip
 - Modern KFP v2 native pattern
 
-#### Component YAML (Auto-Generated)
+##### Component YAML (Auto-Generated)
 
 YAML is automatically generated from the Python definition—no dual maintenance.
 
@@ -1856,7 +1874,7 @@ def my_pipeline():
     asset_name: component.yaml
 ```
 
-### 10.6 Container Registry
+#### 10.6 Container Registry
 
 Images are mirrored to **both** Quay.io and GitHub Container Registry.
 
@@ -1866,11 +1884,12 @@ Images are mirrored to **both** Quay.io and GitHub Container Registry.
 | **GHCR** (mirror) | `ghcr.io/red-hat-ai-innovation-team/sdg-hub-kfp:v1.0.0` |
 
 **Why both:**
+
 - Quay.io: Red Hat ecosystem alignment, enterprise features
 - GHCR: GitHub integration, backup availability
 - Redundancy: if one registry has issues, users can pull from the other
 
-### 10.7 Dockerfile Structure
+#### 10.7 Dockerfile Structure
 
 ```dockerfile
 # Dockerfile.kfp
@@ -1899,7 +1918,7 @@ RUN python -c "from sdg_hub.kfp import sdg; print('Component loaded successfully
 ENTRYPOINT ["python"]
 ```
 
-### 10.8 Build & Release Process
+#### 10.8 Build & Release Process
 
 ```mermaid
 flowchart TB
@@ -1930,6 +1949,7 @@ flowchart TB
 ```
 
 **Release artifacts:**
+
 - Container image on Quay.io and GHCR
 - Python package on PyPI
 - `component.yaml` as GitHub Release asset
@@ -1937,7 +1957,7 @@ flowchart TB
 
 ---
 
-## Appendix A: Complete Component Interface (Draft)
+### Appendix A: Complete Component Interface (Draft)
 
 ```python
 from kfp.dsl import component, Input, Output, Dataset, Metrics
@@ -2006,7 +2026,7 @@ def sdg(
 
 ---
 
-## Appendix B: Glossary
+### Appendix B: Glossary
 
 | Term | Definition |
 |------|------------|
@@ -2019,7 +2039,7 @@ def sdg(
 
 ---
 
-## Revision History
+### Revision History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
@@ -2030,4 +2050,3 @@ def sdg(
 | 0.5 | 2025-01-21 | SDG Hub Team | Added Phase 10: Container & Packaging |
 
 </details>
-
