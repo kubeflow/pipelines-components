@@ -1,13 +1,51 @@
-# SDG Hub Example Pipelines
+# Sdg Hub ✨
 
-Example KFP pipelines demonstrating usage patterns for the [SDG Hub component](../../../../components/data_processing/sdg/sdg_hub/).
+> ⚠️ **Stability: experimental** — This asset is not yet stable and may change.
 
-## Pipelines
+## Overview 🧾
 
-- **sdg_pvc_input_pipeline**: Reads input from PVC, runs SDG flow with LLM
-- **sdg_pvc_export_pipeline**: Same as above with PVC export enabled
-- **sdg_artifact_chaining_pipeline**: Chains upstream data creation with SDG flow
+Run SDG LLM test flow end-to-end.
 
-## Usage
+1. Create sample input data (inline) 2. Run the LLM test flow via SDG Hub component 3. Output generated data as KFP
+artifact
 
-See the [component README](../../../../components/data_processing/sdg/sdg_hub/README.md) for full documentation including OpenShift AI deployment instructions.
+## Inputs 📥
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `model` | `str` | `openai/gpt-4o-mini` | LiteLLM model identifier. |
+| `max_concurrency` | `int` | `1` | Max concurrent LLM requests. |
+| `temperature` | `float` | `0.7` | LLM sampling temperature. |
+| `max_tokens` | `int` | `256` | Max response tokens. |
+
+## Metadata 🗂️
+
+- **Name**: sdg_hub
+- **Stability**: experimental
+- **Dependencies**:
+  - Kubeflow:
+    - Name: Pipelines, Version: >=2.15.2
+  - External Services:
+    - Name: SDG Hub, Version: >=0.7.0
+    - Name: LiteLLM, Version: >=1.0.0
+- **Last Verified**: 2026-03-09 00:00:00+00:00
+- **Tags**:
+  - sdg
+  - synthetic_data_generation
+  - llm
+  - data_processing
+- **Owners**:
+  - Approvers:
+    - beatsmonster
+    - shivchander
+    - eshwarprasadS
+    - abhi1092
+  - Reviewers:
+    - beatsmonster
+    - shivchander
+    - eshwarprasadS
+    - abhi1092
+
+## Additional Resources 📚
+
+- **Documentation**: [https://github.com/Red-Hat-AI-Innovation-Team/sdg_hub](https://github.com/Red-Hat-AI-Innovation-Team/sdg_hub)
