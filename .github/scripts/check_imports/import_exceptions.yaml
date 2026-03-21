@@ -7,6 +7,10 @@ files:
   # Glob patterns: * matches any directory, ** matches any path
   "components/**/tests/*":
     - tests
+    - pandas
+  "components/**/shared/*":
+    - pandas
+    - component
   "pipelines/**/tests/*":
     - tests
   # Allow pipelines to import the repo package at module scope
@@ -14,3 +18,5 @@ files:
     - kfp_components
   "pipelines/**/*.py":
     - kfp_components
+    - kfp_kubernetes
+    - components
