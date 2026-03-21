@@ -1,6 +1,6 @@
 # Sdg Hub ✨
 
-> ⚠️ **Stability: experimental** — This asset is not yet stable and may change.
+> ⚠️ **Stability: beta** — This asset is not yet stable and may change.
 
 ## Overview 🧾
 
@@ -21,14 +21,14 @@ artifact
 ## Metadata 🗂️
 
 - **Name**: sdg_hub
-- **Stability**: experimental
+- **Stability**: beta
 - **Dependencies**:
   - Kubeflow:
     - Name: Pipelines, Version: >=2.15.2
   - External Services:
     - Name: SDG Hub, Version: >=0.7.0
     - Name: LiteLLM, Version: >=1.0.0
-- **Last Verified**: 2026-03-09 00:00:00+00:00
+- **Last Verified**: 2026-03-21 00:00:00+00:00
 - **Tags**:
   - sdg
   - synthetic_data_generation

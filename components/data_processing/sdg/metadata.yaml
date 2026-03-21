@@ -1,6 +1,6 @@
 ---
 name: sdg_hub
-stability: alpha
+stability: beta
 dependencies:
   kubeflow:
     - name: Pipelines
@@ -15,6 +15,6 @@ tags:
   - synthetic_data_generation
   - llm
   - data_processing
-lastVerified: 2026-02-24T00:00:00Z
+lastVerified: 2026-03-21T00:00:00Z
 links:
   documentation: https://github.com/Red-Hat-AI-Innovation-Team/sdg_hub

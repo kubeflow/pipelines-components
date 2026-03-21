@@ -1,6 +1,6 @@
 # Sdg Hub ✨
 
-> ⚠️ **Stability: alpha** — This asset is not yet stable and may change.
+> ⚠️ **Stability: beta** — This asset is not yet stable and may change.
 
 ## Overview 🧾
 
@@ -33,7 +33,7 @@ metrics.
 ## Metadata 🗂️
 
 - **Name**: sdg_hub
-- **Stability**: alpha
+- **Stability**: beta
 - **Dependencies**:
   - Kubeflow:
     - Name: Pipelines, Version: >=2.15.2
@@ -45,7 +45,7 @@ metrics.
   - synthetic_data_generation
   - llm
   - data_processing
-- **Last Verified**: 2026-02-24 00:00:00+00:00
+- **Last Verified**: 2026-03-21 00:00:00+00:00
 - **Owners**:
   - Approvers:
     - beatsmonster
