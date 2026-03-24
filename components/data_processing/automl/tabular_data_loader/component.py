@@ -127,7 +127,7 @@ def automl_data_loader(  # noqa: D417
             )
         logger.info("Performing sampling: method=%s", sampling_method)
 
-    def get_s3_client():
+    def get_s3_client(verify=True):
         """Create and return an S3 client using credentials from environment variables."""
         access_key = os.environ.get("AWS_ACCESS_KEY_ID")
         secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
@@ -157,6 +157,7 @@ def automl_data_loader(  # noqa: D417
             region_name=region_name,
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
+            verify=verify,
         )
 
     def _sample_first_n_rows(text_stream, chunk_size, max_size_bytes):
@@ -270,10 +271,21 @@ def automl_data_loader(  # noqa: D417
         label_column,
     ):
         """Load CSV from S3 in batches and return a sampled dataframe using the chosen strategy."""
+        from botocore.exceptions import SSLError
+
         if sampling_method == "stratified" and label_column is None:
             raise ValueError("label_column must be provided when sampling_method='stratified'")
 
-        response = s3_client.get_object(Bucket=bucket_name, Key=file_key)
+        try:
+            response = s3_client.get_object(Bucket=bucket_name, Key=file_key)
+        except SSLError:
+            logger.warning(
+                "SSL error when downloading s3://%s/%s, retrying with verify=False",
+                bucket_name,
+                file_key,
+            )
+            no_verify_client = get_s3_client(verify=False)
+            response = no_verify_client.get_object(Bucket=bucket_name, Key=file_key)
         text_stream = io.TextIOWrapper(response["Body"], encoding="utf-8")
 
         if sampling_method == "stratified":

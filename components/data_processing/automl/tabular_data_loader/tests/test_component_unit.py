@@ -22,6 +22,12 @@ mocked_env_variables = {
 }
 
 
+class _MockSSLError(Exception):
+    """Stand-in for botocore.exceptions.SSLError used in unit tests."""
+
+    pass
+
+
 @contextmanager
 def _mock_boto3_module(get_object_return=None, get_object_side_effect=None):
     """Inject a fake boto3 module so the component does not require boto3 to be installed."""
@@ -32,7 +38,21 @@ def _mock_boto3_module(get_object_return=None, get_object_side_effect=None):
     else:
         mock_s3.get_object.return_value = get_object_return or {"Body": io.BytesIO(b"")}
     mock_boto3.client.return_value = mock_s3
-    with mock.patch.dict(sys.modules, {"boto3": mock_boto3}):
+
+    # Inject botocore.exceptions so `from botocore.exceptions import SSLError` works
+    mock_botocore = mock.MagicMock()
+    mock_botocore_exceptions = mock.MagicMock()
+    mock_botocore_exceptions.SSLError = _MockSSLError
+    mock_botocore.exceptions = mock_botocore_exceptions
+
+    with mock.patch.dict(
+        sys.modules,
+        {
+            "boto3": mock_boto3,
+            "botocore": mock_botocore,
+            "botocore.exceptions": mock_botocore_exceptions,
+        },
+    ):
         yield mock_s3
 
 
@@ -523,3 +543,41 @@ class TestDataLoaderSplitLogic:
                     sampled_test_dataset=sampled_test,
                     sampling_method="invalid",
                 )
+
+    @mock.patch.dict("os.environ", mocked_env_variables)
+    def test_ssl_error_retries_with_verify_false(self, tmp_path):
+        """SSLError on get_object triggers a retry with verify=False."""
+        csv_content = "a,b,c\n1,2,3\n4,5,6\n7,8,9\n"
+
+        call_count = 0
+
+        def get_object_side_effect(**kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise _MockSSLError("SSL validation failed")
+            return {"Body": io.BytesIO(csv_content.encode("utf-8"))}
+
+        sampled_test = _make_test_artifact(tmp_path)
+
+        with _mock_boto3_and_pandas(get_object_side_effect=get_object_side_effect):
+            # Access the mocked boto3 to inspect client calls
+            import boto3 as mocked_boto3
+
+            result = automl_data_loader.python_func(
+                file_key="data/file.csv",
+                bucket_name="my-bucket",
+                workspace_path=str(tmp_path),
+                label_column="c",
+                sampled_test_dataset=sampled_test,
+            )
+
+            assert result is not None
+            assert result.sample_config["n_samples"] == 3
+
+            # First call: default (verify not passed or verify=True)
+            # Second call after SSL error: verify=False
+            client_calls = mocked_boto3.client.call_args_list
+            assert len(client_calls) == 2
+            second_call_kwargs = client_calls[1][1]
+            assert second_call_kwargs["verify"] is False

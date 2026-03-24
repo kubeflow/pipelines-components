@@ -30,7 +30,7 @@ def test_data_loader(test_data_bucket_name: str, test_data_path: str, test_data:
     import sys
 
     import boto3
-    from botocore.exceptions import ClientError
+    from botocore.exceptions import ClientError, SSLError
 
     logger = logging.getLogger("Test Data Loader component logger")
     logger.setLevel(logging.INFO)
@@ -50,13 +50,17 @@ def test_data_loader(test_data_bucket_name: str, test_data_path: str, test_data:
                     "%s environment variable not set. Check if kubernetes secret was configured properly" % k
                 )
 
-        s3_client = boto3.client(
-            "s3",
-            endpoint_url=s3_creds["AWS_S3_ENDPOINT"],
-            region_name=s3_creds["AWS_DEFAULT_REGION"],
-            aws_access_key_id=s3_creds["AWS_ACCESS_KEY_ID"],
-            aws_secret_access_key=s3_creds["AWS_SECRET_ACCESS_KEY"],
-        )
+        def _make_s3_client(verify=True):
+            return boto3.client(
+                "s3",
+                endpoint_url=s3_creds["AWS_S3_ENDPOINT"],
+                region_name=s3_creds["AWS_DEFAULT_REGION"],
+                aws_access_key_id=s3_creds["AWS_ACCESS_KEY_ID"],
+                aws_secret_access_key=s3_creds["AWS_SECRET_ACCESS_KEY"],
+                verify=verify,
+            )
+
+        s3_client = _make_s3_client()
 
         if test_data_path.endswith(".json"):
             logger.info(f"Fetching test data from S3: bucket={test_data_bucket_name}, path={test_data_path}")
@@ -64,6 +68,14 @@ def test_data_loader(test_data_bucket_name: str, test_data_path: str, test_data:
                 logger.info(f"Starting download to {test_data.path}")
                 s3_client.download_file(test_data_bucket_name, test_data_path, test_data.path)
                 logger.info("Download completed successfully")
+            except SSLError:
+                logger.warning(
+                    "SSL error when downloading %s, retrying with verify=False",
+                    test_data_path,
+                )
+                s3_client = _make_s3_client(verify=False)
+                s3_client.download_file(test_data_bucket_name, test_data_path, test_data.path)
+                logger.info("Download completed successfully with verify=False")
             except ClientError as e:
                 if e.response.get("Error", {}).get("Code") in ("404", "NoSuchKey"):
                     raise FileNotFoundError(

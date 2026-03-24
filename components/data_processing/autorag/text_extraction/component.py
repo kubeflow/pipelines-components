@@ -29,6 +29,7 @@ def text_extraction(
     from pathlib import Path
 
     import boto3
+    from botocore.exceptions import SSLError
     from docling.datamodel.accelerator_options import AcceleratorOptions
     from docling.datamodel.base_models import InputFormat
     from docling.datamodel.pipeline_options import PdfPipelineOptions
@@ -67,22 +68,35 @@ def text_extraction(
 
     s3_creds["AWS_DEFAULT_REGION"] = os.environ.get("AWS_DEFAULT_REGION", "")
 
-    session = boto3.session.Session(
-        aws_access_key_id=s3_creds["AWS_ACCESS_KEY_ID"],
-        aws_secret_access_key=s3_creds["AWS_SECRET_ACCESS_KEY"],
-        region_name=s3_creds.get("AWS_DEFAULT_REGION"),
-    )
-    s3_client = session.client(
-        service_name="s3",
-        endpoint_url=s3_creds["AWS_S3_ENDPOINT"],
-    )
+    def _make_s3_client(verify=True):
+        session = boto3.session.Session(
+            aws_access_key_id=s3_creds["AWS_ACCESS_KEY_ID"],
+            aws_secret_access_key=s3_creds["AWS_SECRET_ACCESS_KEY"],
+            region_name=s3_creds.get("AWS_DEFAULT_REGION"),
+        )
+        return session.client(
+            service_name="s3",
+            endpoint_url=s3_creds["AWS_S3_ENDPOINT"],
+            verify=verify,
+        )
+
+    s3_client = _make_s3_client()
 
     def download_document(doc: dict, base_path: Path) -> bool:
+        nonlocal s3_client
         key = doc["key"]
         local_path = base_path / key
         local_path.parent.mkdir(parents=True, exist_ok=True)
         try:
             logger.info("Downloading %s", key)
+            s3_client.download_file(bucket, key, str(local_path))
+            return True
+        except SSLError:
+            logger.warning(
+                "SSL error when downloading %s, retrying with verify=False",
+                key,
+            )
+            s3_client = _make_s3_client(verify=False)
             s3_client.download_file(bucket, key, str(local_path))
             return True
         except Exception as e:
