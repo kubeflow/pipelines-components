@@ -18,5 +18,3 @@ files:
     - kfp_components
   "pipelines/**/*.py":
     - kfp_components
-    - kfp_kubernetes
-    - components
