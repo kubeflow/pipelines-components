@@ -234,7 +234,12 @@ def sdg(
                 "Supply export_path (base PVC directory for exports)."
             )
 
-        flow_name = flow_id.replace("/", "_").replace("\\", "_") if flow_id else "custom"
+        if flow_yaml_path:
+            flow_name = os.path.splitext(os.path.basename(flow_yaml_path))[0] or "custom"
+        elif flow_id:
+            flow_name = flow_id.replace("/", "_").replace("\\", "_")
+        else:
+            flow_name = "custom"
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         export_dir = os.path.join(export_path, flow_name, timestamp)
 

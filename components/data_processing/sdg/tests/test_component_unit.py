@@ -534,10 +534,10 @@ class TestPVCExport:
             )
 
     @mock.patch("sdg_hub.core.flow.base.Flow.from_yaml")
-    def test_export_custom_flow_uses_custom_dirname(
+    def test_export_custom_flow_uses_yaml_basename(
         self, mock_from_yaml, output_artifact, output_metrics, sample_input_file, tmp_dir
     ):
-        """Verify custom flow YAML path results in 'custom' directory name in export path."""
+        """Verify custom flow YAML path uses the YAML filename as export directory name."""
         yaml_path = os.path.join(tmp_dir, "custom_flow.yaml")
         with open(yaml_path, "w") as f:
             f.write("dummy yaml content")
@@ -555,8 +555,8 @@ class TestPVCExport:
             export_path=export_base,
         )
 
-        custom_dir = os.path.join(export_base, "custom")
-        assert os.path.exists(custom_dir), "Export should use 'custom' as flow name"
+        custom_dir = os.path.join(export_base, "custom_flow")
+        assert os.path.exists(custom_dir), "Export should use YAML basename as flow name"
 
         timestamp_dirs = os.listdir(custom_dir)
         assert len(timestamp_dirs) == 1, "Should have exactly one timestamp directory"
