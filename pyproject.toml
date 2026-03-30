@@ -34,6 +34,14 @@ test = [
     "semver",
     "pip",
     "setuptools",
+    # Component-specific SDK deps required for python_func() tests.
+    # KFP SubprocessRunner cannot auto-install these because it does not
+    # support Input[Dataset] artifacts (see: https://github.com/kubeflow/pipelines/issues/13061).
+    # Once KFP fixes this, these can be removed and tests can use
+    # SubprocessRunner(use_venv=True) instead.
+    "sdg-hub>=0.7.0,<1.0",
+    # Required for pipeline validation (validate_examples, validate_base_images)
+    "kfp-kubernetes",
 ]
 # Local development (extends test with additional tools)
 dev = [
@@ -53,11 +61,13 @@ packages = [
     "kfp_components.components",
     "kfp_components.components.data_processing",
     "kfp_components.components.data_processing.yoda_data_processor",
+    "kfp_components.components.data_processing.sdg",
     "kfp_components.components.deployment",
     "kfp_components.components.evaluation",
     "kfp_components.components.training",
     "kfp_components.pipelines",
     "kfp_components.pipelines.data_processing",
+    "kfp_components.pipelines.data_processing.sdg",
     "kfp_components.pipelines.deployment",
     "kfp_components.pipelines.evaluation",
     "kfp_components.pipelines.training",
