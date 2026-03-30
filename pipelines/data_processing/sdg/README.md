@@ -6,8 +6,8 @@
 
 Run SDG LLM test flow end-to-end.
 
-1. Create sample input data (inline) 2. Run the LLM test flow via SDG Hub component 3. Output generated data as KFP
-artifact
+Creates sample input data, runs the LLM test flow via the SDG Hub component, and outputs generated data as a KFP
+artifact.
 
 ## Inputs 📥
 
