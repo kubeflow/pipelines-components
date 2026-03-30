@@ -87,7 +87,7 @@ def _call_sdg(output_artifact, output_metrics, **kwargs):
         "max_tokens": -1,
         "export_to_pvc": False,
         "export_path": "",
-        "runtime_params": {},
+        "runtime_params": None,
     }
     defaults.update(kwargs)
     sdg.python_func(
@@ -593,10 +593,10 @@ class TestRuntimeParams:
 
     @mock.patch("sdg_hub.core.flow.base.Flow.from_yaml")
     @mock.patch("sdg_hub.core.flow.registry.FlowRegistry.get_flow_path_safe")
-    def test_empty_runtime_params_not_passed(
+    def test_none_runtime_params_not_passed(
         self, mock_get_path, mock_from_yaml, output_artifact, output_metrics, sample_input_file
     ):
-        """Test that empty runtime_params is not passed to flow.generate()."""
+        """Test that None runtime_params is not passed to flow.generate()."""
         mock_get_path.return_value = "/resolved/flow.yaml"
         mock_from_yaml.return_value = _make_mock_flow()
 
@@ -605,7 +605,7 @@ class TestRuntimeParams:
             output_metrics,
             input_pvc_path=sample_input_file,
             flow_id="test-flow",
-            runtime_params={},
+            runtime_params=None,
         )
 
         mock_flow = mock_from_yaml.return_value

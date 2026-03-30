@@ -27,7 +27,7 @@ def sdg(
     max_tokens: int = -1,
     export_to_pvc: bool = False,
     export_path: str = "",
-    runtime_params: dict = {},
+    runtime_params: dict = None,
 ):
     """Run an SDG Hub flow to generate synthetic data.
 
@@ -89,6 +89,7 @@ def sdg(
     logger.info(f"Export to PVC: {export_to_pvc}")
     if export_to_pvc:
         logger.info(f"Export Path: {export_path or 'Not provided'}")
+    runtime_params = runtime_params or {}
     if runtime_params:
         logger.info(f"Runtime params: {runtime_params}")
 
