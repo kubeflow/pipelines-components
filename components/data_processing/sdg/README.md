@@ -28,7 +28,7 @@ metrics.
 | `max_tokens` | `int` | `-1` | Maximum response tokens. Use -1 for flow default. |
 | `export_to_pvc` | `bool` | `False` | Whether to export output to PVC (in addition to KFP artifact). |
 | `export_path` | `str` | `""` | Base PVC path for exports (required if export_to_pvc is True). |
-| `runtime_params` | `dict` | `{}` | Per-block parameter overrides as a dict of {block_name: {param: value}}. |
+| `runtime_params` | `dict` | `None` | Per-block parameter overrides as a dict of {block_name: {param: value}}. |
 
 ## Metadata 🗂️
 
