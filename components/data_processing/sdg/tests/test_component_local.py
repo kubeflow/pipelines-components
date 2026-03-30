@@ -146,7 +146,7 @@ class TestSdgHubLLMFlow:
             output_metrics = MockArtifact(os.path.join(tmp_dir, "metrics.json"))
 
             # Attempt to run with an invalid model identifier
-            with pytest.raises(Exception):  # SDG Hub will raise an error for invalid models
+            with pytest.raises((ValueError, RuntimeError)):  # SDG Hub raises for invalid models
                 sdg.python_func(
                     output_artifact=output_artifact,
                     output_metrics=output_metrics,
