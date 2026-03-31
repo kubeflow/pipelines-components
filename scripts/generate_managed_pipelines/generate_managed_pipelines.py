@@ -33,6 +33,7 @@ class ManagedPipelineMetadataError(ValueError):
     """Invalid ``metadata.yaml`` for a pipeline marked ``managed: true``."""
 
     def __init__(self, message: str, *, pipeline_dir: Path | None = None) -> None:
+        """Initialize the metadata validation error with optional pipeline location."""
         super().__init__(message)
         self.pipeline_dir = pipeline_dir
 
