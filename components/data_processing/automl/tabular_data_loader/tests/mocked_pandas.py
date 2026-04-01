@@ -6,6 +6,7 @@ can run with sys.modules['pandas'] patched. Used together with _mock_boto3_and_p
 
 import csv
 import io
+import json
 import random
 from collections import Counter
 
@@ -37,10 +38,6 @@ class MockedDataFrame:
     def memory_usage(self, deep=True):
         """Return a mock object whose sum() is BYTES_PER_ROW times row count."""
 
-        class SumResult:
-            def sum(self):
-                return len(self._df._rows) * MockedDataFrame.BYTES_PER_ROW
-
         class MemUsage:
             """Mock memory usage object with sum() returning byte estimate."""
 
@@ -57,6 +54,19 @@ class MockedDataFrame:
     def head(self, n):
         """Return a new MockedDataFrame with the first n rows."""
         return MockedDataFrame(self._columns, self._rows[:n])
+
+    def drop(self, columns=None, inplace=False):
+        """Drop columns from the dataframe."""
+        if columns is None:
+            return None if inplace else self
+        col_indices = [i for i, c in enumerate(self._columns) if c not in columns]
+        new_columns = [self._columns[i] for i in col_indices]
+        new_rows = [[row[i] for i in col_indices] for row in self._rows]
+        if inplace:
+            self._columns = new_columns
+            self._rows = new_rows
+            return None
+        return MockedDataFrame(new_columns, new_rows)
 
     def dropna(self, subset=None):
         """Drop rows with missing values in the given columns."""
@@ -77,8 +87,16 @@ class MockedDataFrame:
         return MockedValueCounts(counts)
 
     def __getitem__(self, key):
-        """Return column as MockedSeries or filter rows by mask."""
-        if isinstance(key, (list, tuple)):
+        """Return MockedSeries (str), column subset (list of names), filtered rows (mask), or self."""
+        if isinstance(key, list):
+            # pandas df[['col1', 'col2']] returns only those columns; match it so tests catch subsetting bugs
+            if all(isinstance(k, str) for k in key):
+                col_indices = [self._columns.index(k) for k in key]
+                new_columns = [self._columns[i] for i in col_indices]
+                new_rows = [[row[i] for i in col_indices] for row in self._rows]
+                return MockedDataFrame(new_columns, new_rows)
+            return self
+        if isinstance(key, tuple):
             return self
         # Boolean "mask" style: df[df[col] != val]
         if hasattr(key, "_column") and hasattr(key, "_value"):
@@ -130,6 +148,43 @@ class MockedDataFrame:
             writer = csv.writer(f)
             writer.writerow(self._columns)
             writer.writerows(self._rows)
+
+    def to_json(self, orient="records"):
+        """Serialize the dataframe to a JSON string."""
+        if orient == "records":
+            records = []
+            for row in self._rows:
+                record = {}
+                for col, val in zip(self._columns, row):
+                    record[col] = val
+                records.append(record)
+            return json.dumps(records)
+        raise NotImplementedError(f"to_json orient={orient!r} not supported in mock")
+
+
+class MockedColumn(MockedDataFrame):
+    """Single-column dataframe that also supports value_counts and != comparisons (like pandas Series)."""
+
+    def __init__(self, parent_df, column_name):
+        """Extract a single column from parent_df as a one-column MockedDataFrame."""
+        col_idx = parent_df._columns.index(column_name)
+        super().__init__([column_name], [[row[col_idx]] for row in parent_df._rows])
+        self._parent = parent_df
+        self._column_name = column_name
+
+    def value_counts(self):
+        """Return value counts for this column."""
+        return self._parent._value_counts_for_column(self._column_name)
+
+    def __ne__(self, other):
+        """Return a mask for filtering rows where this column != other."""
+
+        class Mask:
+            _column = self._column_name
+            _value = other
+            _mask_series = True
+
+        return Mask
 
 
 class MockedValueCounts:
@@ -217,10 +272,27 @@ def _read_csv_chunks(text_stream, chunksize):
         yield MockedDataFrame(header, chunk_rows)
 
 
-def _concat(dfs, ignore_index=True):
-    """Concatenate a list of MockedDataFrames into one."""
+def _concat(dfs, ignore_index=True, axis=0):
+    """Concatenate a list of MockedDataFrames."""
     if not dfs:
         return MockedDataFrame([], [])
+    if axis == 1:
+        # Horizontal concat: merge columns side by side
+        all_columns = []
+        for df in dfs:
+            all_columns.extend(df._columns)
+        n_rows = max(len(df._rows) for df in dfs) if dfs else 0
+        all_rows = []
+        for i in range(n_rows):
+            row = []
+            for df in dfs:
+                if i < len(df._rows):
+                    row.extend(df._rows[i])
+                else:
+                    row.extend([""] * len(df._columns))
+            all_rows.append(row)
+        return MockedDataFrame(all_columns, all_rows)
+    # axis=0: vertical concat (existing logic)
     columns = dfs[0]._columns
     rows = []
     for df in dfs:
@@ -228,55 +300,54 @@ def _concat(dfs, ignore_index=True):
     return MockedDataFrame(columns, rows)
 
 
+def _mock_train_test_split(*args, test_size=0.25, stratify=None, random_state=None):
+    """Simple deterministic split for testing: first (1-test_size) rows for train, rest for test."""
+    X, y = args[0], args[1]
+    n = len(X)
+    split_idx = max(1, int(n * (1 - test_size)))
+
+    X_train = MockedDataFrame(X._columns, X._rows[:split_idx])
+    X_test = MockedDataFrame(X._columns, X._rows[split_idx:])
+    y_train = MockedDataFrame(y._columns, y._rows[:split_idx])
+    y_test = MockedDataFrame(y._columns, y._rows[split_idx:])
+
+    return X_train, X_test, y_train, y_test
+
+
+def make_mocked_sklearn_module():
+    """Build mock sklearn and sklearn.model_selection modules for sys.modules patching."""
+    import types
+
+    mock_sklearn = types.ModuleType("sklearn")
+    mock_model_selection = types.ModuleType("sklearn.model_selection")
+    mock_model_selection.train_test_split = _mock_train_test_split
+    mock_sklearn.model_selection = mock_model_selection
+
+    return mock_sklearn, mock_model_selection
+
+
 def make_mocked_pandas_module():
     """Build a module-like object that can be used as sys.modules['pandas']."""
     import types
 
     mod = types.ModuleType("pandas")
-    mod.read_csv = lambda stream, chunksize=10000: _read_csv_chunks(stream, chunksize)
+
+    def _read_csv(stream, chunksize=None):
+        if chunksize is not None:
+            return _read_csv_chunks(stream, chunksize)
+        chunks = list(_read_csv_chunks(stream, 10000))
+        return _concat(chunks) if chunks else MockedDataFrame([], [])
+
+    mod.read_csv = _read_csv
     mod.concat = _concat
     mod.DataFrame = lambda: MockedDataFrame([], [])
-
-    # value_counts is called as df[col].value_counts(); our MockedDataFrame.__getitem__ for
-    # a column name needs to return something with value_counts(). So we need to support
-    # df[label_column] returning an object that has .value_counts() and also supports != val.
-    # In the component: chunk_df[label_column].value_counts() and chunk_df[chunk_df[label_column] != idx].
-    # So __getitem__(col) should return an object that has .value_counts() and when used in
-    # df[df[col] != idx] we need to get a mask. In pandas, df[col] is a Series and df[col] != idx
-    # is a boolean Series, and df[boolean_series] filters rows. So we need:
-    # - df[col] to return something with .value_counts() and that we can store col for the != mask
-    # - df[mask] where mask has column and value, to filter rows
-    # So let's make __getitem__(col) when col is a string return a "series" that has
-    # .value_counts() and when compared with != val we store column and value so that df[mask]
-    # can filter.
-    class MockedSeries:
-        """Minimal series-like object for df[col] and value_counts()."""
-
-        def __init__(self, df, column):
-            """Store reference to parent dataframe and column name."""
-            self._df = df
-            self._column = column
-
-        def value_counts(self):
-            """Return value counts for this column."""
-            return self._df._value_counts_for_column(self._column)
-
-        def __ne__(self, other):
-            """Return a mask for filtering rows where this column != other."""
-
-            class Mask:
-                _column = self._column
-                _value = other
-                _mask_series = True
-
-            return Mask
 
     _original_getitem = MockedDataFrame.__getitem__
 
     def getitem(self, key):
-        """Return MockedSeries for column name, or filter by mask."""
+        """Return MockedColumn for column name, or filter by mask."""
         if isinstance(key, str) and key in self._columns:
-            return MockedSeries(self, key)
+            return MockedColumn(self, key)
         return _original_getitem(self, key)
 
     MockedDataFrame.__getitem__ = getitem

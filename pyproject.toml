@@ -6,9 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "kfp-components"
 version = "1.11.0"
 description = "A collection of reusable components and pipelines for Kubeflow Pipelines"
-authors = [
-    {name = "Kubeflow Community"}
-]
+authors = [{ name = "Kubeflow Community" }]
 license = "Apache-2.0"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -25,22 +23,27 @@ lint = [
 ]
 test = [
     "docker",
-    "pytest",
-    "pytest-cov",
-    "pytest-timeout",
     "docstring-parser",
     "jinja2",
     "packaging",
-    "pyyaml",
-    "semver",
     "pip",
-    "setuptools"
+    "pyyaml",
+    "pytest",
+    "pytest-cov",
+    "pytest-timeout",
+    "semver",
+    "setuptools",
+]
+# Dependencies for AutoGluon pipeline integration tests (RHOAI + S3 + KFP)
+test_automl = [
+    "kfp-components[test]",
+    "boto3",
+    "kubernetes",
+    "python-dotenv",
 ]
 # Local development (extends test with additional tools)
-dev = [
-    "kfp-components[lint]",
-    "kfp-components[test]",
-]
+dev = ["kfp-components[lint]", "kfp-components[test]"]
+
 
 [project.urls]
 Homepage = "https://www.kubeflow.org/docs/components/pipelines/"
@@ -52,44 +55,52 @@ Issues = "https://github.com/kubeflow/pipelines-components/issues"
 packages = [
     "kfp_components",
     "kfp_components.components",
-    "kfp_components.components.training",
-    "kfp_components.components.training.autorag",
-    "kfp_components.components.training.autorag.search_space_preparation",
-    "kfp_components.components.training.autorag.rag_templates_optimization",
-    "kfp_components.components.training.autorag.leaderboard_evaluation",
+    "kfp_components.components.data_processing",
+    "kfp_components.components.data_processing.automl",
+    "kfp_components.components.data_processing.automl.tabular_data_loader",
+    "kfp_components.components.data_processing.automl.timeseries_data_loader",
     "kfp_components.components.data_processing.autorag",
+    "kfp_components.components.data_processing.autorag.documents_discovery",
+    "kfp_components.components.data_processing.autorag.documents_indexing",
+    "kfp_components.components.data_processing.autorag.test_data_loader",
+    "kfp_components.components.data_processing.autorag.text_extraction",
+    "kfp_components.components.data_processing.dataset_download",
+    "kfp_components.components.data_processing.yoda_data_processor",
+    "kfp_components.components.deployment",
+    "kfp_components.components.deployment.autorag",
+    "kfp_components.components.deployment.autorag.build_responses_request_bodies",
+    "kfp_components.components.deployment.kubeflow_model_registry",
+    "kfp_components.components.evaluation",
+    "kfp_components.components.evaluation.lm_eval",
+    "kfp_components.components.training",
     "kfp_components.components.training.automl",
     "kfp_components.components.training.automl.autogluon_leaderboard_evaluation",
     "kfp_components.components.training.automl.autogluon_models_full_refit",
     "kfp_components.components.training.automl.autogluon_models_selection",
-    "kfp_components.components.evaluation",
-    "kfp_components.components.data_processing",
-    "kfp_components.components.data_processing.automl",
-    "kfp_components.components.data_processing.automl.tabular_data_loader",
-    "kfp_components.components.data_processing.automl.tabular_train_test_split",
-    "kfp_components.components.data_processing.yoda_data_processor",
-    "kfp_components.components.data_processing.autorag.documents_discovery",
-    "kfp_components.components.data_processing.autorag.test_data_loader",
-    "kfp_components.components.data_processing.autorag.text_extraction",
-    "kfp_components.components.deployment",
-    "kfp_components.components.evaluation",
-    "kfp_components.components.training",
+    "kfp_components.components.training.automl.autogluon_timeseries_models_full_refit",
+    "kfp_components.components.training.automl.autogluon_timeseries_models_selection",
+    "kfp_components.components.training.autorag",
+    "kfp_components.components.training.autorag.leaderboard_evaluation",
+    "kfp_components.components.training.autorag.rag_templates_optimization",
+    "kfp_components.components.training.autorag.search_space_preparation",
     "kfp_components.components.training.finetuning",
     "kfp_components.components.training.finetuning_algorithms",
-    "kfp_components.components.training.finetuning_algorithms.shared",
     "kfp_components.components.training.finetuning_algorithms.lora",
     "kfp_components.components.training.finetuning_algorithms.osft",
     "kfp_components.components.training.finetuning_algorithms.sft",
+    "kfp_components.components.training.finetuning_algorithms.shared",
     "kfp_components.pipelines",
-    "kfp_components.pipelines.training",
-    "kfp_components.pipelines.training.autorag",
-    "kfp_components.pipelines.training.autorag.documents_rag_optimization_pipeline",
-    "kfp_components.pipelines.evaluation",
     "kfp_components.pipelines.data_processing",
     "kfp_components.pipelines.data_processing.autorag",
+    "kfp_components.pipelines.data_processing.autorag.documents_indexing_pipeline",
     "kfp_components.pipelines.deployment",
     "kfp_components.pipelines.evaluation",
     "kfp_components.pipelines.training",
+    "kfp_components.pipelines.training.automl",
+    "kfp_components.pipelines.training.automl.autogluon_tabular_training_pipeline",
+    "kfp_components.pipelines.training.automl.autogluon_timeseries_training_pipeline",
+    "kfp_components.pipelines.training.autorag",
+    "kfp_components.pipelines.training.autorag.documents_rag_optimization_pipeline",
     "kfp_components.pipelines.training.finetuning",
     "kfp_components.pipelines.training.finetuning.lora",
     "kfp_components.pipelines.training.finetuning.lora_minimal",
@@ -106,6 +117,10 @@ packages = [
 
 [tool.setuptools.package-data]
 "*" = ["*.yaml", "*.yml", "*.json"]
+"kfp_components.components.training.automl.autogluon_models_full_refit" = ["notebook_templates/*.ipynb"]
+"kfp_components.components.training.automl.autogluon_timeseries_models_full_refit" = ["notebook_templates/*.ipynb"]
+"kfp_components.components.training.automl.autogluon_leaderboard_evaluation" = ["*.html"]
+"kfp_components.components.training.autorag.rag_templates_optimization" = ["notebook_templates/*.ipynb"]
 
 [tool.ruff]
 line-length = 120
@@ -125,9 +140,9 @@ exclude = [
 # Enable pycodestyle (E, W), pyflakes (F), isort (I), pydocstyle (D)
 select = ["E", "W", "F", "I", "D"]
 ignore = [
-    "D100",  # Missing docstring in public module
-    "D104",  # Missing docstring in public package
-    "D415",  # First line should end with punctuation (not needed for simple module names)
+    "D100", # Missing docstring in public module
+    "D104", # Missing docstring in public package
+    "D415", # First line should end with punctuation (not needed for simple module names)
 ]
 
 
@@ -156,5 +171,16 @@ testpaths = ["scripts"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+markers = [
+    "integration: marks test as integration/functional/e2e (requires RHOAI cluster and .env config).",
+]
 # Don't search these directories
-norecursedirs = [".git", ".venv", "build", "dist", "__pycache__", "components", "pipelines"]
+norecursedirs = [
+    ".git",
+    ".venv",
+    "build",
+    "dist",
+    "__pycache__",
+    "components",
+    "pipelines",
+]

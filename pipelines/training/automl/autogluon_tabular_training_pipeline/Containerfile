@@ -1,5 +1,4 @@
-#ARG BASE_IMAGE="quay.io/aipcc/base-images/cpu:3.3"
-ARG BASE_IMAGE="registry.redhat.io/rhai/base-image-cpu-rhel9@sha256:118425714f88c5b24cd67e828e0bcc7a9bc634ab2a1448e8f0975dfd85aea45c"
+ARG BASE_IMAGE="quay.io/aipcc/base-images/cpu:3.4"
 
 FROM ${BASE_IMAGE}
 
@@ -8,5 +7,5 @@ COPY pipelines/training/automl/autogluon_tabular_training_pipeline/requirements.
      /tmp/
 
 ## Ensure build isolation
-RUN pip install --index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9-test/simple/ --no-cache-dir -r /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
 RUN pip install --index-url https://pypi.org/simple --no-cache-dir -r /tmp/requirements-pypi.txt

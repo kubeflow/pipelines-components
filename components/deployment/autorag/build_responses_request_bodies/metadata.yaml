@@ -1,0 +1,18 @@
+---
+name: prepare_responses_api_requests
+stability: experimental
+dependencies:
+  kubeflow:
+    - name: Pipelines
+      version: '>=2.15.2'
+  external_services:
+    - name: Llama Stack
+      version: ">=0.1.0"
+tags:
+  - deployment
+  - autorag
+  - llama-stack
+  - responses-api
+lastVerified: 2026-03-30T00:00:00Z
+links:
+  documentation: https://llamastack.github.io/docs/api/create-openai-response-v-1-responses-post

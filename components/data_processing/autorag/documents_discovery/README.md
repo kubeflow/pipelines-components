@@ -13,7 +13,7 @@ Lists available documents from S3, performs sampling if applied and writes a JSO
 | Parameter | Type | Default | Description |
 | --------- | ---- | ------- | ----------- |
 | `input_data_bucket_name` | `str` | `None` | S3 (or compatible) bucket containing input data. |
-| `input_data_path` | `str` | `None` | Path to folder with input documents within the bucket. |
+| `input_data_path` | `str` | `""` | Path to folder with input documents within the bucket. |
 | `test_data` | `dsl.Input[dsl.Artifact]` | `None` | Optional input artifact containing test data for sampling. |
 | `sampling_enabled` | `bool` | `True` | Whether to enable sampling or not. |
 | `sampling_max_size` | `float` | `1` | Maximum size of sampled documents (in gigabytes). |

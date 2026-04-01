@@ -7,7 +7,7 @@ from kfp import dsl
 )
 def documents_discovery(
     input_data_bucket_name: str,
-    input_data_path: str,
+    input_data_path: str = "",
     test_data: dsl.Input[dsl.Artifact] = None,
     sampling_enabled: bool = True,
     sampling_max_size: float = 1,
@@ -45,6 +45,7 @@ def documents_discovery(
     DOCUMENTS_DESCRIPTOR_FILENAME = "documents_descriptor.json"
     SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".pptx", ".md", ".html", ".txt"}
     MAX_SIZE_BYTES = float(inf)
+
     if sampling_enabled:
         MAX_SIZE_BYTES = float(sampling_max_size) * 1024**3
 
@@ -62,6 +63,8 @@ def documents_discovery(
 
     def build_and_write_descriptor():
         """Validate S3 credentials, list objects, sample, and write JSON descriptor."""
+        from botocore.exceptions import SSLError
+
         s3_creds = {
             k: os.environ.get(k)
             for k in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_S3_ENDPOINT", "AWS_DEFAULT_REGION"]
@@ -72,18 +75,34 @@ def documents_discovery(
                     "%s environment variable not set. Check if kubernetes secret was configured properly" % k
                 )
 
-        s3_client = boto3.client(
-            "s3",
-            endpoint_url=s3_creds["AWS_S3_ENDPOINT"],
-            region_name=s3_creds["AWS_DEFAULT_REGION"],
-            aws_access_key_id=s3_creds["AWS_ACCESS_KEY_ID"],
-            aws_secret_access_key=s3_creds["AWS_SECRET_ACCESS_KEY"],
-        )
+        def _make_s3_client(verify=True):
+            return boto3.client(
+                "s3",
+                endpoint_url=s3_creds["AWS_S3_ENDPOINT"],
+                region_name=s3_creds["AWS_DEFAULT_REGION"],
+                aws_access_key_id=s3_creds["AWS_ACCESS_KEY_ID"],
+                aws_secret_access_key=s3_creds["AWS_SECRET_ACCESS_KEY"],
+                verify=verify,
+            )
 
-        contents = s3_client.list_objects_v2(
-            Bucket=input_data_bucket_name,
-            Prefix=input_data_path,
-        ).get("Contents", [])
+        s3_client = _make_s3_client()
+
+        try:
+            contents = s3_client.list_objects_v2(
+                Bucket=input_data_bucket_name,
+                Prefix=input_data_path,
+            ).get("Contents", [])
+        except SSLError:
+            logger.warning(
+                "SSL error when listing objects in s3://%s/%s, retrying with verify=False",
+                input_data_bucket_name,
+                input_data_path,
+            )
+            s3_client = _make_s3_client(verify=False)
+            contents = s3_client.list_objects_v2(
+                Bucket=input_data_bucket_name,
+                Prefix=input_data_path,
+            ).get("Contents", [])
 
         supported_files = [c for c in contents if c["Key"].endswith(tuple(SUPPORTED_EXTENSIONS))]
         if not supported_files:

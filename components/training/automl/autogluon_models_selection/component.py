@@ -18,7 +18,7 @@ def models_selection(
     label_column: str,
     task_type: str,
     top_n: int,
-    train_data: dsl.Input[dsl.Dataset],
+    train_data_path: str,
     test_data: dsl.Input[dsl.Dataset],
     workspace_path: str,
 ) -> NamedTuple("outputs", top_models=List[str], eval_metric=str, predictor_path=str, model_config=dict):
@@ -43,7 +43,7 @@ def models_selection(
         label_column: Name of the target/label column in train and test datasets.
         task_type: ML task type: "binary", "multiclass", or "regression"; drives metrics and model types.
         top_n: Number of top-performing models to select from the leaderboard (positive integer).
-        train_data: Dataset artifact (CSV) with training data; must include label_column and features.
+        train_data_path: Path to the training data CSV (on PVC workspace); must include label_column and features.
         test_data: Dataset artifact (CSV) for evaluation and leaderboard; schema must match train_data.
         workspace_path: Workspace directory where TabularPredictor is saved (workspace_path/autogluon_predictor).
 
@@ -62,19 +62,36 @@ def models_selection(
         )
 
         @dsl.pipeline(name="model-selection-pipeline")
-        def selection_pipeline(train_data, test_data, workspace_path):
+        def selection_pipeline(train_data_path, test_data, workspace_path):
             "Select top 3 models from training."
             result = models_selection(
                 label_column="price",
                 task_type="regression",
                 top_n=3,
-                train_data=train_data,
+                train_data_path=train_data_path,
                 test_data=test_data,
                 workspace_path=workspace_path,
             )
             # result.top_models, result.eval_metric, result.predictor_path
             return result
     """  # noqa: E501
+    # Input validation
+    VALID_TASK_TYPES = {"binary", "multiclass", "regression"}
+    TOP_N_MAX = 10
+
+    if not isinstance(label_column, str) or not label_column.strip():
+        raise TypeError("label_column must be a non-empty string.")
+    if task_type not in VALID_TASK_TYPES:
+        raise ValueError(f"task_type must be one of {VALID_TASK_TYPES}; got {task_type!r}.")
+    if not train_data_path or not isinstance(train_data_path, str) or not train_data_path.strip():
+        raise TypeError("train_data_path must be a non-empty string.")
+    if not workspace_path or not isinstance(workspace_path, str) or not workspace_path.strip():
+        raise TypeError("workspace_path must be a non-empty string.")
+
+    # the type of top_n is already validated by kfp based on its annotation in component signature
+    if top_n <= 0 or top_n > TOP_N_MAX:
+        raise ValueError(f"top_n must be an integer in the range (0, {TOP_N_MAX}]; got {top_n}.")
+
     import logging
 
     logger = logging.getLogger(__name__)
@@ -89,7 +106,7 @@ def models_selection(
     DEFAULT_TIME_LIMIT = 60 * 60  # 60 * 60 = 3600 seconds = 1 hour
 
     # Read the data
-    train_data_df = pd.read_csv(train_data.path)
+    train_data_df = pd.read_csv(train_data_path)
     test_data_df = pd.read_csv(test_data.path)
 
     eval_metric = "r2" if task_type == "regression" else "accuracy"
@@ -112,7 +129,7 @@ def models_selection(
     )
 
     leaderboard = predictor.leaderboard(test_data_df)
-    logger.info(f"Leaderboard:\n\n {leaderboard.to_string()}")
+    logger.info(f"Leaderboard:\n\n {leaderboard.head(top_n).to_string()}")
 
     top_n_models = leaderboard.head(top_n)["model"].values.tolist()
 

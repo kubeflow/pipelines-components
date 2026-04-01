@@ -16,6 +16,7 @@ model.metadata["display_name"] / metrics / metrics.json.
 | `models` | `List[dsl.Model]` | `None` | List of Model artifacts with "display_name" in metadata and metrics at model.path/model_name/metrics/metrics.json. |
 | `eval_metric` | `str` | `None` | Metric name for ranking (e.g. "accuracy", "root_mean_squared_error"); leaderboard sorted by it descending. |
 | `html_artifact` | `dsl.Output[dsl.HTML]` | `None` | Output artifact for the HTML-formatted leaderboard (model names and metrics). |
+| `embedded_artifact` | `dsl.EmbeddedInput[dsl.Artifact]` | `None` | Embedded component files (injected by runtime from embedded_artifact_path); provides leaderboard_html_template.html. |
 
 ## Outputs 📤
 

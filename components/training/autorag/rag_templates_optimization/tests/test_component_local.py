@@ -16,6 +16,5 @@ class TestRagTemplatesOptimizationLocalRunner:
             test_data="/tmp/test_data.json",
             search_space_prep_report="/tmp/report.yml",
             rag_patterns=...,
-            autorag_run_artifact=...,
         )
         assert result is not None

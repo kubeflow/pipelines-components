@@ -1,6 +1,5 @@
 from kfp import dsl
 from kfp_components.components.data_processing.automl.tabular_data_loader import automl_data_loader
-from kfp_components.components.data_processing.automl.tabular_train_test_split import tabular_train_test_split
 from kfp_components.components.training.automl.autogluon_leaderboard_evaluation import leaderboard_evaluation
 from kfp_components.components.training.automl.autogluon_models_full_refit import autogluon_models_full_refit
 from kfp_components.components.training.automl.autogluon_models_selection import models_selection
@@ -18,10 +17,11 @@ from kfp_components.components.training.automl.autogluon_models_selection import
     ),
     pipeline_config=dsl.PipelineConfig(
         workspace=dsl.WorkspaceConfig(
-            size="1Gi",  # TODO: change to recommended size
+            size="12Gi",  # TODO: change to recommended size
             kubernetes=dsl.KubernetesWorkspaceConfig(
                 pvcSpecPatch={
-                    "storageClassName": "gp3-csi",  # or 'gp3', 'fast', etc.
+                    # use default storage class from the cluster
+                    # "storageClassName": "gp3-csi",
                     "accessModes": ["ReadWriteOnce"],
                 }
             ),
@@ -42,32 +42,42 @@ def autogluon_tabular_training_pipeline(
     that balances computational cost with model quality. The pipeline automates the complete
     machine learning workflow from data loading to final model evaluation.
 
+    **Storage strategy:**
+
+    Training datasets are stored on a PVC workspace (not S3 artifacts) so that all
+    pipeline steps sharing the workspace can access them without extra downloads. Only
+    the test dataset is written to an S3 artifact (for use by the leaderboard evaluation
+    component). The workspace is provisioned via ``PipelineConfig.workspace``.
+
     **Pipeline Stages:**
 
-    1. **Data Loading**: Loads tabular data from an S3-compatible object storage bucket
-       using AWS credentials configured via Kubernetes secrets. The component produces
-       both a tabular_data artifact (for splitting) and a full_dataset artifact
-       (for model refitting).
+    1. **Data Loading & Splitting**: Loads tabular (CSV) data from an S3-compatible
+       object storage bucket using AWS credentials configured via Kubernetes secrets.
+       The component samples the data (up to 1GB), then performs a two-stage split:
+       *Primary split** (default 80/20): separates a *test set* (20%, written to an
+         S3 artifact) from the *train portion* (80%).
+         **Secondary split** (default 30/70 of the train portion): produces
+         ``models_selection_train_dataset.csv`` (30%, used for model selection) and
+         ``extra_train_dataset.csv`` (70%, passed to ``refit_full`` as extra data).
+         Both train CSVs are written to the PVC workspace under
+         ``{workspace_path}/datasets/``. For classification tasks the splits are
+         stratified by the label column.
 
-    2. **Data Splitting**: Splits the loaded tabular data into training and test sets
-       using a configurable test size (default: 20% test, 80% train). The split is
-       performed on the tabular_data artifact to create separate train and test
-       datasets for model training and evaluation.
+    2. **Model Selection**: Trains multiple AutoGluon models on the *selection train*
+       data using AutoGluon's ensembling approach (stacking with 3 levels and bagging
+       with 2 folds). The component automatically trains various model types including
+       neural networks, tree-based models (XGBoost, LightGBM, CatBoost), and linear
+       models. All models are evaluated on the test set and ranked by performance. The
+       top N models are selected for the refitting stage.
 
-    3. **Model Selection**: Trains multiple AutoGluon models on the training data using
-       AutoGluon's ensembling approach (stacking with 3 levels and bagging with 2 folds).
-       The component automatically trains various model types including neural networks,
-       tree-based models (XGBoost, LightGBM, CatBoost), and linear models. All models are
-       evaluated on the test set and ranked by performance. The top N models are selected
-       for the refitting stage.
-
-    4. **Model Refitting**: Refits each of the top N selected models on the full dataset
-       (the complete original dataset from the data loader). This stage runs in parallel
-       (with parallelism of 2) to efficiently retrain multiple models. Each refitted model
-       is saved with a "_FULL" suffix and optimized for deployment by removing unnecessary
+    3. **Model Refitting**: Refits each of the top N selected models on the predictor's
+       training and validation data, augmented with the *extra train* split via
+       ``refit_full(train_data_extra=...)``. This stage runs in parallel (with
+       parallelism of 2) to efficiently retrain multiple models. Each refitted model is
+       saved with a "_FULL" suffix and optimized for deployment by removing unnecessary
        models and files.
 
-    5. **Leaderboard Evaluation**: Aggregates evaluation results from all refitted model
+    4. **Leaderboard Evaluation**: Aggregates evaluation results from all refitted model
        artifacts (each refit component writes metrics to model_artifact.path /
        model_name_FULL / metrics). The leaderboard component reads these pre-computed
        metrics and generates an HTML-formatted leaderboard ranking models by their
@@ -75,14 +85,18 @@ def autogluon_tabular_training_pipeline(
 
     **Two-Stage Training Benefits:**
 
-    - **Efficient Exploration**: Initial model training uses the split training data
-      with efficient ensembling rather than expensive hyperparameter optimization
-    - **Optimal Performance**: Final models are refitted on the complete original dataset
-      for maximum performance
-    - **Parallel Efficiency**: Top models are refitted in parallel to minimize total
-      pipeline execution time
-    - **Production-Ready**: Refitted models are AutoGluon Predictors optimized and ready
-      for deployment
+    - **Efficient Exploration:** Initial model training uses a smaller selection-train
+      split with efficient ensembling rather than expensive hyperparameter optimization.
+
+    - **Optimal Performance:** Final models are refitted (``refit_full``) on the
+      predictor's training and validation data plus the extra-train split, maximizing
+      the amount of data seen during the final fit.
+
+    - **Parallel Efficiency:** Top models are refitted in parallel to minimize total
+      pipeline execution time.
+
+    - **Production-Ready:** Refitted models are AutoGluon Predictors optimized and ready
+      for deployment.
 
     **AutoGluon Ensembling Approach:**
 
@@ -90,9 +104,13 @@ def autogluon_tabular_training_pipeline(
     model types using stacking and bagging rather than traditional hyperparameter optimization.
     This approach is more efficient and typically produces better results for tabular data
     by automatically:
+
     - Training diverse model families
+
     - Combining predictions using multi-level stacking
+
     - Using bootstrap aggregation (bagging) for robustness
+
     - Selecting optimal ensemble configurations
 
     Args:
@@ -129,12 +147,18 @@ def autogluon_tabular_training_pipeline(
     """  # noqa: E501
     from kfp.kubernetes import use_secret_as_env
 
-    tabular_loader_task = automl_data_loader(
-        bucket_name=train_data_bucket_name, file_key=train_data_file_key, label_column=label_column, task_type=task_type
+    data_loader_task = automl_data_loader(
+        bucket_name=train_data_bucket_name,
+        file_key=train_data_file_key,
+        workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
+        label_column=label_column,
+        task_type=task_type,
     )
+    data_loader_task.set_caching_options(False)
+    data_loader_task.set_cpu_request("2").set_memory_request("8Gi")
 
     use_secret_as_env(
-        tabular_loader_task,
+        data_loader_task,
         secret_name=train_data_secret_name,
         secret_key_to_env={
             "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
@@ -142,13 +166,7 @@ def autogluon_tabular_training_pipeline(
             "AWS_S3_ENDPOINT": "AWS_S3_ENDPOINT",
             "AWS_DEFAULT_REGION": "AWS_DEFAULT_REGION",
         },
-    )
-
-    train_test_split_task = tabular_train_test_split(
-        dataset=tabular_loader_task.outputs["full_dataset"],
-        task_type=task_type,
-        label_column=label_column,
-        split_config={"test_size": 0.2},
+        optional=True,  # Mark as optional to not block the pipeline. If needed, error will be raised by component
     )
 
     # Stage 1: Model Selection
@@ -157,11 +175,13 @@ def autogluon_tabular_training_pipeline(
     selection_task = models_selection(
         label_column=label_column,
         task_type=task_type,
-        train_data=train_test_split_task.outputs["sampled_train_dataset"],
-        test_data=train_test_split_task.outputs["sampled_test_dataset"],
+        train_data_path=data_loader_task.outputs["models_selection_train_data_path"],
+        test_data=data_loader_task.outputs["sampled_test_dataset"],
         top_n=top_n,
         workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
     )
+    selection_task.set_caching_options(False)
+    selection_task.set_cpu_request("2").set_memory_request("8Gi")
 
     # Stage 2: Model Refitting
     # Refit each top model on the full training dataset
@@ -169,21 +189,26 @@ def autogluon_tabular_training_pipeline(
     with dsl.ParallelFor(items=selection_task.outputs["top_models"], parallelism=2) as model_name:
         refit_full_task = autogluon_models_full_refit(
             model_name=model_name,
-            test_dataset=train_test_split_task.outputs["sampled_test_dataset"],
+            test_dataset=data_loader_task.outputs["sampled_test_dataset"],
             predictor_path=selection_task.outputs["predictor_path"],
-            sampling_config=tabular_loader_task.outputs["sample_config"],
-            split_config=train_test_split_task.outputs["split_config"],
+            sampling_config=data_loader_task.outputs["sample_config"],
+            split_config=data_loader_task.outputs["split_config"],
             model_config=selection_task.outputs["model_config"],
             pipeline_name=dsl.PIPELINE_JOB_RESOURCE_NAME_PLACEHOLDER,
             run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
-            sample_row=train_test_split_task.outputs["sample_row"],
+            sample_row=data_loader_task.outputs["sample_row"],
+            extra_train_data_path=data_loader_task.outputs["extra_train_data_path"],
         )
+        refit_full_task.set_caching_options(False)
+        refit_full_task.set_cpu_request("2").set_memory_request("8Gi")
 
     # Generate leaderboard
-    leaderboard_evaluation(
+    leaderboard_evaluation_task = leaderboard_evaluation(
         models=dsl.Collected(refit_full_task.outputs["model_artifact"]),
         eval_metric=selection_task.outputs["eval_metric"],
     )
+    leaderboard_evaluation_task.set_caching_options(False)
+    leaderboard_evaluation_task.set_cpu_request("1").set_memory_request("4Gi")
 
 
 if __name__ == "__main__":
@@ -191,5 +216,5 @@ if __name__ == "__main__":
 
     Compiler().compile(
         autogluon_tabular_training_pipeline,
-        package_path=__file__.replace(".py", "_pipeline.yaml"),
+        package_path=__file__.replace(".py", ".yaml"),
     )

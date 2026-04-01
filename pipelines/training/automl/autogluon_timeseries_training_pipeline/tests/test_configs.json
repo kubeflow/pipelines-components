@@ -1,0 +1,13 @@
+[
+  {
+    "id": "timeseries_smoke",
+    "dataset_path": "data/timeseries_sales.csv",
+    "target": "target",
+    "id_column": "item_id",
+    "timestamp_column": "timestamp",
+    "known_covariates_names": ["promo"],
+    "prediction_length": 2,
+    "top_n": 2,
+    "tags": ["smoke", "timeseries"]
+  }
+]

@@ -1,6 +1,147 @@
 """Tests for the search_space_preparation component."""
 
+import ssl
+import sys
+import types
+from unittest import mock
+
+import pytest
+
 from ..component import search_space_preparation
+
+
+class _SentinelAbort(Exception):
+    """Raised by mocks to abort the component after client creation."""
+
+
+def _make_httpx_module():
+    """Return a minimal fake httpx module with a trackable Client class."""
+    mod = types.ModuleType("httpx")
+
+    class ConnectError(Exception):
+        pass
+
+    class Client:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+    mod.ConnectError = ConnectError
+    mod.Client = Client
+    return mod
+
+
+def _make_minimal_httpx_module():
+    """Return a minimal httpx stub for validation-only test paths."""
+    mod = types.ModuleType("httpx")
+
+    class ConnectError(Exception):
+        pass
+
+    class Client:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+    mod.ConnectError = ConnectError
+    mod.Client = Client
+    return mod
+
+
+def _make_llama_stack_client_module():
+    """Stub llama_stack_client with a real APIConnectionError (MagicMock breaks except clauses)."""
+    mod = types.ModuleType("llama_stack_client")
+
+    class APIConnectionError(Exception):
+        pass
+
+    mod.APIConnectionError = APIConnectionError
+    mod.LlamaStackClient = mock.MagicMock()
+    return mod
+
+
+def _make_openai_module():
+    """Stub openai with a real APIConnectionError (MagicMock breaks except clauses)."""
+    mod = types.ModuleType("openai")
+
+    class APIConnectionError(Exception):
+        pass
+
+    mod.APIConnectionError = APIConnectionError
+    mod.OpenAI = mock.MagicMock()
+    return mod
+
+
+def _make_all_mocks():
+    """Build sys.modules patch dict for all heavy dependencies."""
+    mocks = {}
+    for name in [
+        "pysqlite3",
+        "ai4rag",
+        "ai4rag.core",
+        "ai4rag.core.experiment",
+        "ai4rag.core.experiment.benchmark_data",
+        "ai4rag.core.experiment.mps",
+        "ai4rag.rag",
+        "ai4rag.rag.embedding",
+        "ai4rag.rag.embedding.base_model",
+        "ai4rag.rag.embedding.openai_model",
+        "ai4rag.rag.foundation_models",
+        "ai4rag.rag.foundation_models.base_model",
+        "ai4rag.rag.foundation_models.openai_model",
+        "ai4rag.search_space",
+        "ai4rag.search_space.prepare",
+        "ai4rag.search_space.prepare.prepare_search_space",
+        "ai4rag.search_space.src",
+        "ai4rag.search_space.src.parameter",
+        "ai4rag.search_space.src.search_space",
+        "langchain_core",
+        "langchain_core.documents",
+        "pandas",
+        "yaml",
+    ]:
+        mocks[name] = mock.MagicMock()
+
+    httpx_mod = _make_httpx_module()
+    mocks["httpx"] = httpx_mod
+    return mocks
+
+
+def _minimal_dependency_modules():
+    """Mock imported heavy third-party modules for validation-path tests."""
+    return {
+        "pandas": mock.MagicMock(),
+        "yaml": mock.MagicMock(),
+        "ai4rag": mock.MagicMock(),
+        "ai4rag.core": mock.MagicMock(),
+        "ai4rag.core.experiment": mock.MagicMock(),
+        "ai4rag.core.experiment.benchmark_data": mock.MagicMock(BenchmarkData=mock.MagicMock()),
+        "ai4rag.core.experiment.mps": mock.MagicMock(ModelsPreSelector=mock.MagicMock()),
+        "ai4rag.rag": mock.MagicMock(),
+        "ai4rag.rag.embedding": mock.MagicMock(),
+        "ai4rag.rag.embedding.base_model": mock.MagicMock(BaseEmbeddingModel=mock.MagicMock()),
+        "ai4rag.rag.embedding.openai_model": mock.MagicMock(OpenAIEmbeddingModel=mock.MagicMock()),
+        "ai4rag.rag.foundation_models": mock.MagicMock(),
+        "ai4rag.rag.foundation_models.base_model": mock.MagicMock(BaseFoundationModel=mock.MagicMock()),
+        "ai4rag.rag.foundation_models.openai_model": mock.MagicMock(OpenAIFoundationModel=mock.MagicMock()),
+        "ai4rag.search_space": mock.MagicMock(),
+        "ai4rag.search_space.prepare": mock.MagicMock(),
+        "ai4rag.search_space.prepare.prepare_search_space": mock.MagicMock(
+            prepare_search_space_with_llama_stack=mock.MagicMock()
+        ),
+        "ai4rag.search_space.src": mock.MagicMock(),
+        "ai4rag.search_space.src.parameter": mock.MagicMock(Parameter=mock.MagicMock()),
+        "ai4rag.search_space.src.search_space": mock.MagicMock(AI4RAGSearchSpace=mock.MagicMock()),
+        "langchain_core": mock.MagicMock(),
+        "langchain_core.documents": mock.MagicMock(Document=mock.MagicMock()),
+        "llama_stack_client": mock.MagicMock(LlamaStackClient=mock.MagicMock()),
+        "openai": mock.MagicMock(OpenAI=mock.MagicMock()),
+        "httpx": _make_minimal_httpx_module(),
+    }
 
 
 class TestSearchSpacePreparationUnitTests:
@@ -21,8 +162,366 @@ class TestSearchSpacePreparationUnitTests:
         assert "extracted_text" in params
         assert "search_space_prep_report" in params
 
-    # TODO: Add more comprehensive unit tests
-    # @mock.patch("external_library.some_function")
-    # def test_component_with_mocked_dependencies(self, mock_function):
-    #     """Test component behavior with mocked external calls."""
-    #     pass
+    def test_non_list_embeddings_models_raises_type_error(self):
+        """embeddings_models must be a list when both model lists are provided."""
+        with mock.patch.dict(sys.modules, _minimal_dependency_modules()):
+            with pytest.raises(TypeError, match="embeddings_models must be a list"):
+                search_space_preparation.python_func(
+                    test_data=mock.MagicMock(path="/tmp/test_data.json"),
+                    extracted_text=mock.MagicMock(path="/tmp/extracted"),
+                    search_space_prep_report=mock.MagicMock(path="/tmp/report.yaml"),
+                    embeddings_models="not-a-list",
+                    generation_models=["model-a"],
+                )
+
+    def test_unsupported_metric_raises_value_error(self):
+        """Unsupported metric value raises ValueError with supported list."""
+        with mock.patch.dict(sys.modules, _minimal_dependency_modules()):
+            with pytest.raises(ValueError, match="is not supported"):
+                search_space_preparation.python_func(
+                    test_data=mock.MagicMock(path="/tmp/test_data.json"),
+                    extracted_text=mock.MagicMock(path="/tmp/extracted"),
+                    search_space_prep_report=mock.MagicMock(path="/tmp/report.yaml"),
+                    embeddings_models=["embed-a"],
+                    generation_models=["gen-a"],
+                    metric="unsupported_metric",
+                )
+
+
+class TestSSLFallbackSearchSpacePreparation:
+    """Tests for SSL retry logic in _create_llama_stack_client and _create_openai_client."""
+
+    def _make_artifacts(self, tmp_path):
+        test_data = mock.MagicMock()
+        test_data.path = str(tmp_path / "test_data.json")
+        extracted_text = mock.MagicMock()
+        extracted_text.path = str(tmp_path / "extracted")
+        search_space_prep_report = mock.MagicMock()
+        search_space_prep_report.path = str(tmp_path / "report.yml")
+        return test_data, extracted_text, search_space_prep_report
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            "LLAMA_STACK_CLIENT_BASE_URL": "https://llama-stack.example.com",
+            "LLAMA_STACK_CLIENT_API_KEY": "test-api-key",
+        },
+    )
+    def test_llama_stack_client_ssl_retry_with_verify_false(self, tmp_path):
+        """SSL error on models.list() retries LlamaStackClient with verify=False."""
+        mocks = _make_all_mocks()
+
+        mock_ls_client_ok = mock.MagicMock()
+        mock_ls_client_fail = mock.MagicMock()
+        mock_ls_client_fail.models.list.side_effect = ssl.SSLCertVerificationError(
+            "CERTIFICATE_VERIFY_FAILED: self-signed certificate"
+        )
+        mock_ls_client_ok.models.list.return_value = []
+
+        ls_call_count = 0
+        ls_kwargs_history = []
+
+        def fake_ls_client(**kwargs):
+            nonlocal ls_call_count
+            ls_call_count += 1
+            ls_kwargs_history.append(kwargs)
+            if ls_call_count == 1:
+                return mock_ls_client_fail
+            return mock_ls_client_ok
+
+        llama_mod = _make_llama_stack_client_module()
+        llama_mod.LlamaStackClient.side_effect = fake_ls_client
+
+        # Abort after client creation by making prepare_search_space_with_llama_stack raise
+        mocks[
+            "ai4rag.search_space.prepare.prepare_search_space"
+        ].prepare_search_space_with_llama_stack.side_effect = _SentinelAbort
+        mocks["llama_stack_client"] = llama_mod
+        mocks["openai"] = _make_openai_module()
+
+        test_data, extracted_text, search_space_prep_report = self._make_artifacts(tmp_path)
+
+        with mock.patch.dict(sys.modules, mocks):
+            with pytest.raises(_SentinelAbort):
+                search_space_preparation.python_func(
+                    test_data=test_data,
+                    extracted_text=extracted_text,
+                    search_space_prep_report=search_space_prep_report,
+                    chat_model_url="http://chat.example.com",
+                    chat_model_token="chat-token",
+                    embedding_model_url="http://embed.example.com",
+                    embedding_model_token="embed-token",
+                )
+
+        assert ls_call_count == 2, "LlamaStackClient should be instantiated twice (initial + SSL retry)"
+        assert ls_kwargs_history[0].get("http_client") is None, "First call should not disable SSL"
+        assert isinstance(ls_kwargs_history[1].get("http_client"), mocks["httpx"].Client), (
+            "Second call should pass httpx.Client"
+        )
+        assert ls_kwargs_history[1]["http_client"].kwargs.get("verify") is False
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            "LLAMA_STACK_CLIENT_BASE_URL": "https://llama-stack.example.com",
+            "LLAMA_STACK_CLIENT_API_KEY": "test-api-key",
+        },
+    )
+    def test_llama_stack_client_api_connection_error_wrapping_ssl_retries(self, tmp_path):
+        """LSAPIConnectionError wrapping an SSL cause triggers the verify=False retry (production case)."""
+        mocks = _make_all_mocks()
+
+        llama_mod = _make_llama_stack_client_module()
+        LSAPIConnectionError = llama_mod.APIConnectionError
+        ssl_err = ssl.SSLCertVerificationError("CERTIFICATE_VERIFY_FAILED: self-signed certificate")
+        api_err = LSAPIConnectionError("Connection error.")
+        api_err.__cause__ = ssl_err
+
+        mock_ls_client_fail = mock.MagicMock()
+        mock_ls_client_fail.models.list.side_effect = api_err
+        mock_ls_client_ok = mock.MagicMock()
+        mock_ls_client_ok.models.list.return_value = []
+
+        ls_call_count = 0
+        ls_kwargs_history = []
+
+        def fake_ls_client(**kwargs):
+            nonlocal ls_call_count
+            ls_call_count += 1
+            ls_kwargs_history.append(kwargs)
+            if ls_call_count == 1:
+                return mock_ls_client_fail
+            return mock_ls_client_ok
+
+        llama_mod.LlamaStackClient.side_effect = fake_ls_client
+        mocks["llama_stack_client"] = llama_mod
+        mocks["openai"] = _make_openai_module()
+
+        mocks[
+            "ai4rag.search_space.prepare.prepare_search_space"
+        ].prepare_search_space_with_llama_stack.side_effect = _SentinelAbort
+
+        test_data, extracted_text, search_space_prep_report = self._make_artifacts(tmp_path)
+
+        with mock.patch.dict(sys.modules, mocks):
+            with pytest.raises(_SentinelAbort):
+                search_space_preparation.python_func(
+                    test_data=test_data,
+                    extracted_text=extracted_text,
+                    search_space_prep_report=search_space_prep_report,
+                    chat_model_url="http://chat.example.com",
+                    chat_model_token="chat-token",
+                    embedding_model_url="http://embed.example.com",
+                    embedding_model_token="embed-token",
+                )
+
+        assert ls_call_count == 2, "LlamaStackClient should be instantiated twice (initial + SSL retry)"
+        assert ls_kwargs_history[0].get("http_client") is None
+        assert isinstance(ls_kwargs_history[1].get("http_client"), mocks["httpx"].Client)
+        assert ls_kwargs_history[1]["http_client"].kwargs.get("verify") is False
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            "LLAMA_STACK_CLIENT_BASE_URL": "https://llama-stack.example.com",
+            "LLAMA_STACK_CLIENT_API_KEY": "test-api-key",
+        },
+    )
+    def test_llama_stack_client_non_ssl_error_is_reraised(self, tmp_path):
+        """Non-SSL error from models.list() is not swallowed — it propagates."""
+        mocks = _make_all_mocks()
+
+        mock_ls_client = mock.MagicMock()
+        mock_ls_client.models.list.side_effect = ConnectionRefusedError("Connection refused")
+
+        llama_mod = _make_llama_stack_client_module()
+        llama_mod.LlamaStackClient.return_value = mock_ls_client
+        mocks["llama_stack_client"] = llama_mod
+        mocks["openai"] = _make_openai_module()
+
+        test_data, extracted_text, search_space_prep_report = self._make_artifacts(tmp_path)
+
+        with mock.patch.dict(sys.modules, mocks):
+            with pytest.raises(ConnectionRefusedError):
+                search_space_preparation.python_func(
+                    test_data=test_data,
+                    extracted_text=extracted_text,
+                    search_space_prep_report=search_space_prep_report,
+                    chat_model_url="http://chat.example.com",
+                    chat_model_token="chat-token",
+                    embedding_model_url="http://embed.example.com",
+                    embedding_model_token="embed-token",
+                )
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            "LLAMA_STACK_CLIENT_BASE_URL": "https://llama-stack.example.com",
+            "LLAMA_STACK_CLIENT_API_KEY": "test-api-key",
+        },
+    )
+    def test_llama_stack_client_api_connection_error_non_ssl_cause_is_reraised(self, tmp_path):
+        """LSAPIConnectionError whose cause is NOT SSL propagates without retry."""
+        mocks = _make_all_mocks()
+
+        llama_mod = _make_llama_stack_client_module()
+        LSAPIConnectionError = llama_mod.APIConnectionError
+        err = LSAPIConnectionError("Connection timeout")
+        err.__cause__ = TimeoutError("timed out")
+
+        mock_ls_client = mock.MagicMock()
+        mock_ls_client.models.list.side_effect = err
+        llama_mod.LlamaStackClient.return_value = mock_ls_client
+        mocks["llama_stack_client"] = llama_mod
+        mocks["openai"] = _make_openai_module()
+
+        test_data, extracted_text, search_space_prep_report = self._make_artifacts(tmp_path)
+
+        with mock.patch.dict(sys.modules, mocks):
+            with pytest.raises(LSAPIConnectionError):
+                search_space_preparation.python_func(
+                    test_data=test_data,
+                    extracted_text=extracted_text,
+                    search_space_prep_report=search_space_prep_report,
+                    chat_model_url="http://chat.example.com",
+                    chat_model_token="chat-token",
+                    embedding_model_url="http://embed.example.com",
+                    embedding_model_token="embed-token",
+                )
+
+    def test_openai_client_ssl_retry_with_verify_false(self, tmp_path):
+        """SSL error on OpenAI models.list() retries with httpx.Client(verify=False)."""
+        mocks = _make_all_mocks()
+
+        openai_call_count = 0
+        openai_kwargs_history = []
+
+        mock_openai_client_fail = mock.MagicMock()
+        mock_openai_client_fail.models.list.side_effect = ssl.SSLCertVerificationError(
+            "CERTIFICATE_VERIFY_FAILED: self-signed certificate"
+        )
+        mock_openai_client_ok = mock.MagicMock()
+        _models_list_ok = mock.MagicMock()
+        _models_list_ok.data = [mock.MagicMock(id="test-model", max_model_len=8192)]
+        mock_openai_client_ok.models.list.return_value = _models_list_ok
+
+        def fake_openai(**kwargs):
+            nonlocal openai_call_count
+            openai_call_count += 1
+            openai_kwargs_history.append(kwargs)
+            if openai_call_count % 2 == 1:  # first call for each endpoint fails
+                return mock_openai_client_fail
+            return mock_openai_client_ok
+
+        openai_mod = _make_openai_module()
+        openai_mod.OpenAI.side_effect = fake_openai
+        mocks["openai"] = openai_mod
+        mocks["llama_stack_client"] = _make_llama_stack_client_module()
+
+        # Abort after client creation
+        mocks["ai4rag.search_space.src.search_space"].AI4RAGSearchSpace.side_effect = _SentinelAbort
+
+        test_data, extracted_text, search_space_prep_report = self._make_artifacts(tmp_path)
+
+        with mock.patch.dict(sys.modules, mocks):
+            with pytest.raises(_SentinelAbort):
+                search_space_preparation.python_func(
+                    test_data=test_data,
+                    extracted_text=extracted_text,
+                    search_space_prep_report=search_space_prep_report,
+                    chat_model_url="http://chat.example.com",
+                    chat_model_token="chat-token",
+                    embedding_model_url="http://embed.example.com",
+                    embedding_model_token="embed-token",
+                )
+
+        # _create_openai_client runs for: chat metadata, embed metadata, generation_model,
+        # embedding_model — 4 invocations × 2 OpenAI() each (fail probe + verify=False retry) = 8
+        assert openai_call_count == 8
+        # Odd 1-based attempts return the failing client; even attempts are retries with httpx
+        for retry_idx in [1, 3, 5, 7]:
+            assert isinstance(openai_kwargs_history[retry_idx].get("http_client"), mocks["httpx"].Client)
+            assert openai_kwargs_history[retry_idx]["http_client"].kwargs.get("verify") is False
+
+    def test_openai_client_api_connection_error_wrapping_ssl_retries(self, tmp_path):
+        """OAIAPIConnectionError wrapping an SSL cause triggers the verify=False retry (production case)."""
+        mocks = _make_all_mocks()
+
+        openai_mod = _make_openai_module()
+        OAIAPIConnectionError = openai_mod.APIConnectionError
+        ssl_err = ssl.SSLCertVerificationError("CERTIFICATE_VERIFY_FAILED: self-signed certificate")
+        api_err = OAIAPIConnectionError("Connection error.")
+        api_err.__cause__ = ssl_err
+
+        openai_call_count = 0
+        openai_kwargs_history = []
+
+        mock_openai_client_fail = mock.MagicMock()
+        mock_openai_client_fail.models.list.side_effect = api_err
+        mock_openai_client_ok = mock.MagicMock()
+        # _get_model_metadata_from calls models.list() on the ok client and accesses .data
+        _models_list_ok = mock.MagicMock()
+        _models_list_ok.data = [mock.MagicMock(id="test-model", max_model_len=8192)]
+        mock_openai_client_ok.models.list.return_value = _models_list_ok
+
+        def fake_openai(**kwargs):
+            nonlocal openai_call_count
+            openai_call_count += 1
+            openai_kwargs_history.append(kwargs)
+            if openai_call_count % 2 == 1:
+                return mock_openai_client_fail
+            return mock_openai_client_ok
+
+        openai_mod.OpenAI.side_effect = fake_openai
+        mocks["openai"] = openai_mod
+        mocks["llama_stack_client"] = _make_llama_stack_client_module()
+
+        mocks["ai4rag.search_space.src.search_space"].AI4RAGSearchSpace.side_effect = _SentinelAbort
+
+        test_data, extracted_text, search_space_prep_report = self._make_artifacts(tmp_path)
+
+        with mock.patch.dict(sys.modules, mocks):
+            with pytest.raises(_SentinelAbort):
+                search_space_preparation.python_func(
+                    test_data=test_data,
+                    extracted_text=extracted_text,
+                    search_space_prep_report=search_space_prep_report,
+                    chat_model_url="http://chat.example.com",
+                    chat_model_token="chat-token",
+                    embedding_model_url="http://embed.example.com",
+                    embedding_model_token="embed-token",
+                )
+
+        assert openai_call_count == 8
+        for retry_idx in [1, 3, 5, 7]:
+            assert isinstance(openai_kwargs_history[retry_idx].get("http_client"), mocks["httpx"].Client)
+            assert openai_kwargs_history[retry_idx]["http_client"].kwargs.get("verify") is False
+
+    def test_openai_client_api_connection_error_non_ssl_cause_is_reraised(self, tmp_path):
+        """OAIAPIConnectionError whose cause is NOT SSL propagates without retry."""
+        mocks = _make_all_mocks()
+
+        openai_mod = _make_openai_module()
+        OAIAPIConnectionError = openai_mod.APIConnectionError
+        err = OAIAPIConnectionError("Connection timeout")
+        err.__cause__ = TimeoutError("timed out")
+
+        mock_openai_client = mock.MagicMock()
+        mock_openai_client.models.list.side_effect = err
+        openai_mod.OpenAI.return_value = mock_openai_client
+        mocks["openai"] = openai_mod
+        mocks["llama_stack_client"] = _make_llama_stack_client_module()
+
+        test_data, extracted_text, search_space_prep_report = self._make_artifacts(tmp_path)
+
+        with mock.patch.dict(sys.modules, mocks):
+            with pytest.raises(OAIAPIConnectionError):
+                search_space_preparation.python_func(
+                    test_data=test_data,
+                    extracted_text=extracted_text,
+                    search_space_prep_report=search_space_prep_report,
+                    chat_model_url="http://chat.example.com",
+                    chat_model_token="chat-token",
+                    embedding_model_url="http://embed.example.com",
+                    embedding_model_token="embed-token",
+                )

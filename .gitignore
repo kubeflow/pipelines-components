@@ -248,6 +248,7 @@ $RECYCLE.BIN/
 *.env
 !.env.example
 !.env.sample
+!.env.template
 .envrc
 
 # Secrets and credentials
@@ -263,6 +264,7 @@ credentials/
 # Kubeflow Pipelines specific
 *.tar.gz
 component.yaml
+pipeline.yaml
 *.compiled.yaml
 *.compiled.json
 
@@ -383,3 +385,8 @@ tensorboard/
 
 # Exception for scripts/lib which is our shared Python library
 !scripts/lib/
+
+# Exception: test data CSVs under tests/data/
+!**/tests/data/
+!**/tests/data/*.csv
+

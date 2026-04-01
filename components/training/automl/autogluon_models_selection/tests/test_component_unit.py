@@ -1,26 +1,27 @@
 """Tests for the autogluon_models_selection component."""
 
-# Assisted-by: Cursor
-
 import sys
 from pathlib import Path
 from unittest import mock
 
 import pytest
 
-# Inject mock modules so @mock.patch("pandas...") and @mock.patch("autogluon...") resolve (yoda-style).
-if "pandas" not in sys.modules:
-    sys.modules["pandas"] = mock.MagicMock()
-if "autogluon" not in sys.modules:
-    _ag = mock.MagicMock()
-    _ag.__path__ = []
-    _ag.__spec__ = None
-    sys.modules["autogluon"] = _ag
-    _m = mock.MagicMock()
-    _m.__spec__ = None
-    sys.modules["autogluon.tabular"] = _m
-
 from ..component import models_selection  # noqa: E402
+
+
+@pytest.fixture(autouse=True, scope="module")
+def isolated_sys_modules():
+    """Patch pandas/autogluon in sys.modules only for this test module; restored on module teardown."""
+    with mock.patch.dict(sys.modules, clear=False) as mocked_modules:
+        mocked_modules["pandas"] = mock.MagicMock()
+        _ag = mock.MagicMock()
+        _ag.__path__ = []
+        _ag.__spec__ = None
+        mocked_modules["autogluon"] = _ag
+        _m = mock.MagicMock()
+        _m.__spec__ = None
+        mocked_modules["autogluon.tabular"] = _m
+        yield
 
 
 def _make_mock_leaderboard(all_model_names):
@@ -58,9 +59,6 @@ class TestModelsSelectionUnitTests:
         mock_read_csv.side_effect = [mock_train_df, mock_test_df]
 
         # Create mock artifacts
-        mock_train_data = mock.MagicMock()
-        mock_train_data.path = "/tmp/train_data.csv"
-
         mock_test_data = mock.MagicMock()
         mock_test_data.path = "/tmp/test_data.csv"
 
@@ -71,7 +69,7 @@ class TestModelsSelectionUnitTests:
             label_column="target",
             task_type="regression",
             top_n=2,
-            train_data=mock_train_data,
+            train_data_path="/tmp/train_data.csv",
             test_data=mock_test_data,
             workspace_path=workspace_path,
         )
@@ -108,6 +106,11 @@ class TestModelsSelectionUnitTests:
         assert result.top_models == ["LightGBM_BAG_L1", "NeuralNetFastAI_BAG_L1"]
         assert result.eval_metric == "r2"
         assert result.predictor_path == str(Path(workspace_path) / "autogluon_predictor")
+        assert result.model_config == {
+            "preset": "medium_quality",
+            "eval_metric": "r2",
+            "time_limit": 3600,
+        }
 
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.tabular.TabularPredictor")
@@ -127,9 +130,6 @@ class TestModelsSelectionUnitTests:
         mock_predictor_class.return_value = mock_predictor
 
         # Create mock artifacts
-        mock_train_data = mock.MagicMock()
-        mock_train_data.path = "/tmp/train_data.csv"
-
         mock_test_data = mock.MagicMock()
         mock_test_data.path = "/tmp/test_data.csv"
 
@@ -140,7 +140,7 @@ class TestModelsSelectionUnitTests:
             label_column="target",
             task_type="binary",
             top_n=2,
-            train_data=mock_train_data,
+            train_data_path="/tmp/train_data.csv",
             test_data=mock_test_data,
             workspace_path=workspace_path,
         )
@@ -176,9 +176,6 @@ class TestModelsSelectionUnitTests:
         mock_predictor_class.return_value = mock_predictor
 
         # Create mock artifacts
-        mock_train_data = mock.MagicMock()
-        mock_train_data.path = "/tmp/train_data.csv"
-
         mock_test_data = mock.MagicMock()
         mock_test_data.path = "/tmp/test_data.csv"
 
@@ -189,7 +186,7 @@ class TestModelsSelectionUnitTests:
             label_column="target",
             task_type="multiclass",
             top_n=3,
-            train_data=mock_train_data,
+            train_data_path="/tmp/train_data.csv",
             test_data=mock_test_data,
             workspace_path=workspace_path,
         )
@@ -231,9 +228,6 @@ class TestModelsSelectionUnitTests:
         mock_predictor_class.return_value = mock_predictor
 
         # Create mock artifacts
-        mock_train_data = mock.MagicMock()
-        mock_train_data.path = "/tmp/train_data.csv"
-
         mock_test_data = mock.MagicMock()
         mock_test_data.path = "/tmp/test_data.csv"
 
@@ -244,7 +238,7 @@ class TestModelsSelectionUnitTests:
             label_column="target",
             task_type="regression",
             top_n=1,
-            train_data=mock_train_data,
+            train_data_path="/tmp/train_data.csv",
             test_data=mock_test_data,
             workspace_path=workspace_path,
         )
@@ -260,9 +254,6 @@ class TestModelsSelectionUnitTests:
         # Setup mocks to raise FileNotFoundError for train_data
         mock_read_csv.side_effect = FileNotFoundError("Train data file not found")
 
-        mock_train_data = mock.MagicMock()
-        mock_train_data.path = "/nonexistent/train_data.csv"
-
         mock_test_data = mock.MagicMock()
         mock_test_data.path = "/tmp/test_data.csv"
 
@@ -274,7 +265,7 @@ class TestModelsSelectionUnitTests:
                 label_column="target",
                 task_type="regression",
                 top_n=2,
-                train_data=mock_train_data,
+                train_data_path="/nonexistent/train_data.csv",
                 test_data=mock_test_data,
                 workspace_path=workspace_path,
             )
@@ -285,9 +276,6 @@ class TestModelsSelectionUnitTests:
         """Test that FileNotFoundError is raised when test_data path doesn't exist."""
         mock_train_df = mock.MagicMock()
         mock_read_csv.side_effect = [mock_train_df, FileNotFoundError("Test data file not found")]
-
-        mock_train_data = mock.MagicMock()
-        mock_train_data.path = "/tmp/train_data.csv"
 
         mock_test_data = mock.MagicMock()
         mock_test_data.path = "/nonexistent/test_data.csv"
@@ -300,7 +288,7 @@ class TestModelsSelectionUnitTests:
                 label_column="target",
                 task_type="regression",
                 top_n=2,
-                train_data=mock_train_data,
+                train_data_path="/tmp/train_data.csv",
                 test_data=mock_test_data,
                 workspace_path=workspace_path,
             )
@@ -317,9 +305,6 @@ class TestModelsSelectionUnitTests:
         mock_test_df = mock.MagicMock()
         mock_read_csv.side_effect = [mock_train_df, mock_test_df]
 
-        mock_train_data = mock.MagicMock()
-        mock_train_data.path = "/tmp/train_data.csv"
-
         mock_test_data = mock.MagicMock()
         mock_test_data.path = "/tmp/test_data.csv"
 
@@ -331,7 +316,7 @@ class TestModelsSelectionUnitTests:
                 label_column="target",
                 task_type="regression",
                 top_n=2,
-                train_data=mock_train_data,
+                train_data_path="/tmp/train_data.csv",
                 test_data=mock_test_data,
                 workspace_path=workspace_path,
             )
@@ -349,9 +334,6 @@ class TestModelsSelectionUnitTests:
         mock_test_df = mock.MagicMock()
         mock_read_csv.side_effect = [mock_train_df, mock_test_df]
 
-        mock_train_data = mock.MagicMock()
-        mock_train_data.path = "/tmp/train_data.csv"
-
         mock_test_data = mock.MagicMock()
         mock_test_data.path = "/tmp/test_data.csv"
 
@@ -363,7 +345,7 @@ class TestModelsSelectionUnitTests:
                 label_column="target",
                 task_type="regression",
                 top_n=2,
-                train_data=mock_train_data,
+                train_data_path="/tmp/train_data.csv",
                 test_data=mock_test_data,
                 workspace_path=workspace_path,
             )
@@ -383,9 +365,6 @@ class TestModelsSelectionUnitTests:
 
         mock_predictor_class.return_value = mock_predictor
 
-        mock_train_data = mock.MagicMock()
-        mock_train_data.path = "/tmp/train_data.csv"
-
         mock_test_data = mock.MagicMock()
         mock_test_data.path = "/tmp/test_data.csv"
 
@@ -396,7 +375,7 @@ class TestModelsSelectionUnitTests:
             label_column="target",
             task_type="regression",
             top_n=2,
-            train_data=mock_train_data,
+            train_data_path="/tmp/train_data.csv",
             test_data=mock_test_data,
             workspace_path=workspace_path,
         )
@@ -414,7 +393,7 @@ class TestModelsSelectionUnitTests:
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.tabular.TabularPredictor")
     def test_models_selection_sets_metadata_correctly(self, mock_predictor_class, mock_read_csv):
-        """Test that return value (top_models, eval_metric, predictor_path) is correct."""
+        """Test that return value (top_models, eval_metric, predictor_path, model_config) is correct."""
         mock_predictor = mock.MagicMock()
         mock_predictor.eval_metric = "r2"
         mock_predictor.fit.return_value = mock_predictor
@@ -428,9 +407,6 @@ class TestModelsSelectionUnitTests:
 
         mock_predictor_class.return_value = mock_predictor
 
-        mock_train_data = mock.MagicMock()
-        mock_train_data.path = "/tmp/train_data.csv"
-
         mock_test_data = mock.MagicMock()
         mock_test_data.path = "/tmp/test_data.csv"
 
@@ -441,7 +417,7 @@ class TestModelsSelectionUnitTests:
             label_column="target",
             task_type="regression",
             top_n=3,
-            train_data=mock_train_data,
+            train_data_path="/tmp/train_data.csv",
             test_data=mock_test_data,
             workspace_path=workspace_path,
         )
@@ -455,6 +431,11 @@ class TestModelsSelectionUnitTests:
         assert len(result.top_models) == 3
         assert result.eval_metric == "r2"
         assert result.predictor_path == str(Path(workspace_path) / "autogluon_predictor")
+        assert result.model_config == {
+            "preset": "medium_quality",
+            "eval_metric": "r2",
+            "time_limit": 3600,
+        }
 
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.tabular.TabularPredictor")
@@ -471,9 +452,6 @@ class TestModelsSelectionUnitTests:
 
         mock_predictor_class.return_value = mock_predictor
 
-        mock_train_data = mock.MagicMock()
-        mock_train_data.path = "/tmp/train_data.csv"
-
         mock_test_data = mock.MagicMock()
         mock_test_data.path = "/tmp/test_data.csv"
 
@@ -484,7 +462,7 @@ class TestModelsSelectionUnitTests:
             label_column="target",
             task_type="regression",
             top_n=2,
-            train_data=mock_train_data,
+            train_data_path="/tmp/train_data.csv",
             test_data=mock_test_data,
             workspace_path=workspace_path,
         )
@@ -493,15 +471,92 @@ class TestModelsSelectionUnitTests:
         assert hasattr(result, "top_models")
         assert hasattr(result, "eval_metric")
         assert hasattr(result, "predictor_path")
+        assert hasattr(result, "model_config")
         assert isinstance(result.top_models, list)
         assert isinstance(result.eval_metric, str)
         assert isinstance(result.predictor_path, str)
+        assert isinstance(result.model_config, dict)
         assert result.top_models == ["LightGBM_BAG_L1", "NeuralNetFastAI_BAG_L1"]
         assert result.eval_metric == "r2"
         assert result.predictor_path == str(Path(workspace_path) / "autogluon_predictor")
+        assert result.model_config["preset"] == "medium_quality"
+        assert result.model_config["time_limit"] == 3600
+
+    def test_models_selection_rejects_invalid_task_type(self):
+        """Test that ValueError is raised for invalid task_type."""
+        mock_test_data = mock.MagicMock()
+        mock_test_data.path = "/tmp/test_data.csv"
+        with pytest.raises(
+            ValueError,
+            match=r"task_type must be one of .* got 'invalid'\.",
+        ):
+            models_selection.python_func(
+                label_column="target",
+                task_type="invalid",
+                top_n=2,
+                train_data_path="/tmp/train_data.csv",
+                test_data=mock_test_data,
+                workspace_path="/tmp/model",
+            )
+
+    def test_models_selection_rejects_invalid_top_n(self):
+        """Test that ValueError is raised for non-positive top_n."""
+        mock_test_data = mock.MagicMock()
+        mock_test_data.path = "/tmp/test_data.csv"
+        with pytest.raises(ValueError, match=r"top_n must be an integer in the range \(0, 10\]; got 0\."):
+            models_selection.python_func(
+                label_column="target",
+                task_type="regression",
+                top_n=0,
+                train_data_path="/tmp/train_data.csv",
+                test_data=mock_test_data,
+                workspace_path="/tmp/model",
+            )
 
     def test_component_imports_correctly(self):
         """Test that the component can be imported and has required attributes."""
         assert callable(models_selection)
         assert hasattr(models_selection, "python_func")
         assert hasattr(models_selection, "component_spec")
+
+    def test_models_selection_rejects_empty_label_column(self):
+        """Test that TypeError is raised for empty label_column."""
+        mock_test_data = mock.MagicMock()
+        mock_test_data.path = "/tmp/test_data.csv"
+        with pytest.raises(TypeError, match=r"label_column must be a non-empty string\."):
+            models_selection.python_func(
+                label_column="  ",
+                task_type="regression",
+                top_n=2,
+                train_data_path="/tmp/train_data.csv",
+                test_data=mock_test_data,
+                workspace_path="/tmp/model",
+            )
+
+    def test_models_selection_rejects_empty_train_data_path(self):
+        """Test that TypeError is raised for empty train_data_path."""
+        mock_test_data = mock.MagicMock()
+        mock_test_data.path = "/tmp/test_data.csv"
+        with pytest.raises(TypeError, match=r"train_data_path must be a non-empty string\."):
+            models_selection.python_func(
+                label_column="target",
+                task_type="regression",
+                top_n=2,
+                train_data_path="",
+                test_data=mock_test_data,
+                workspace_path="/tmp/model",
+            )
+
+    def test_models_selection_rejects_empty_workspace_path(self):
+        """Test that TypeError is raised for empty workspace_path."""
+        mock_test_data = mock.MagicMock()
+        mock_test_data.path = "/tmp/test_data.csv"
+        with pytest.raises(TypeError, match=r"workspace_path must be a non-empty string\."):
+            models_selection.python_func(
+                label_column="target",
+                task_type="regression",
+                top_n=2,
+                train_data_path="/tmp/train_data.csv",
+                test_data=mock_test_data,
+                workspace_path="   ",
+            )

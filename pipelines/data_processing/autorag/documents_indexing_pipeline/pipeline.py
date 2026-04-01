@@ -12,12 +12,12 @@ from kfp_components.components.data_processing.autorag.text_extraction.component
     description="Pipeline to load test data, discover and extract documents, then index them into a vector store.",
 )
 def documents_indexing_pipeline(
-    input_data_secret_name: str,
-    input_data_bucket_name: str,
-    input_data_key: str,
     llama_stack_secret_name: str,
     embedding_model_id: str,
     llama_stack_vector_database_id: str,
+    input_data_secret_name: str,
+    input_data_bucket_name: str,
+    input_data_key: Optional[str] = None,
     collection_name: str = None,
     embedding_params: Optional[dict] = None,
     distance_metric: str = "cosine",
@@ -29,16 +29,16 @@ def documents_indexing_pipeline(
     """Defines a pipeline to load, sample, extract text, and index documents for AutoRAG.
 
     Args:
+        llama_stack_secret_name: Name of the secret with LLAMA stack credentials
+            ("LLAMA_STACK_CLIENT_BASE_URL", "LLAMA_STACK_CLIENT_API_KEY").
+        embedding_model_id: Embedding model ID for the vector store.
+        llama_stack_vector_database_id: Optional Llama Stack provider ID.
         input_data_secret_name: Name of the secret with S3 credentials for input data
             ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_S3_ENDPOINT", "AWS_DEFAULT_REGION").
         input_data_bucket_name: Name of the S3 bucket containing input data.
         input_data_key: Path to folder with input documents within bucket.
-        llama_stack_secret_name: Name of the secret with LLAMA stack credentials
-            ("LLAMA_STACK_CLIENT_BASE_URL", "LLAMA_STACK_CLIENT_API_KEY").
-        embedding_model_id: Embedding model ID for the vector store.
-        embedding_params: Dict passed to LSEmbeddingParams (default: {}).
-        llama_stack_vector_database_id: Optional Llama Stack provider ID.
         collection_name: Optional name of the collection to reuse; omit to create a new one.
+        embedding_params: Dict passed to LSEmbeddingParams (default: {}).
         distance_metric: Vector distance metric (e.g. "cosine").
         chunking_method: Chunking method (e.g. "recursive").
         chunk_size: Chunk size in characters.

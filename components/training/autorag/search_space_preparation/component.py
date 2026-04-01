@@ -73,11 +73,14 @@ def search_space_preparation(
     except ImportError:
         pass
 
+    import logging
     import os
+    import ssl
     from collections import namedtuple
     from dataclasses import fields, is_dataclass
     from pathlib import Path
 
+    import httpx
     import pandas as pd
     import yaml as yml
     from ai4rag.core.experiment.benchmark_data import BenchmarkData
@@ -92,14 +95,95 @@ def search_space_preparation(
     from ai4rag.search_space.src.parameter import Parameter
     from ai4rag.search_space.src.search_space import AI4RAGSearchSpace
     from langchain_core.documents import Document
+    from llama_stack_client import APIConnectionError as LSAPIConnectionError
     from llama_stack_client import LlamaStackClient
+    from openai import APIConnectionError as OAIAPIConnectionError
     from openai import OpenAI
+
+    _ssl_logger = logging.getLogger(__name__)
+
+    def _is_ssl_error(exc: BaseException) -> bool:
+        """Check whether an exception (or its cause/context chain) is an SSL verification failure."""
+        seen = set()
+        current: BaseException | None = exc
+        while current is not None and id(current) not in seen:
+            seen.add(id(current))
+            msg = str(current).upper()
+            if "CERTIFICATE_VERIFY_FAILED" in msg or "SSL" in msg:
+                return True
+            current = current.__cause__ or current.__context__
+        return False
+
+    def _create_openai_client(api_key: str, base_url: str) -> OpenAI:
+        """Create OpenAI client, falling back to SSL-unverified if self-signed cert detected."""
+        client = OpenAI(api_key=api_key, base_url=base_url)
+        try:
+            client.models.list()
+        except (ssl.SSLCertVerificationError, httpx.ConnectError, OAIAPIConnectionError) as exc:
+            if _is_ssl_error(exc):
+                _ssl_logger.warning(
+                    "SSL verification failed for %s — retrying with verify=False. ",
+                    base_url,
+                )
+                client = OpenAI(
+                    api_key=api_key,
+                    base_url=base_url,
+                    http_client=httpx.Client(verify=False),
+                )
+            else:
+                raise
+        return client
+
+    def _create_llama_stack_client(**kwargs) -> LlamaStackClient:
+        """Create LlamaStackClient, falling back to SSL-unverified if self-signed cert detected."""
+        client = LlamaStackClient(**kwargs)
+        try:
+            client.models.list()
+        except (ssl.SSLCertVerificationError, httpx.ConnectError, LSAPIConnectionError) as exc:
+            if _is_ssl_error(exc):
+                _ssl_logger.warning("SSL verification failed for LlamaStackClient — retrying with verify=False. ")
+                client = LlamaStackClient(
+                    **kwargs,
+                    http_client=httpx.Client(verify=False),
+                )
+            else:
+                raise
+        return client
 
     TOP_N_GENERATION_MODELS = 3
     TOP_K_EMBEDDING_MODELS = 2
     METRIC = "faithfulness"
     SAMPLE_SIZE = 5
     SEED = 17
+
+    supported_metrics = ["faithfulness", "answer_correctness", "context_correctness"]
+
+    if embeddings_models and generation_models:
+        if not isinstance(embeddings_models, list):
+            raise TypeError("embeddings_models must be a list.")
+        else:
+            for i, m in enumerate(embeddings_models):
+                if not m:
+                    raise TypeError(f"embeddings_models[{i}] must be a non-empty string.")
+
+        if not isinstance(generation_models, list):
+            raise TypeError("generation_models must be a list when provided.")
+        else:
+            for i, m in enumerate(generation_models):
+                if not m:
+                    raise TypeError(f"generation_models[{i}] must be a non-empty string.")
+    else:
+        for name, value in (
+            ("chat_model_token", chat_model_token),
+            ("chat_model_url", chat_model_url),
+            ("embedding_model_url", embedding_model_url),
+            ("embedding_model_token", embedding_model_token),
+        ):
+            if not value:
+                raise TypeError(f"{name} must be a non-empty string.")
+
+    if metric and metric not in supported_metrics:
+        raise ValueError(f"Metric {metric} is not supported. Supported metrics are {supported_metrics}.")
 
     if embedding_model_url and chat_model_url:
         # Specification of OpenAI API compatibility
@@ -127,7 +211,7 @@ def search_space_preparation(
             ValueError
                 If model metadata could not be retrieved (for whatever reason).
         """
-        api_client = OpenAI(api_key=token, base_url=url)
+        api_client = _create_openai_client(api_key=token, base_url=url)
         models = api_client.models.list()
         response = {"id": "", "max_model_len": 0}
         required_md = {"id"}
@@ -261,7 +345,7 @@ def search_space_preparation(
     )
 
     if llama_stack_client_base_url and llama_stack_client_api_key:
-        client = Client(llama_stack=LlamaStackClient())
+        client = Client(llama_stack=_create_llama_stack_client())
     else:
         if not all(
             (
@@ -276,8 +360,8 @@ def search_space_preparation(
                 "have to be defined when running AutoRAG experiment on an in-memory vector store."
             )
         client = Client(
-            generation_model=OpenAI(api_key=chat_model_token, base_url=chat_model_url),
-            embedding_model=OpenAI(api_key=embedding_model_token, base_url=embedding_model_url),
+            generation_model=_create_openai_client(api_key=chat_model_token, base_url=chat_model_url),
+            embedding_model=_create_openai_client(api_key=embedding_model_token, base_url=embedding_model_url),
         )
         in_memory_vector_store_scenario = True
 
