@@ -19,6 +19,39 @@ Lists available documents from S3, performs sampling if applied and writes a JSO
 | `sampling_max_size` | `float` | `1` | Maximum size of sampled documents (in gigabytes). |
 | `discovered_documents` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing the documents descriptor JSON file. |
 
+## Usage Examples 🧪
+
+```python
+"""Example pipelines demonstrating usage of documents_discovery."""
+
+from kfp import dsl
+from kfp_components.components.data_processing.autorag.documents_discovery import documents_discovery
+
+
+@dsl.pipeline(name="documents-discovery-example")
+def example_pipeline(
+    input_data_bucket_name: str = "my-bucket",
+    input_data_path: str = "documents/",
+    sampling_enabled: bool = True,
+    sampling_max_size: float = 1,
+):
+    """Example pipeline using documents_discovery.
+
+    Args:
+        input_data_bucket_name: S3 bucket containing input documents.
+        input_data_path: Path prefix within the bucket.
+        sampling_enabled: Whether to enable sampling.
+        sampling_max_size: Maximum sample size in GB.
+    """
+    documents_discovery(
+        input_data_bucket_name=input_data_bucket_name,
+        input_data_path=input_data_path,
+        sampling_enabled=sampling_enabled,
+        sampling_max_size=sampling_max_size,
+    )
+
+```
+
 ## Metadata 🗂️
 
 - **Name**: documents_discovery

@@ -29,6 +29,48 @@ Note: KFP does not propagate artifact metadata through executor inputs for colle
 | ---- | ---- | ----------- |
 | Output | `NamedTuple('outputs', best_model=str)` | NamedTuple with ``best_model`` (str): display name of the top-ranked model. |
 
+## Usage Examples 🧪
+
+```python
+"""Example pipelines demonstrating usage of timeseries_leaderboard_evaluation."""
+
+from kfp import dsl
+from kfp_components.components.training.automl.autogluon_timeseries_leaderboard_evaluation import (
+    timeseries_leaderboard_evaluation,
+)
+
+
+@dsl.component
+def produce_model(name: str, model: dsl.Output[dsl.Model]):
+    """Produce a dummy model artifact for demonstration purposes."""
+    import json
+    import os
+
+    metrics_dir = os.path.join(model.path, name, "metrics")
+    os.makedirs(metrics_dir, exist_ok=True)
+    with open(os.path.join(metrics_dir, "metrics.json"), "w") as f:
+        json.dump({"mean_wQuantileLoss": 0.5}, f)
+
+
+@dsl.pipeline(name="autogluon-timeseries-leaderboard-evaluation-example")
+def example_pipeline(
+    eval_metric: str = "mean_wQuantileLoss",
+):
+    """Example pipeline using timeseries_leaderboard_evaluation.
+
+    Args:
+        eval_metric: Evaluation metric name.
+    """
+    with dsl.ParallelFor(items=["ModelA", "ModelB"]) as model_name:
+        model_task = produce_model(name=model_name)
+
+    timeseries_leaderboard_evaluation(
+        models=dsl.Collected(model_task.outputs["model"]),
+        eval_metric=eval_metric,
+    )
+
+```
+
 ## Metadata 🗂️
 
 - **Name**: timeseries_leaderboard_evaluation

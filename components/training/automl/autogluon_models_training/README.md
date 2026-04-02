@@ -35,6 +35,61 @@ output artifact so the pipeline does not require a ParallelFor loop. Each model 
 | ---- | ---- | ----------- |
 | Output | `NamedTuple('outputs', eval_metric=str)` | NamedTuple with ``eval_metric`` (the metric used for ranking, e.g. ``"r2"`` or ``"accuracy"``). |
 
+## Usage Examples 🧪
+
+```python
+"""Example pipelines demonstrating usage of autogluon_models_training."""
+
+from kfp import dsl
+from kfp_components.components.training.automl.autogluon_models_training import (
+    autogluon_models_training,
+)
+
+
+@dsl.pipeline(name="autogluon-models-training-example")
+def example_pipeline(
+    label_column: str = "target",
+    task_type: str = "regression",
+    top_n: int = 3,
+    train_data_path: str = "/tmp/train_data",
+    workspace_path: str = "/tmp/workspace",
+    pipeline_name: str = "automl-pipeline",
+    run_id: str = "run-001",
+    sample_row: str = '{"feature1": 1.0}',
+    extra_train_data_path: str = "",
+):
+    """Example pipeline using autogluon_models_training.
+
+    Args:
+        label_column: Name of the label column.
+        task_type: Type of ML task.
+        top_n: Number of top models to select.
+        train_data_path: Path to the training data.
+        workspace_path: Path to the workspace directory.
+        pipeline_name: Name of the pipeline.
+        run_id: Unique run identifier.
+        sample_row: JSON string of a sample row.
+        extra_train_data_path: Path to extra training data.
+    """
+    test_data = dsl.importer(
+        artifact_uri="gs://placeholder/test_data",
+        artifact_class=dsl.Dataset,
+    )
+    autogluon_models_training(
+        label_column=label_column,
+        task_type=task_type,
+        top_n=top_n,
+        train_data_path=train_data_path,
+        test_data=test_data.output,
+        workspace_path=workspace_path,
+        pipeline_name=pipeline_name,
+        run_id=run_id,
+        sample_row=sample_row,
+        extra_train_data_path=extra_train_data_path,
+    )
+
+```
+
 ## Metadata 🗂️
 
 - **Name**: autogluon_models_training

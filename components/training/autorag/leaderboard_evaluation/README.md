@@ -17,6 +17,35 @@ search_mode ("hybrid" | "vector" per ai4rag), ranker_strategy, generation.model_
 | `html_artifact` | `dsl.Output[dsl.HTML]` | `None` | Output HTML artifact; the leaderboard table is written to html_artifact.path (single file). |
 | `optimization_metric` | `str` | `faithfulness` | Name of the metric used to rank patterns (e.g. faithfulness, answer_correctness, context_correctness). Shown in the leaderboard subtitle. Defaults to "faithfulness". |
 
+## Usage Examples 🧪
+
+```python
+"""Example pipelines demonstrating usage of leaderboard_evaluation."""
+
+from kfp import dsl
+from kfp_components.components.training.autorag.leaderboard_evaluation import leaderboard_evaluation
+
+
+@dsl.pipeline(name="autorag-leaderboard-evaluation-example")
+def example_pipeline(
+    optimization_metric: str = "faithfulness",
+):
+    """Example pipeline using leaderboard_evaluation.
+
+    Args:
+        optimization_metric: Metric to optimize for.
+    """
+    rag_patterns = dsl.importer(
+        artifact_uri="gs://placeholder/rag_patterns",
+        artifact_class=dsl.Artifact,
+    )
+    leaderboard_evaluation(
+        rag_patterns=rag_patterns.output,
+        optimization_metric=optimization_metric,
+    )
+
+```
+
 ## Metadata 🗂️
 
 - **Name**: leaderboard_evaluation

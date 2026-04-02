@@ -23,6 +23,28 @@ vector store identifiers if your deployment does not use the collection name as 
 | `rag_patterns` | `dsl.InputPath(dsl.Artifact)` | `None` | Local path to the ``rag_patterns`` directory (same layout as ``leaderboard_evaluation``). |
 | `responses_api_artifacts` | `dsl.Output[dsl.Artifact]` | `None` | Output directory artifact; mirrors pattern folder names (JSON body, helper script, and README per pattern). Request bodies use ``RESPONSES_BODY_DEFAULT_QUESTION`` as the placeholder user message; the interactive script replaces it when you run it locally. |
 
+## Usage Examples 🧪
+
+```python
+"""Example pipelines demonstrating usage of prepare_responses_api_requests."""
+
+from kfp import dsl
+from kfp_components.components.deployment.autorag.build_responses_request_bodies import (
+    prepare_responses_api_requests,
+)
+
+
+@dsl.pipeline(name="build-responses-request-bodies-example")
+def example_pipeline():
+    """Example pipeline using prepare_responses_api_requests."""
+    rag_patterns = dsl.importer(
+        artifact_uri="gs://placeholder/rag_patterns",
+        artifact_class=dsl.Artifact,
+    )
+    prepare_responses_api_requests(rag_patterns=rag_patterns.output)
+
+```
+
 ## Metadata 🗂️
 
 - **Name**: prepare_responses_api_requests
