@@ -71,7 +71,7 @@ prediction_length=14, top_n=3, )
 - **Owners**:
   - Approvers:
     - DorotaDR
-    - mateusz.switala
+    - Mateusz-Switala
   - Reviewers:
     - DorotaDR
 
