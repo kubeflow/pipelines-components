@@ -1,0 +1,29 @@
+---
+name: Check Container Build Matrix
+
+on:
+  pull_request:
+    paths:
+      - "**/Containerfile"
+      - "**/Dockerfile"
+      - ".github/workflows/container-build.yml"
+      - ".github/scripts/check_container_build_matrix/**"
+      - ".container-build-ignore"
+jobs:
+  check-container-build-matrix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python and uv
+        uses: ./.github/actions/setup-python-ci
+        with:
+          python-version: "3.11"
+
+      - name: Run matrix check script
+        run: uv run python -m check_container_build_matrix.check_container_build_matrix
+        working-directory: .github/scripts
+
+      - name: Run unit tests with pytest
+        run: uv run pytest -v
+        working-directory: .github/scripts
