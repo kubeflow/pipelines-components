@@ -2,6 +2,8 @@
 extends: default
 ignore: |
   .tekton/
+  # KFP-compiled IR: list indentation and long embedded strings do not match yamllint rules.
+  pipelines/**/pipeline.yaml
 rules:
   line-length:
     max: 120

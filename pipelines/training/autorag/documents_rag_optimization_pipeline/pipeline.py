@@ -186,5 +186,5 @@ if __name__ == "__main__":
 
     Compiler().compile(
         documents_rag_optimization_pipeline,
-        package_path=__file__.replace(".py", "_pipeline.yaml"),
+        package_path=__file__.replace(".py", ".yaml"),
     )

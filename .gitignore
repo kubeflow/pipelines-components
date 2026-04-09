@@ -264,7 +264,6 @@ credentials/
 # Kubeflow Pipelines specific
 *.tar.gz
 component.yaml
-pipeline.yaml
 *.compiled.yaml
 *.compiled.json
 
