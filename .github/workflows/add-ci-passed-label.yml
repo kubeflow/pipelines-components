@@ -28,7 +28,7 @@ jobs:
       event_action: ${{ steps.extract.outputs.event_action }}
     steps:
       - name: Download artifact
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
