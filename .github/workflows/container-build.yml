@@ -140,11 +140,11 @@ jobs:
           GH_REF: ${{ github.ref }}
         run: |
           if [[ "$GH_REF" == refs/tags/v* ]]; then
-            TAG="${GITHUB_REF#refs/tags/}"
+            TAG="${GH_REF#refs/tags/}"
           else
             TAG="${GITHUB_SHA}"
           fi
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Download built image artifacts
         if: github.event_name == 'pull_request'
