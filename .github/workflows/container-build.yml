@@ -136,8 +136,10 @@ jobs:
 
       - name: Determine image tag
         id: image-tag
+        env:
+          GH_REF: ${{ github.ref }}
         run: |
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          if [[ "$GH_REF" == refs/tags/v* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
           else
             TAG="${GITHUB_SHA}"
@@ -169,12 +171,16 @@ jobs:
 
       - name: Determine expected base_image tag
         id: expected-tag
+        env:
+          GH_EVENT_NAME: ${{ github.event_name }}
+          GH_BASE_REF: ${{ github.base_ref }}
+          GH_REF_NAME: ${{ github.ref_name }}
         run: |
           # For PRs, use the base branch; for pushes, use the current branch
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            BRANCH="${{ github.base_ref }}"
+          if [[ "$GH_EVENT_NAME" == "pull_request" ]]; then
+            BRANCH="$GH_BASE_REF"
           else
-            BRANCH="${{ github.ref_name }}"
+            BRANCH="$GH_REF_NAME"
           fi
 
           if [[ "$BRANCH" == "main" ]]; then
