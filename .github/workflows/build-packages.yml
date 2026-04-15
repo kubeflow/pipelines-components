@@ -3,15 +3,7 @@ name: Build and Test Python Packages
 
 on:
   push:
-    branches:
-      - 'main'
-      - 'release-*'
-    tags:
-      - 'v*'
   pull_request:
-    branches:
-      - 'main'
-      - 'release-*'
 
 jobs:
   build:

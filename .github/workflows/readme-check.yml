@@ -3,9 +3,6 @@ name: README Validation
 
 on:
   pull_request:
-    branches:
-      - 'main'
-      - 'release-*'
     paths:
       - 'components/**'
       - 'pipelines/**'

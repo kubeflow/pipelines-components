@@ -3,9 +3,6 @@ name: YAML Lint
 
 on:
   pull_request:
-    branches:
-      - 'main'
-      - 'release-*'
     paths:
       - '**/*.yml'
       - '**/*.yaml'
@@ -15,9 +12,6 @@ on:
       - '.github/workflows/yaml-lint.yml'
       - '.github/actions/setup-python-ci/**'
   push:
-    branches:
-      - 'main'
-      - 'release-*'
 
 jobs:
   yaml-lint:

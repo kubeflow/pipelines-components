@@ -3,15 +3,7 @@ name: Build and Push Container Images
 
 on:
   push:
-    branches:
-      - 'main'
-      - 'release-*'
-    tags:
-      - 'v*'
   pull_request:
-    branches:
-      - 'main'
-      - 'release-*'
     paths:
       - 'docs/examples/**'
       - '**/Containerfile'

@@ -3,17 +3,11 @@ name: Markdown Lint
 
 on:
   pull_request:
-    branches:
-      - 'main'
-      - 'release-*'
     paths:
       - '**/*.md'
       - '.markdownlint.json'
       - '.github/workflows/markdown-lint.yml'
   push:
-    branches:
-      - 'main'
-      - 'release-*'
 
 jobs:
   markdown-lint:

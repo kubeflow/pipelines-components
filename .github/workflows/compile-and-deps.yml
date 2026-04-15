@@ -3,8 +3,6 @@ name: Compile and Validate Components
 
 on:
   pull_request:
-    branches:
-      - main
     paths:
       - 'components/**'
       - 'pipelines/**'

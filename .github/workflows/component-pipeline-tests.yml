@@ -3,9 +3,6 @@ name: Run Tests and Validate Example Pipelines for Updated Components
 
 on:
   pull_request:
-    branches:
-      - "main"
-      - "release-*"
     paths:
       - "components/**"
       - "pipelines/**"
@@ -13,9 +10,6 @@ on:
       - "scripts/validate_examples/**"
       - ".github/workflows/component-pipeline-tests.yml"
   push:
-    branches:
-      - "main"
-      - "release-*"
     paths:
       - "components/**"
       - "pipelines/**"
