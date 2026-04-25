@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Check that every Containerfile/Dockerfile has a matching entry in container-build.yml.
 
 This ensures contributors do not add a Containerfile without registering it in
@@ -57,7 +56,7 @@ def load_ignore_list(repo_root: Path) -> set[str]:
 
 def parse_matrix_contexts(workflow_path: Path) -> set[str]:
     """Extract context values from jobs.build.strategy.matrix.include."""
-    with open(workflow_path) as f:
+    with open(workflow_path, encoding="utf-8") as f:
         workflow = yaml.safe_load(f)
     if not isinstance(workflow, dict):
         return set()
@@ -104,11 +103,7 @@ def check(
             results.append({"file": str(cf.relative_to(repo_root)), "status": "ok"})
         else:
             all_matched = False
-            suggestion = (
-                "  - name: REPLACE_WITH_UNIQUE_NAME\n"
-                f"    context: {rel_dir}\n"
-                f"    dockerfile: {cf.relative_to(repo_root)}"
-            )
+            suggestion = f"  - name: REPLACE_WITH_UNIQUE_NAME\n    context: {rel_dir}"
             results.append(
                 {
                     "file": str(cf.relative_to(repo_root)),
@@ -165,7 +160,6 @@ def main() -> int:
     parser.add_argument("--repo-root", default=None, help="Path to the repository root")
     parser.add_argument("--workflow", default=WORKFLOW_PATH, help="Path to container-build workflow")
     parser.add_argument("--search-roots", nargs="+", default=SEARCH_ROOTS, help="Directories to scan")
-    parser.add_argument("--no-emoji", action="store_true", help="Disable emoji output")
     args = parser.parse_args()
 
     repo_root = Path(args.repo_root).resolve() if args.repo_root else get_repo_root()
@@ -176,7 +170,7 @@ def main() -> int:
         return 2  # distinct exit code for missing workflow
 
     all_matched, results = check(repo_root, args.search_roots, workflow_path)
-    _print_results(results, all_matched, args.workflow, use_emoji=not args.no_emoji)
+    _print_results(results, all_matched, args.workflow)
     return 0 if all_matched else 1
 
 
