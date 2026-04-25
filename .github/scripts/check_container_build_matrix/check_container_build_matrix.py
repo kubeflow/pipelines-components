@@ -166,7 +166,7 @@ def main() -> int:
     workflow_path = repo_root / args.workflow
 
     if not workflow_path.exists():
-        print(f"❌ Workflow file not found: {workflow_path}")
+        print(f"Workflow file not found: {workflow_path}")
         return 2  # distinct exit code for missing workflow
 
     all_matched, results = check(repo_root, args.search_roots, workflow_path)
