@@ -6,6 +6,7 @@ on:
     paths:
       - "**/Containerfile"
       - "**/Dockerfile"
+      - ".container-build-ignore"
       - ".github/workflows/container-build.yml"
       - ".github/scripts/check_container_build_matrix/**"
       - ".github/workflows/container-build-matrix-check.yml"

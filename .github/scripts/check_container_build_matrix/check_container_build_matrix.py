@@ -56,11 +56,27 @@ def load_ignore_list(repo_root: Path) -> set[str]:
 
 def parse_matrix_contexts(workflow_path: Path) -> set[str]:
     """Extract context values from jobs.build.strategy.matrix.include."""
-    with open(workflow_path, encoding="utf-8") as f:
-        workflow = yaml.safe_load(f)
+    try:
+        with open(workflow_path, encoding="utf-8") as f:
+            workflow = yaml.safe_load(f)
+    except yaml.YAMLError as exc:
+        print(f"Error: failed to parse workflow YAML at {workflow_path}: {exc}", file=sys.stderr)
+        return set()
     if not isinstance(workflow, dict):
         return set()
-    includes = workflow.get("jobs", {}).get("build", {}).get("strategy", {}).get("matrix", {}).get("include", [])
+    jobs = workflow.get("jobs")
+    if not isinstance(jobs, dict):
+        return set()
+    build = jobs.get("build")
+    if not isinstance(build, dict):
+        return set()
+    strategy = build.get("strategy")
+    if not isinstance(strategy, dict):
+        return set()
+    matrix = strategy.get("matrix")
+    if not isinstance(matrix, dict):
+        return set()
+    includes = matrix.get("include", [])
     if not isinstance(includes, list):
         return set()
 
@@ -103,7 +119,8 @@ def check(
             results.append({"file": str(cf.relative_to(repo_root)), "status": "ok"})
         else:
             all_matched = False
-            suggestion = f"  - name: REPLACE_WITH_UNIQUE_NAME\n    context: {rel_dir}"
+            name = rel_dir.replace("/", "-").replace("\\", "-")
+            suggestion = f"        - name: {name}\n          context: {rel_dir}"
             results.append(
                 {
                     "file": str(cf.relative_to(repo_root)),
@@ -149,7 +166,7 @@ def _print_results(results: list[dict], all_matched: bool, workflow_path: str, u
     for r in unmatched:
         print(r["suggestion"])
     print()
-    print("   See docs on Adding a Custom Base Image for details.")
+    print("   See docs/CONTRIBUTING.md#adding-a-custom-base-image for details.")
 
 
 def main() -> int:
