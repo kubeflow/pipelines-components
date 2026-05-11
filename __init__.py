@@ -3,9 +3,9 @@
 A collection of reusable components and pipelines for Kubeflow Pipelines.
 
 Usage:
-    from kfp_components import components, pipelines
-    from kfp_components.components import training
-    from kfp_components.pipelines import evaluation
+    from library import components, pipelines
+    from library.components import training
+    from library.pipelines import evaluation
 """
 
 # Import submodules to enable the convenient import patterns shown above
@@ -17,5 +17,5 @@ except ImportError:
     # Fallback to absolute imports (works during testing with sys.path modification)
     import components  # noqa: F401
     import pipelines  # noqa: F401
-
-__all__ = ["components", "pipelines"]
+#since the 
+__all__ = ["pipelines", "components"]
