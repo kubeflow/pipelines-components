@@ -20,9 +20,9 @@ def get_repo_root() -> Path:
     """Locate and return the repository root directory."""
     path = Path(__file__).resolve()
     for parent in path.parents:
-        if (parent / ".github").exists():
+        if (parent / WORKFLOW_PATH).is_file():
             return parent
-    raise RuntimeError("Could not locate repo root")
+    raise RuntimeError(f"Could not locate repo root containing {WORKFLOW_PATH}")
 
 
 def discover_container_files(repo_root: Path, search_roots: list[str]) -> list[Path]:
@@ -99,7 +99,7 @@ def check(
     Each result dict has:
       - file: str path relative to repo root
       - status: "ok" | "unmatched" | "ignored"
-      - suggestion: str (only present when status == "unmatched")
+      - suggestion: str (only present when status == "unmatched" and first file in dir)
     """
     container_files = discover_container_files(repo_root, search_roots)
     matrix_contexts = parse_matrix_contexts(workflow_path)
@@ -107,6 +107,7 @@ def check(
 
     results = []
     all_matched = True
+    seen_dirs: set[str] = set()
 
     for cf in container_files:
         rel_dir = str(cf.parent.relative_to(repo_root))
@@ -120,20 +121,19 @@ def check(
         else:
             all_matched = False
             name = rel_dir.replace("/", "-").replace("\\", "-")
-            # FIX 1: Indentation matches actual container-build.yml (10-space / 12-space)
             suggestion = f"          - name: {name}\n            context: {rel_dir}"
-            results.append(
-                {
-                    "file": str(cf.relative_to(repo_root)),
-                    "status": "unmatched",
-                    "suggestion": suggestion,
-                }
-            )
+            result: dict = {
+                "file": str(cf.relative_to(repo_root)),
+                "status": "unmatched",
+            }
+            if rel_dir not in seen_dirs:
+                result["suggestion"] = suggestion
+                seen_dirs.add(rel_dir)
+            results.append(result)
 
     return all_matched, results
 
 
-# FIX 2: Removed dead use_emoji parameter (--no-emoji flag was removed in earlier review)
 def _print_results(results: list[dict], all_matched: bool, workflow_path: str) -> None:
     """Print check results to stdout."""
     print(f"🔍 Checking container build matrix entries in {workflow_path}...")
@@ -161,7 +161,8 @@ def _print_results(results: list[dict], all_matched: bool, workflow_path: str) -
     print(f"   Add the following entries to the strategy.matrix.include section of {workflow_path}:")
     print()
     for r in unmatched:
-        print(r["suggestion"])
+        if "suggestion" in r:
+            print(r["suggestion"])
     print()
     print("   See docs/CONTRIBUTING.md#adding-a-custom-base-image for details.")
 

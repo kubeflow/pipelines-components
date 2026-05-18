@@ -4,17 +4,22 @@ name: Check Container Build Matrix
 on:
   pull_request:
     paths:
-      - "**/Containerfile"
-      - "**/Dockerfile"
+      - "components/**/Containerfile"
+      - "components/**/Dockerfile"
+      - "pipelines/**/Containerfile"
+      - "pipelines/**/Dockerfile"
+      - "docs/examples/**/Containerfile"
+      - "docs/examples/**/Dockerfile"
       - ".container-build-ignore"
       - ".github/workflows/container-build.yml"
       - ".github/scripts/check_container_build_matrix/**"
       - ".github/workflows/container-build-matrix-check.yml"
+
 jobs:
   check-container-build-matrix:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4.2.2
 
       - name: Set up Python and uv
         uses: ./.github/actions/setup-python-ci

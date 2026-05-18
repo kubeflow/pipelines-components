@@ -112,19 +112,16 @@ class TestParseMatrixContexts:
         )
         assert parse_matrix_contexts(wf) == set()
 
-    # FIX 3a: New test — malformed YAML triggers yaml.YAMLError
     def test_invalid_yaml_returns_empty(self, tmp_path):
         """Returns empty set when YAML is malformed."""
         wf = _write(tmp_path / ".github/workflows/container-build.yml", ": : :\n  - [")
         assert parse_matrix_contexts(wf) == set()
 
-    # FIX 3b: New test — empty file causes yaml.safe_load to return None
     def test_null_yaml_returns_empty(self, tmp_path):
         """Returns empty set when YAML file is empty."""
         wf = _write(tmp_path / ".github/workflows/container-build.yml", "")
         assert parse_matrix_contexts(wf) == set()
 
-    # FIX 3c: New test — non-dict entries in include list are skipped
     def test_non_dict_include_entry_skipped(self, tmp_path):
         """Skips non-dict entries in the include list."""
         wf = _write(
@@ -206,7 +203,6 @@ class TestCheck:
         _, results = check(tmp_path, ["components"], wf)
         suggestion_normalized = results[0]["suggestion"].replace("\\", "/")
         assert "components/cat/comp" in suggestion_normalized
-        # Verify indentation matches container-build.yml (10-space for -, 12-space for context)
         assert "          - name:" in suggestion_normalized
         assert "            context:" in suggestion_normalized
 
@@ -243,3 +239,13 @@ class TestCheck:
         all_matched, results = check(tmp_path, ["components"], wf)
         assert all_matched
         assert results == []
+
+    def test_duplicate_suggestion_not_emitted(self, tmp_path):
+        """When both Containerfile and Dockerfile exist in same dir, suggestion shown once."""
+        _write(tmp_path / "components/cat/comp/Containerfile", "FROM python:3.11")
+        _write(tmp_path / "components/cat/comp/Dockerfile", "FROM python:3.11")
+        wf = _make_workflow(tmp_path, [])
+        all_matched, results = check(tmp_path, ["components"], wf)
+        assert not all_matched
+        suggestions = [r for r in results if "suggestion" in r]
+        assert len(suggestions) == 1
