@@ -120,7 +120,8 @@ def check(
         else:
             all_matched = False
             name = rel_dir.replace("/", "-").replace("\\", "-")
-            suggestion = f"        - name: {name}\n          context: {rel_dir}"
+            # FIX 1: Indentation matches actual container-build.yml (10-space / 12-space)
+            suggestion = f"          - name: {name}\n            context: {rel_dir}"
             results.append(
                 {
                     "file": str(cf.relative_to(repo_root)),
@@ -132,14 +133,10 @@ def check(
     return all_matched, results
 
 
-def _print_results(results: list[dict], all_matched: bool, workflow_path: str, use_emoji: bool = True) -> None:
+# FIX 2: Removed dead use_emoji parameter (--no-emoji flag was removed in earlier review)
+def _print_results(results: list[dict], all_matched: bool, workflow_path: str) -> None:
     """Print check results to stdout."""
-    check_icon = "🔍" if use_emoji else "[CHECK]"
-    ok_icon = "✅" if use_emoji else "[OK]"
-    skip_icon = "⏭️" if use_emoji else "[SKIP]"
-    fail_icon = "❌" if use_emoji else "[FAIL]"
-
-    print(f"{check_icon} Checking container build matrix entries in {workflow_path}...")
+    print(f"🔍 Checking container build matrix entries in {workflow_path}...")
 
     unmatched = [r for r in results if r["status"] == "unmatched"]
     ignored = [r for r in results if r["status"] == "ignored"]
@@ -148,19 +145,19 @@ def _print_results(results: list[dict], all_matched: bool, workflow_path: str, u
     if ignored:
         print()
         for r in ignored:
-            print(f"  {skip_icon} {r['file']} (ignored via {IGNORE_FILENAME})")
+            print(f"  ⏭️ {r['file']} (ignored via {IGNORE_FILENAME})")
 
     if all_matched:
         print()
-        print(f"{ok_icon} All Containerfiles/Dockerfiles have a matching matrix entry ({len(ok)} checked)")
+        print(f"✅ All Containerfiles/Dockerfiles have a matching matrix entry ({len(ok)} checked)")
         return
 
     print()
     for r in unmatched:
-        print(f"  {fail_icon} {r['file']} has no matching entry in the container-build matrix")
+        print(f"  ❌ {r['file']} has no matching entry in the container-build matrix")
 
     print()
-    print(f"{fail_icon} Some Containerfiles/Dockerfiles are not registered in the container-build matrix.")
+    print("❌ Some Containerfiles/Dockerfiles are not registered in the container-build matrix.")
     print(f"   Add the following entries to the strategy.matrix.include section of {workflow_path}:")
     print()
     for r in unmatched:

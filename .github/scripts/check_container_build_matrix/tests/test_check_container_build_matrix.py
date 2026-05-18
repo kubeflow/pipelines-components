@@ -112,6 +112,39 @@ class TestParseMatrixContexts:
         )
         assert parse_matrix_contexts(wf) == set()
 
+    # FIX 3a: New test — malformed YAML triggers yaml.YAMLError
+    def test_invalid_yaml_returns_empty(self, tmp_path):
+        """Returns empty set when YAML is malformed."""
+        wf = _write(tmp_path / ".github/workflows/container-build.yml", ": : :\n  - [")
+        assert parse_matrix_contexts(wf) == set()
+
+    # FIX 3b: New test — empty file causes yaml.safe_load to return None
+    def test_null_yaml_returns_empty(self, tmp_path):
+        """Returns empty set when YAML file is empty."""
+        wf = _write(tmp_path / ".github/workflows/container-build.yml", "")
+        assert parse_matrix_contexts(wf) == set()
+
+    # FIX 3c: New test — non-dict entries in include list are skipped
+    def test_non_dict_include_entry_skipped(self, tmp_path):
+        """Skips non-dict entries in the include list."""
+        wf = _write(
+            tmp_path / ".github/workflows/container-build.yml",
+            """\
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - null
+          - name: valid
+            context: components/valid
+""",
+        )
+        contexts = parse_matrix_contexts(wf)
+        contexts_normalized = {c.replace("\\", "/") for c in contexts}
+        assert len(contexts_normalized) == 1
+        assert "components/valid" in contexts_normalized
+
 
 # ---------------------------------------------------------------------------
 # load_ignore_list
@@ -167,12 +200,15 @@ class TestCheck:
         assert "suggestion" in results[0]
 
     def test_suggestion_contains_context(self, tmp_path):
-        """Suggestion includes the correct context path."""
+        """Suggestion includes the correct context path and proper indentation."""
         _write(tmp_path / "components/cat/comp/Containerfile", "FROM python:3.11")
         wf = _make_workflow(tmp_path, [])
         _, results = check(tmp_path, ["components"], wf)
         suggestion_normalized = results[0]["suggestion"].replace("\\", "/")
         assert "components/cat/comp" in suggestion_normalized
+        # Verify indentation matches container-build.yml (10-space for -, 12-space for context)
+        assert "          - name:" in suggestion_normalized
+        assert "            context:" in suggestion_normalized
 
     def test_ignored_path_is_skipped(self, tmp_path):
         """Skips container files listed in the ignore file."""
