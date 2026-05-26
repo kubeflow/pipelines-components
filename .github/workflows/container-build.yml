@@ -3,6 +3,8 @@ name: Build and Push Container Images
 
 on:
   push:
+    paths-ignore:
+      - '**/OWNERS'
   pull_request:
     paths:
       - 'docs/examples/**'
