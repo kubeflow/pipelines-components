@@ -11,7 +11,7 @@ from kfp import dsl
 @dsl.component(
     base_image="registry.access.redhat.com/ubi9/python-311:latest",
     packages_to_install=[
-        "lm-eval[vllm]",  # The core harness with vLLM backend
+        "lm-eval",  # The core harness (CPU/HF backend — no ray/vLLM dependency)
         "unitxt",  # For IBM/generic dataset recipes
         "sacrebleu",  # For translation/BLEU metrics
         "rouge-score",  # For ROUGE metrics (summarization)
@@ -83,9 +83,13 @@ def universal_llm_evaluator(
     from lm_eval.api.instance import Instance
     from lm_eval.api.metrics import mean
     from lm_eval.api.registry import get_model
-    from lm_eval.api.task import TaskConfig
+    from lm_eval.api.task import Task, TaskConfig
     from lm_eval.evaluator import evaluate
     from lm_eval.tasks import get_task_dict
+
+    # lm-eval >= 0.4 moved Task out of the tasks module — patch it back for compatibility
+    if not hasattr(tasks, "Task"):
+        tasks.Task = Task
 
     # --- 1. Setup Logging ---
     logging.basicConfig(
@@ -406,7 +410,7 @@ def universal_llm_evaluator(
     if not final_model_path:
         raise ValueError("No model provided! You must pass either 'model_path' (string) or 'model_artifact' (input).")
 
-    # Verify model directory has config.json (required by vLLM)
+    # Verify model directory has config.json (required by HF)
     config_path = os.path.join(final_model_path, "config.json")
     if not os.path.exists(config_path):
         logger.error(f"Model directory missing config.json: {final_model_path}")
@@ -523,19 +527,18 @@ def universal_llm_evaluator(
     logger.info(f"Total tasks to evaluate: {len(task_dict)}")
 
     # --- 6. Load Model ---
-    logger.info("Loading model with vLLM backend...")
+    logger.info("Loading model with HF backend...")
     start_time = time.time()
 
     try:
-        vllm_model_args = {
+        hf_model_args = {
             "pretrained": final_model_path,
             "trust_remote_code": True,
-            "gpu_memory_utilization": 0.8,
             "dtype": "auto",
         }
-        vllm_model_args.update(m_args)
+        hf_model_args.update(m_args)
 
-        model_class = get_model("vllm")
+        model_class = get_model("hf")
 
         if batch_size == "auto":
             bs = "auto"
@@ -547,10 +550,10 @@ def universal_llm_evaluator(
 
         additional_config = {
             "batch_size": bs,
-            "device": None,
+            "device": "cpu",
         }
 
-        loaded_model = model_class.create_from_arg_obj(vllm_model_args, additional_config)
+        loaded_model = model_class.create_from_arg_obj(hf_model_args, additional_config)
         logger.info(f"Model loaded successfully in {time.time() - start_time:.2f}s")
     except Exception as e:
         logger.error(f"Failed to load model: {e}")

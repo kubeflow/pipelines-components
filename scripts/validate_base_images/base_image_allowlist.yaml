@@ -10,8 +10,7 @@
 # - allowed_images: exact image strings
 # - allowed_image_patterns: list of regex patterns matched against the full image
 allowed_images:
-  - 'quay.io/opendatahub/odh-training-th04-cpu-torch29-py312-rhel9:cpu-3.3'
-  - 'registry.access.redhat.com/ubi9/python-311:latest'
+  - 'quay.io/opendatahub/odh-th06-cpu-torch291-py312:odh-3.4'
 allowed_image_patterns:
   - '^ghcr\.io/kubeflow/.*$'
   - '^python:\d+\.\d+.*$'

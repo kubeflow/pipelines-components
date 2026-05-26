@@ -18,7 +18,7 @@ _SHARED_DIR = os.path.join(os.path.dirname(__file__), "..", "shared")
 
 
 @dsl.component(
-    base_image="quay.io/opendatahub/odh-training-th04-cpu-torch29-py312-rhel9:cpu-3.3",
+    base_image="quay.io/opendatahub/odh-th06-cpu-torch291-py312:odh-3.4",
     packages_to_install=[
         "kubernetes",
         "olot",
@@ -359,13 +359,13 @@ def train_model(
 
         params = _params()
 
-        def _train_func(p):
+        def _train_func(**p):
             import os
 
             from training_hub import lora_sft as tr
 
             print("[PY] Launching LoRA training...", flush=True)
-            result = tr(**(p or {}))
+            result = tr(**p)
 
             # Merge LoRA adapter weights into base model for eval/deployment compatibility.
             # LoRA training saves adapter-only files (adapter_config.json, adapter_model.safetensors)
