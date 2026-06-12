@@ -1,27 +1,64 @@
 import argparse
+import json
 import logging
 import sys
 from datetime import datetime, timezone
 from itertools import pairwise
 from pathlib import Path
+from typing import Any
 
+import jsonschema
+import jsonschema.exceptions
 import yaml
-from semver import Version
-
-# The following ordered fields are required in a metadata.yaml file.
-REQUIRED_FIELDS = ["name", "stability", "dependencies", "lastVerified"]
-# The following fields are optional in a metadata.yaml file.
-OPTIONAL_FIELDS = ["tags", "ci", "links"]
-STABILITY_OPTIONS = ["experimental", "alpha", "beta", "stable"]
-# 'Dependencies' must contain 'kubeflow' and can contain 'external_services'.
-DEPENDENCIES_FIELDS = ["kubeflow", "external_services"]
-# A given dependency must contain 'name' and 'version' fields.
-DEPENDENCY_REQUIRED_FIELDS = ["name", "version"]
-# Comparison operators for dependency versions.
-COMPARISON = {">=", "<=", "=="}
 
 OWNERS = "OWNERS"
 METADATA = "metadata.yaml"
+
+
+_jsonschema_format_checker = jsonschema.FormatChecker()
+
+default_date_time_checker = _jsonschema_format_checker.checkers["date-time"][0]
+
+
+@_jsonschema_format_checker.checks("date-time", raises=ValueError)
+def check_date_time(instance: Any) -> bool:
+    """Performs additional validation of instances marked with format: date-time.
+
+    It is checked whether:
+        - the instance is in valid RFC-3339 format
+        - the instance references date no older than one year (exclusive)
+
+    Args:
+        instance: instance to validate
+    Raises:
+        ValidationError when validation fails
+    Returns:
+        A boolean stating whether validation succeeded or not.
+    """
+    if not default_date_time_checker(instance):
+        return False
+
+    now = datetime.now(tz=timezone.utc)
+    if (now - datetime.fromisoformat(instance)).days >= 365:
+        raise ValueError(f"'{instance}' references a date older than one year (which is considered not valid).")
+
+    return True
+
+
+def timestamp_as_is_constructor(loader, node):
+    """A constructor is a function that converts a node of a YAML representation graph to a native Python object.
+
+    Here we want to return a scalar representation of a node for timestamp-tagged nodes
+    (instead of the default conversion to datetime.datetime Python object).
+
+    Args:
+        loader: YAML loader
+        node: YAML representation graph node being processed
+    """
+    return loader.construct_scalar(node)
+
+
+yaml.add_constructor("tag:yaml.org,2002:timestamp", timestamp_as_is_constructor, Loader=yaml.SafeLoader)
 
 
 class ValidationError(Exception):
@@ -158,217 +195,16 @@ def validate_metadata_yaml(filepath: Path):
     with open(filepath) as f:
         metadata = yaml.safe_load(f)
 
-        # Validate metadata.yaml has been verified within one year of the current date.
-        if "lastVerified" not in metadata:
-            raise ValidationError(
-                f"Metadata at {filepath} has corresponding metadata.yaml with no 'lastVerified' value."
-            )
-
-        last_verified = metadata.get("lastVerified")
-        if not validate_date_verified(last_verified):
-            raise ValidationError(
-                f"Metadata at {filepath} has corresponding metadata.yaml with invalid "
-                f"'lastVerified' value: {last_verified}."
-            )
-
-        # Validate required fields and their corresponding values.
-        validate_required_fields(metadata)
-
-
-def validate_date_verified(last_verified: datetime) -> bool:
-    """Validate that the input date is RFC-3339-formatted and within 1 year of the current date.
-
-    Args:
-        last_verified: Input datetime date to be validated.
-
-    Returns:
-        bool: True if the input date is valid, False otherwise.
-
-    Examples:
-        '2025-03-15T00:00:00Z'  -> True [As of November 2025]
-        '2025-03-15'            -> False
-        '2024-03-15T00:00:00Z'  -> False
-    """
-    # Validate input date formatting.
-    if not isinstance(last_verified, datetime):
-        logging.error(f"'lastVerified' should be format YYYY-MM-DDT00:00:00Z, but instead is: {last_verified}.")
-        return False
-    # Validate input date to be within 1 year of the current date.
-    today = datetime.now(timezone.utc)
-    delta = abs((today - last_verified).days)
-    if delta >= 365:
-        logging.error(f"'lastVerified' should be within 1 year of current date, but is {delta} days over.")
-        return False
-    return True
-
-
-def validate_required_fields(metadata: dict):
-    """Validates that all required fields are present in the input dictionary and have valid values.
-
-    Also validates that no invalid fields are present.
-
-    Args:
-        metadata: dictionary object containing nested metadata fields.
-
-    Raises:
-        ValidationError: If validation fails.
-    """
-    # Convert metadata keys to a list for comparison purposes.
-    input_metadata_fields = list(metadata.keys())
-    # Optional fields should not be validated against required fields. Remove optional fields for this check.
-    for field in OPTIONAL_FIELDS:
-        if field in input_metadata_fields:
-            input_metadata_fields.remove(field)
-
-    # Retrieve name from metadata.
-    name = metadata.get("name")
-    if name is None:
-        raise ValidationError(f"Missing required field 'name' in {METADATA}.")
-    if not isinstance(name, str):
-        type_name = type(name).__name__
-        raise ValidationError(
-            f"{type_name} value identified in field 'name' in {METADATA}: '{name}'. Value for 'name' must be string."
-        )
-
-    # Convert metadata keys to a set and compare against REQUIRED_FIELDS set.
-    input_fields_set = set(input_metadata_fields)
-    required_fields_set = set(REQUIRED_FIELDS)
-    if required_fields_set != input_fields_set:
-        missing_fields = required_fields_set - input_fields_set
-        if len(missing_fields) > 0:
-            raise ValidationError(f"Missing required field(s) in {METADATA} for '{name}': {missing_fields}.")
-        extra_fields = input_fields_set - required_fields_set
-        if len(extra_fields) > 0:
-            raise ValidationError(f"Unexpected field(s) in {METADATA} for '{name}': {extra_fields}.")
-    # Compare input fields against REQUIRED FIELDS as lists to verify elements are ordered correctly.
-    if list(input_metadata_fields) != REQUIRED_FIELDS:
-        raise ValidationError(
-            f"Field(s) located incorrectly in {METADATA} for '{name}'. Expected order is {REQUIRED_FIELDS}."
-        )
-
-    # Validate field values.
-    for field in metadata:
-        value_type = type(metadata.get(field)).__name__
-
-        if field == "stability":
-            stability_val = metadata.get("stability")
-            if stability_val not in STABILITY_OPTIONS:
-                raise ValidationError(
-                    f"Invalid 'stability' value in {METADATA} for '{name}': '{stability_val}'. "
-                    f"Expected one of: {STABILITY_OPTIONS}."
-                )
-
-        elif field == "dependencies":
-            # Dependencies should be a dictionary.
-            dependency_val = metadata.get("dependencies")
-            if not isinstance(dependency_val, dict):
-                raise ValidationError(
-                    f"{value_type} value identified for field 'dependencies' in {METADATA} "
-                    f"for '{name}'. Value must be array."
-                )
-            dependency_types = set(dependency_val.keys())
-
-            # Dependencies should contain 'kubeflow' and can contain 'external_services'.
-            if not (dependency_types == {"kubeflow"} or dependency_types == {"kubeflow", "external_services"}):
-                raise ValidationError(
-                    f"The following field(s) were found in dependencies: {list(dependency_val.keys())}. "
-                    f"Expected {DEPENDENCIES_FIELDS}."
-                )
-
-            # Kubeflow Pipelines is a required dependency.
-            kf_dependencies = dependency_val.get("kubeflow")
-            ext_dependencies = dependency_val.get("external_services")
-            if not isinstance(kf_dependencies, list) or (
-                ext_dependencies is not None and not isinstance(ext_dependencies, list)
-            ):
-                raise ValidationError(
-                    f"Dependency sub-types for '{name}' should contain lists but instead are "
-                    f"{type(kf_dependencies)} and {type(ext_dependencies)}."
-                )
-            kfp_present = any(d.get("name") == "Pipelines" for d in kf_dependencies)
-            if not kfp_present:
-                raise ValidationError(f"{METADATA} for '{name}' is missing Kubeflow Pipelines dependency.")
-
-            for dependency_type in [kf_dependencies, ext_dependencies]:
-                if dependency_type is None:
-                    continue
-                for dependency in dependency_type:
-                    for field in DEPENDENCY_REQUIRED_FIELDS:
-                        if field not in dependency:
-                            raise ValidationError(f"Missing required field '{field}' in dependency: {dependency}.")
-
-            # Dependency versions must be correctly formatted by semantic versioning.
-            invalid_dependencies = get_invalid_versions(kf_dependencies) + get_invalid_versions(ext_dependencies)
-            if len(invalid_dependencies) > 0:
-                raise ValidationError(
-                    f"{METADATA} for '{name}' contains one or more dependencies with invalid "
-                    f"semantic versioning: {invalid_dependencies}."
-                )
-
-        elif field == "tags":
-            tags_val = metadata.get("tags")
-            if not (isinstance(tags_val, list)):
-                raise ValidationError(
-                    f"{value_type} value identified in field 'tags' in {METADATA} for '{name}'. "
-                    f"Value must be string array."
-                )
-            if not all(isinstance(item, str) for item in tags_val):
-                raise ValidationError(
-                    f"The following tags in {METADATA} for '{name}': {tags_val}. Expected an array of scalar strings."
-                )
-        elif field == "ci":
-            ci_val = metadata.get("ci")
-            if not isinstance(ci_val, dict):
-                raise ValidationError(
-                    f"{value_type} value identified for field 'ci' in {METADATA} for '{name}'. "
-                    f"Value must be dictionary."
-                )
-            keys = set(ci_val.keys())
-            if not (keys == {"skip_dependency_probe"}):
-                raise ValidationError(
-                    f"The following field(s) were found in field 'ci' in {METADATA} for '{name}': "
-                    f"{list(ci_val.keys())}. Only field 'skip_dependency_probe' is valid."
-                )
-            probe = ci_val.get("skip_dependency_probe")
-            if probe is not None and not isinstance(probe, bool):
-                raise ValidationError(
-                    f"{METADATA} expects a boolean value for skip_dependency_probe but "
-                    f"{type(probe).__name__} value provided: '{probe}'."
-                )
-
-        elif field == "links":
-            links_value = metadata.get("links")
-            if not isinstance(links_value, dict):
-                raise ValidationError(
-                    f"{value_type} value identified in field 'links' in {METADATA} for '{name}'. "
-                    f"Value must be dictionary."
-                )
-
-
-def get_invalid_versions(dependencies: list[dict]) -> list[dict]:
-    """Return a list of the input dependencies that contain invalid semantic versioning.
-
-    Args:
-        dependencies: list[dict] of dependencies to be validated
-
-    Return:
-        dependencies: list[dict] of invalid dependencies
-    """
-    if dependencies is None:
-        return []
-    invalid: list[dict] = []
-    for dependency in dependencies:
-        version = dependency.get("version")
-        # If the dependency version is null or non-string, it is invalid.
-        if version is None or not isinstance(version, str):
-            invalid.append(dependency)
-            continue
-        # Strip leading '==', '>=' or '<=' from dependency version, if applicable.
-        if len(version) > 1 and version[:2] in COMPARISON:
-            version = version[2:]
-        if not Version.is_valid(version):
-            invalid.append(dependency)
-    return invalid
+    schema = json.loads((Path(__file__).parent / "metadata_schema.json").read_text())
+    try:
+        jsonschema.validate(metadata, schema, format_checker=_jsonschema_format_checker)
+    except jsonschema.exceptions.ValidationError as e:
+        extra_info = ""
+        # failed fomat checker as per https://python-jsonschema.readthedocs.io/en/stable/errors/#jsonschema.exceptions.ValidationError.cause
+        if e.cause:
+            extra_info = e.cause
+        schema_path = "".join([f"['{p}']" for p in e.schema_path])
+        raise ValidationError(f"File '{filepath}' failed validation: {extra_info} {e.message} in {schema_path}")
 
 
 def main():
