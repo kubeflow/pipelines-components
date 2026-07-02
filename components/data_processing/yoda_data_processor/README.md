@@ -38,7 +38,6 @@ Downloads the yoda_sentences dataset from HuggingFace, renames columns to match 
   - Approvers:
     - mprahl
     - nsingla
-  - Reviewers:
     - HumairAK
 
 ## Additional Resources 📚
