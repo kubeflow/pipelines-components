@@ -13,7 +13,7 @@ dependencies:
 tags:
   - training
   - evaluation
-lastVerified: 2025-03-15T00:00:00Z
+lastVerified: 3025-03-15T00:00:00Z
 ci: invalid-ci-value
 links:
   documentation: https://kubeflow.org/components/happy-path-component
