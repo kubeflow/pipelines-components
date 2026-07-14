@@ -1,4 +1,5 @@
 import argparse
+import functools
 import json
 import logging
 import sys
@@ -59,6 +60,12 @@ def timestamp_as_is_constructor(loader, node):
 
 
 yaml.add_constructor("tag:yaml.org,2002:timestamp", timestamp_as_is_constructor, Loader=yaml.SafeLoader)
+
+
+@functools.lru_cache(maxsize=1)
+def load_schema() -> dict:
+    """Loads schema to validate components- and pipelines-level metadata.yaml files."""
+    return json.loads((Path(__file__).parent / "metadata_schema.json").read_text())
 
 
 class ValidationError(Exception):
@@ -195,12 +202,11 @@ def validate_metadata_yaml(filepath: Path):
     with open(filepath) as f:
         metadata = yaml.safe_load(f)
 
-    schema = json.loads((Path(__file__).parent / "metadata_schema.json").read_text())
     try:
-        jsonschema.validate(metadata, schema, format_checker=_jsonschema_format_checker)
+        jsonschema.validate(metadata, load_schema(), format_checker=_jsonschema_format_checker)
     except jsonschema.exceptions.ValidationError as e:
         extra_info = ""
-        # failed fomat checker as per https://python-jsonschema.readthedocs.io/en/stable/errors/#jsonschema.exceptions.ValidationError.cause
+        # failed format checker as per https://python-jsonschema.readthedocs.io/en/stable/errors/#jsonschema.exceptions.ValidationError.cause
         if e.cause:
             extra_info = e.cause
         schema_path = "".join([f"['{p}']" for p in e.schema_path])
