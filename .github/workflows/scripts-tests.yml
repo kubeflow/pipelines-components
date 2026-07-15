@@ -9,11 +9,11 @@ on:
     paths:
       - '.github/scripts/**'
       - 'scripts/**'
+      - 'test_data/**'
       - '.github/workflows/scripts-tests.yml'
       - '.github/actions/setup-python-ci/**'
       - 'pyproject.toml'
       - 'uv.lock'
-      - '!**/OWNERS'
 
 jobs:
   test-scripts:
