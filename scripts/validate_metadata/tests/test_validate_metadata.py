@@ -7,14 +7,15 @@ from typing import Optional
 
 import pytest
 
-from . import validate_metadata
-from .validate_metadata import ValidationError
+from .. import validate_metadata
+from ..validate_metadata import ValidationError
 
-INVALID_METADATA_DIR = "scripts/validate_metadata/test_data/metadata/invalid/"
-VALID_METADATA_DIR = "scripts/validate_metadata/test_data/metadata/valid/"
-INVALID_OWNERS_DIR = "scripts/validate_metadata/test_data/owners/invalid/"
-VALID_OWNERS_DIR = "scripts/validate_metadata/test_data/owners/valid/"
-TEST_DIRS = "scripts/validate_metadata/test_data/directories_metadata/"
+TEST_DATA = Path(__file__).parent / "resources"
+INVALID_METADATA_DIR = TEST_DATA / "metadata" / "invalid"
+VALID_METADATA_DIR = TEST_DATA / "metadata" / "valid"
+INVALID_OWNERS_DIR = TEST_DATA / "owners" / "invalid"
+VALID_OWNERS_DIR = TEST_DATA / "owners" / "valid"
+TEST_DIRS = TEST_DATA / "directories_metadata"
 
 
 @dataclass
@@ -69,7 +70,7 @@ class ValidateMetadataTestDir:
 )
 def test_validate_metadata_yaml_success(test_data):
     """Test that valid metadata.yaml files pass validation."""
-    validate_metadata.validate_metadata_yaml(filepath=Path(VALID_METADATA_DIR + test_data.file_name))
+    validate_metadata.validate_metadata_yaml(filepath=VALID_METADATA_DIR / test_data.file_name)
     # Asserts that no exceptions have been raised.
     assert True
 
@@ -80,24 +81,17 @@ def test_validate_metadata_yaml_success(test_data):
         ValidateMetadataTestFile(
             file_name="this_file_does_not_exist.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "scripts/validate_metadata/test_data/metadata/invalid/this_file_does_not_exist.yaml "
-                "is not a valid filepath."
-            ),
+            expected_exception_msg=re.escape("this_file_does_not_exist.yaml is not a valid filepath."),
         ),
         ValidateMetadataTestFile(
             file_name="missing_verified_date.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "Metadata at scripts/validate_metadata/test_data/metadata/invalid/missing_verified_date.yaml "
-                "has corresponding metadata.yaml with no 'lastVerified' value."
-            ),
+            expected_exception_msg=re.escape("has corresponding metadata.yaml with no 'lastVerified' value."),
         ),
         ValidateMetadataTestFile(
             file_name="invalid_verified_date.yaml",
             expected_exception=ValidationError,
             expected_exception_msg=re.escape(
-                "Metadata at scripts/validate_metadata/test_data/metadata/invalid/invalid_verified_date.yaml "
                 "has corresponding metadata.yaml with invalid 'lastVerified' value: 2024-11-20T0."
             ),
         ),
@@ -105,7 +99,6 @@ def test_validate_metadata_yaml_success(test_data):
             file_name="passed_verified_date.yaml",
             expected_exception=ValidationError,
             expected_exception_msg=re.escape(
-                "Metadata at scripts/validate_metadata/test_data/metadata/invalid/passed_verified_date.yaml "
                 "has corresponding metadata.yaml with invalid 'lastVerified' value: 2024-11-10 00:00:00+00:00."
             ),
         ),
@@ -133,7 +126,7 @@ def test_validate_metadata_yaml_success(test_data):
             expected_exception=ValidationError,
             expected_exception_msg=re.escape(
                 "Invalid 'stability' value in metadata.yaml for 'invalid-stability': 'invalid-stability'. "
-                "Expected one of: ['alpha', 'beta', 'stable']."
+                "Expected one of: ['experimental', 'alpha', 'beta', 'stable']."
             ),
         ),
         ValidateMetadataTestFile(
@@ -226,7 +219,7 @@ def test_validate_metadata_yaml_success(test_data):
 def test_validate_metadata_yaml_failure(test_data):
     """Test that invalid metadata.yaml files raise appropriate validation errors."""
     with pytest.raises(test_data.expected_exception, match=test_data.expected_exception_msg):
-        validate_metadata.validate_metadata_yaml(filepath=Path(INVALID_METADATA_DIR + test_data.file_name))
+        validate_metadata.validate_metadata_yaml(filepath=INVALID_METADATA_DIR / test_data.file_name)
 
 
 @pytest.mark.parametrize(
@@ -245,7 +238,7 @@ def test_validate_metadata_yaml_failure(test_data):
 )
 def test_validate_owners_yaml_success(test_data):
     """Test that valid OWNERS files pass validation."""
-    validate_metadata.validate_owners_file(filepath=Path(VALID_OWNERS_DIR + test_data.file_name))
+    validate_metadata.validate_owners_file(filepath=VALID_OWNERS_DIR / test_data.file_name)
     # Asserts that no exceptions have been raised.
     assert True
 
@@ -256,33 +249,24 @@ def test_validate_owners_yaml_success(test_data):
         ValidateMetadataTestFile(
             file_name="owners_empty.txt",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "OWNERS file at scripts/validate_metadata/test_data/owners/invalid/owners_empty.txt "
-                "requires 1+ approver under heading 'approvers:'."
-            ),
+            expected_exception_msg=re.escape("requires 1+ approver under heading 'approvers:'."),
         ),
         ValidateMetadataTestFile(
             file_name="owners_missing_approvers.txt",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "OWNERS file at scripts/validate_metadata/test_data/owners/invalid/owners_missing_approvers.txt "
-                "requires 1+ approver under heading 'approvers:'."
-            ),
+            expected_exception_msg=re.escape("requires 1+ approver under heading 'approvers:'."),
         ),
         ValidateMetadataTestFile(
             file_name="owners_typo_approvers.txt",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "OWNERS file at scripts/validate_metadata/test_data/owners/invalid/owners_typo_approvers.txt "
-                "requires 1+ approver under heading 'approvers:'."
-            ),
+            expected_exception_msg=re.escape("requires 1+ approver under heading 'approvers:'."),
         ),
     ],
 )
 def test_validate_owners_yaml_failure(test_data):
     """Test that invalid OWNERS files raise appropriate validation errors."""
     with pytest.raises(ValidationError, match=test_data.expected_exception_msg):
-        validate_metadata.validate_owners_file(filepath=Path(INVALID_OWNERS_DIR + test_data.file_name))
+        validate_metadata.validate_owners_file(filepath=INVALID_OWNERS_DIR / test_data.file_name)
 
 
 @pytest.mark.parametrize(
@@ -299,7 +283,7 @@ def test_validate_owners_yaml_failure(test_data):
 def test_validate_dir_failure(test_data):
     """Test that non-existent or non-directory paths raise appropriate errors."""
     with pytest.raises(test_data.expected_exception, match=test_data.expected_exception_msg):
-        validate_metadata.validate_dir(path=TEST_DIRS + test_data.dir_name)
+        validate_metadata.validate_dir(path=str(TEST_DIRS / test_data.dir_name))
 
 
 @pytest.mark.parametrize(
@@ -307,8 +291,8 @@ def test_validate_dir_failure(test_data):
 )
 def test_validate_dir_success(test_data):
     """Test that valid directories pass validation."""
-    files_present = validate_metadata.validate_dir(path=TEST_DIRS + test_data.dir_name)
-    assert files_present == Path("scripts/validate_metadata/test_data/directories_metadata/valid")
+    files_present = validate_metadata.validate_dir(path=str(TEST_DIRS / test_data.dir_name))
+    assert files_present == TEST_DIRS / "valid"
 
 
 class TestFindDirsToValidate:
@@ -316,24 +300,24 @@ class TestFindDirsToValidate:
 
     def test_direct_component_returns_self(self):
         """When dir has metadata.yaml, return itself."""
-        result = validate_metadata.find_dirs_to_validate(Path(TEST_DIRS + "valid"))
-        assert result == [Path(TEST_DIRS + "valid")]
+        result = validate_metadata.find_dirs_to_validate(TEST_DIRS / "valid")
+        assert result == [TEST_DIRS / "valid"]
 
     def test_subcategory_returns_child_dirs(self):
         """When dir is a subcategory, return child dirs with metadata.yaml."""
-        result = validate_metadata.find_dirs_to_validate(Path(TEST_DIRS + "subcategory_valid"))
+        result = validate_metadata.find_dirs_to_validate(TEST_DIRS / "subcategory_valid")
         assert len(result) == 1
         assert result[0].name == "comp_a"
 
     def test_missing_owners_file_no_children_returns_self(self):
         """Dir with only metadata.yaml (no children with metadata) is returned as-is for validation."""
-        result = validate_metadata.find_dirs_to_validate(Path(TEST_DIRS + "missing_owners_file"))
-        assert result == [Path(TEST_DIRS + "missing_owners_file")]
+        result = validate_metadata.find_dirs_to_validate(TEST_DIRS / "missing_owners_file")
+        assert result == [TEST_DIRS / "missing_owners_file"]
 
     def test_missing_metadata_file_no_children_raises(self):
         """Dir with only OWNERS and no metadata.yaml or children raises error."""
         with pytest.raises(argparse.ArgumentTypeError, match="does not contain a metadata.yaml"):
-            validate_metadata.find_dirs_to_validate(Path(TEST_DIRS + "missing_metadata_file"))
+            validate_metadata.find_dirs_to_validate(TEST_DIRS / "missing_metadata_file")
 
 
 class TestSubcategoryOwnersValidation:
@@ -341,7 +325,7 @@ class TestSubcategoryOwnersValidation:
 
     def test_subcategory_valid_owners_passes(self, monkeypatch):
         """A subcategory with valid OWNERS should not flag errors for the subcategory itself."""
-        subcategory_dir = Path(TEST_DIRS + "subcategory_valid")
+        subcategory_dir = TEST_DIRS / "subcategory_valid"
         monkeypatch.setattr("sys.argv", ["prog", "--dir", str(subcategory_dir)])
 
         # main() returns normally on success (no sys.exit call)
@@ -349,7 +333,7 @@ class TestSubcategoryOwnersValidation:
 
     def test_subcategory_invalid_owners_fails(self, monkeypatch):
         """A subcategory with invalid OWNERS should cause a validation error."""
-        subcategory_dir = Path(TEST_DIRS + "subcategory_invalid_owners")
+        subcategory_dir = TEST_DIRS / "subcategory_invalid_owners"
         monkeypatch.setattr("sys.argv", ["prog", "--dir", str(subcategory_dir)])
 
         with pytest.raises(SystemExit) as exc_info:
@@ -358,7 +342,7 @@ class TestSubcategoryOwnersValidation:
 
     def test_subcategory_missing_owners_fails(self, monkeypatch):
         """A subcategory with no OWNERS file should cause a validation error."""
-        subcategory_dir = Path(TEST_DIRS + "subcategory_missing_owners")
+        subcategory_dir = TEST_DIRS / "subcategory_missing_owners"
         monkeypatch.setattr("sys.argv", ["prog", "--dir", str(subcategory_dir)])
 
         with pytest.raises(SystemExit) as exc_info:

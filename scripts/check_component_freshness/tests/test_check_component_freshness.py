@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from .check_component_freshness import FRESH_DAYS, STALE_DAYS, categorize, parse_date, scan_repo
+from ..check_component_freshness import FRESH_DAYS, STALE_DAYS, categorize, parse_date, scan_repo
 
 
 class TestParsing:

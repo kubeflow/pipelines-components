@@ -43,5 +43,5 @@ uv run scripts/check_component_freshness/check_component_freshness.py . -o repor
 ## Running Tests
 
 ```bash
-uv run --with pytest pytest scripts/check_component_freshness/test_check_component_freshness.py -v
+uv run --with pytest pytest scripts/check_component_freshness/tests/test_check_component_freshness.py -v
 ```
