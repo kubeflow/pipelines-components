@@ -1190,6 +1190,7 @@ dev = [
     { name = "docker" },
     { name = "docstring-parser" },
     { name = "jinja2" },
+    { name = "jsonschema" },
     { name = "kfp-kubernetes" },
     { name = "packaging" },
     { name = "pip" },
@@ -1197,9 +1198,9 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-timeout" },
     { name = "pyyaml" },
+    { name = "rfc3339-validator" },
     { name = "ruff" },
     { name = "sdg-hub" },
-    { name = "semver" },
     { name = "setuptools" },
     { name = "yamllint" },
 ]
@@ -1211,6 +1212,7 @@ test = [
     { name = "docker" },
     { name = "docstring-parser" },
     { name = "jinja2" },
+    { name = "jsonschema" },
     { name = "kfp-kubernetes" },
     { name = "packaging" },
     { name = "pip" },
@@ -1218,8 +1220,8 @@ test = [
     { name = "pytest-cov" },
     { name = "pytest-timeout" },
     { name = "pyyaml" },
+    { name = "rfc3339-validator" },
     { name = "sdg-hub" },
-    { name = "semver" },
     { name = "setuptools" },
 ]
 
@@ -1228,6 +1230,7 @@ requires-dist = [
     { name = "docker", marker = "extra == 'test'" },
     { name = "docstring-parser", marker = "extra == 'test'" },
     { name = "jinja2", marker = "extra == 'test'" },
+    { name = "jsonschema", marker = "extra == 'test'" },
     { name = "kfp", specifier = ">=2.15.2" },
     { name = "kfp-components", extras = ["lint"], marker = "extra == 'dev'" },
     { name = "kfp-components", extras = ["test"], marker = "extra == 'dev'" },
@@ -1238,9 +1241,9 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'test'" },
     { name = "pytest-timeout", marker = "extra == 'test'" },
     { name = "pyyaml", marker = "extra == 'test'" },
+    { name = "rfc3339-validator", marker = "extra == 'test'" },
     { name = "ruff", marker = "extra == 'lint'", specifier = "==0.15.2" },
     { name = "sdg-hub", marker = "extra == 'test'", specifier = ">=0.7.0,<1.0" },
-    { name = "semver", marker = "extra == 'test'" },
     { name = "setuptools", marker = "extra == 'test'" },
     { name = "yamllint", marker = "extra == 'lint'", specifier = "==1.38.0" },
 ]
@@ -2447,6 +2450,18 @@ wheels = [
 ]
 
 [[package]]
+name = "rfc3339-validator"
+version = "0.1.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/28/ea/a9387748e2d111c3c2b275ba970b735e04e15cdb1eb30693b6b5708c4dbd/rfc3339_validator-0.1.4.tar.gz", hash = "sha256:138a2abdf93304ad60530167e51d2dfb9549521a836871b88d7f4695d0022f6b", size = 5513, upload-time = "2021-05-12T16:37:54.178Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7b/44/4e421b96b67b2daff264473f7465db72fbdf36a07e05494f50300cc7b0c6/rfc3339_validator-0.1.4-py2.py3-none-any.whl", hash = "sha256:24f6ec1eda14ef823da9e36ec7113124b39c04d50a4d3d3a3c2859577e7791fa", size = 3490, upload-time = "2021-05-12T16:37:52.536Z" },
+]
+
+[[package]]
 name = "rich"
 version = "14.3.3"
 source = { registry = "https://pypi.org/simple" }
@@ -2613,15 +2628,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c5/85/a0bf9b75239de8e3ca0fa03123ad073ec5ec46e8af7529cca731c76070b8/sdg_hub-0.8.8.tar.gz", hash = "sha256:753dedb011ec1f5ffde4e42645d49cf397ebc50c4e52103724531f2c34ea2da3", size = 7533928, upload-time = "2026-03-13T18:42:36.254Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/22/2f/f8c29d31739c97a638a4bc2cba9adb3d58dfae3eaffbbc13831e6e43d663/sdg_hub-0.8.8-py3-none-any.whl", hash = "sha256:93f42f8d088d9e1e073ed78caf93d73ce36dab03f5aab269d6c9e51ff8db634f", size = 204571, upload-time = "2026-03-13T18:42:33.938Z" },
-]
-
-[[package]]
-name = "semver"
-version = "3.0.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/72/d1/d3159231aec234a59dd7d601e9dd9fe96f3afff15efd33c1070019b26132/semver-3.0.4.tar.gz", hash = "sha256:afc7d8c584a5ed0a11033af086e8af226a9c0b206f313e0301f8dd7b6b589602", size = 269730, upload-time = "2025-01-24T13:19:27.617Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a6/24/4d91e05817e92e3a61c8a21e08fd0f390f5301f1c448b137c57c4bc6e543/semver-3.0.4-py3-none-any.whl", hash = "sha256:9c824d87ba7f7ab4a1890799cec8596f15c1241cb473404ea1cb0c55e4b04746", size = 17912, upload-time = "2025-01-24T13:19:24.949Z" },
 ]
 
 [[package]]
@@ -2909,8 +2915,8 @@ name = "uvicorn"
 version = "0.42.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click" },
-    { name = "h11" },
+    { name = "click", marker = "sys_platform != 'emscripten'" },
+    { name = "h11", marker = "sys_platform != 'emscripten'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e3/ad/4a96c425be6fb67e0621e62d86c402b4a17ab2be7f7c055d9bd2f638b9e2/uvicorn-0.42.0.tar.gz", hash = "sha256:9b1f190ce15a2dd22e7758651d9b6d12df09a13d51ba5bf4fc33c383a48e1775", size = 85393, upload-time = "2026-03-16T06:19:50.077Z" }
 wheels = [

@@ -1,14 +1,12 @@
 import argparse
-import builtins
 import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
 import pytest
-
-from . import validate_metadata
-from .validate_metadata import ValidationError
+import validate_metadata
+from validate_metadata import ValidationError
 
 INVALID_METADATA_DIR = "scripts/validate_metadata/test_data/metadata/invalid/"
 VALID_METADATA_DIR = "scripts/validate_metadata/test_data/metadata/valid/"
@@ -28,7 +26,7 @@ class ValidateMetadataTestFile:
     """
 
     file_name: str
-    expected_exception: Optional[builtins.type[Exception]]
+    expected_exception: Optional[type[Exception]]
     expected_exception_msg: Optional[str]
 
 
@@ -43,7 +41,7 @@ class ValidateMetadataTestDir:
     """
 
     dir_name: str
-    expected_exception: Optional[builtins.type[Exception]]
+    expected_exception: Optional[type[Exception]]
     expected_exception_msg: Optional[str]
 
 
@@ -88,137 +86,148 @@ def test_validate_metadata_yaml_success(test_data):
         ValidateMetadataTestFile(
             file_name="missing_verified_date.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "Metadata at scripts/validate_metadata/test_data/metadata/invalid/missing_verified_date.yaml "
-                "has corresponding metadata.yaml with no 'lastVerified' value."
+            expected_exception_msg=(
+                r"File 'scripts/validate_metadata/test_data/metadata/invalid/missing_verified_date\.yaml'.*"
+                r"'lastVerified' is a required property"
             ),
         ),
         ValidateMetadataTestFile(
             file_name="invalid_verified_date.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "Metadata at scripts/validate_metadata/test_data/metadata/invalid/invalid_verified_date.yaml "
-                "has corresponding metadata.yaml with invalid 'lastVerified' value: 2024-11-20T0."
+            expected_exception_msg=(
+                r"File 'scripts/validate_metadata/test_data/metadata/invalid/invalid_verified_date\.yaml'.*"
+                r"'2024-11-20T0' is not a 'date-time'"
             ),
         ),
         ValidateMetadataTestFile(
             file_name="passed_verified_date.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "Metadata at scripts/validate_metadata/test_data/metadata/invalid/passed_verified_date.yaml "
-                "has corresponding metadata.yaml with invalid 'lastVerified' value: 2024-11-10 00:00:00+00:00."
+            expected_exception_msg=(
+                r"File 'scripts/validate_metadata/test_data/metadata/invalid/passed_verified_date\.yaml'.*"
+                r"'2024-11-10T00:00:00Z' references a date older than one year \(which is considered not valid\)"
             ),
         ),
         ValidateMetadataTestFile(
             file_name="missing_name.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape("Missing required field 'name' in metadata.yaml."),
+            expected_exception_msg=(
+                r"File 'scripts/validate_metadata/test_data/metadata/invalid/missing_name\.yaml'.*"
+                r"'name' is a required property"
+            ),
         ),
         ValidateMetadataTestFile(
             file_name="invalid_name.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "int value identified in field 'name' in metadata.yaml: '2'. Value for 'name' must be string."
+            expected_exception_msg=(
+                r"File 'scripts/validate_metadata/test_data/metadata/invalid/invalid_name\.yaml'.*"
+                r"2 is not of type 'string'"
             ),
         ),
         ValidateMetadataTestFile(
             file_name="missing_stability.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "Missing required field(s) in metadata.yaml for 'missing-stability': {'stability'}."
+            expected_exception_msg=(
+                r"File 'scripts/validate_metadata/test_data/metadata/invalid/missing_stability\.yaml'.*"
+                r"'stability' is a required property"
             ),
         ),
         ValidateMetadataTestFile(
             file_name="invalid_stability.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "Invalid 'stability' value in metadata.yaml for 'invalid-stability': 'invalid-stability'. "
-                "Expected one of: ['alpha', 'beta', 'stable']."
+            expected_exception_msg=(
+                r"File 'scripts/validate_metadata/test_data/metadata/invalid/invalid_stability\.yaml'.*"
+                r"'invalid-stability' is not one of \['experimental', 'alpha', 'beta', 'stable'\]"
             ),
         ),
         ValidateMetadataTestFile(
             file_name="missing_dependencies.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "Missing required field(s) in metadata.yaml for 'missing-dependencies': {'dependencies'}."
+            expected_exception_msg=(
+                r"File 'scripts/validate_metadata/test_data/metadata/invalid/missing_dependencies\.yaml'.*"
+                r"'dependencies' is a required property"
             ),
         ),
         ValidateMetadataTestFile(
             file_name="invalid_dependencies_type.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "str value identified for field 'dependencies' in metadata.yaml for 'invalid-dependencies-type'. "
-                "Value must be array."
+            expected_exception_msg=(
+                r"File 'scripts/validate_metadata/test_data/metadata/invalid/invalid_dependencies_type\.yaml'.*"
+                r"'invalid-dependencies-type' is not of type 'object'"
             ),
         ),
         ValidateMetadataTestFile(
             file_name="invalid_dependencies_category.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "The following field(s) were found in dependencies: "
-                "['kubeflow', 'external_services', 'invalid_dependency_category']. "
-                "Expected ['kubeflow', 'external_services']."
+            expected_exception_msg=(
+                r"File 'scripts/validate_metadata/test_data/metadata/invalid/invalid_dependencies_category\.yaml'.*"
+                r"Additional properties are not allowed"
             ),
         ),
         ValidateMetadataTestFile(
             file_name="missing_kfp_dependency.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "metadata.yaml for 'missing-kfp-dependency' is missing Kubeflow Pipelines dependency."
+            expected_exception_msg=(
+                r"File 'scripts/validate_metadata/test_data/metadata/invalid/missing_kfp_dependency\.yaml'.*"
+                r"does not contain items matching the given schema in "
+                r"\['properties'\]\['dependencies'\]\['properties'\]\['kubeflow'\]\['contains'\]"
             ),
         ),
         ValidateMetadataTestFile(
             file_name="invalid_dependency_semantic_versioning.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "metadata.yaml for 'invalid-dependency-semantic-versioning' contains one or more "
-                "dependencies with invalid semantic versioning: [{'name': 'Argo Workflows', 'version': '3.6'}]."
+            expected_exception_msg=(
+                r"File 'scripts/validate_metadata/"
+                r"test_data/metadata/invalid/invalid_dependency_semantic_versioning\.yaml'.*"
+                r"'3.6' does not match.* in "
+                r"\['properties'\]\['dependencies'\]\['properties'\]\['external_services'\]\['items'\]\['properties'\]\['version'\]\['pattern'\]"
             ),
         ),
         ValidateMetadataTestFile(
             file_name="invalid_tag_type.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "str value identified in field 'tags' in metadata.yaml for 'invalid-tag-type'. "
-                "Value must be string array."
+            expected_exception_msg=(
+                r"File 'scripts/validate_metadata/test_data/metadata/invalid/invalid_tag_type\.yaml'.*"
+                r"'tags' is not of type 'array'"
             ),
         ),
         ValidateMetadataTestFile(
             file_name="invalid_tag_array_type.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "The following tags in metadata.yaml for 'invalid-tag-array-type': [1, 2]. "
-                "Expected an array of scalar strings."
+            expected_exception_msg=(
+                r"File 'scripts/validate_metadata/test_data/metadata/invalid/invalid_tag_array_type\.yaml'.*"
+                r"2 is not of type 'string' in \['properties'\]\['tags'\]\['items'\]\['type'\]"
             ),
         ),
         ValidateMetadataTestFile(
             file_name="invalid_ci.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "str value identified for field 'ci' in metadata.yaml for 'invalid-ci'. Value must be dictionary."
+            expected_exception_msg=(
+                r"File 'scripts/validate_metadata/test_data/metadata/invalid/invalid_ci\.yaml'.*"
+                r"'invalid-ci-value' is not of type 'object'"
             ),
         ),
         ValidateMetadataTestFile(
             file_name="invalid_ci_category.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "The following field(s) were found in field 'ci' in metadata.yaml for 'invalid-ci-category': "
-                "['skip_dependency_probe', 'invalid_ci_category']. Only field 'skip_dependency_probe' is valid"
+            expected_exception_msg=(
+                r"File 'scripts/validate_metadata/test_data/metadata/invalid/invalid_ci_category\.yaml'.*"
+                r"Additional properties are not allowed.*in \['properties'\]\['ci'\]\['additionalProperties'\]"
             ),
         ),
         ValidateMetadataTestFile(
             file_name="invalid_ci_dependency_probe.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "metadata.yaml expects a boolean value for skip_dependency_probe but str value "
-                "provided: 'invalid-probe-value'."
+            expected_exception_msg=(
+                r"File 'scripts/validate_metadata/test_data/metadata/invalid/invalid_ci_dependency_probe\.yaml'.*"
+                r"'invalid-probe-value' is not of type 'boolean'"
             ),
         ),
         ValidateMetadataTestFile(
             file_name="invalid_links.yaml",
             expected_exception=ValidationError,
-            expected_exception_msg=re.escape(
-                "str value identified in field 'links' in metadata.yaml for 'invalid-links'. Value must be dictionary."
+            expected_exception_msg=(
+                r"File 'scripts/validate_metadata/test_data/metadata/invalid/invalid_links\.yaml'.*"
+                r"'https://invalid-link' is not of type 'object'"
             ),
         ),
     ],

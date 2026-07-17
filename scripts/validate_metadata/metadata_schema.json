@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "KFP Component/Pipeline Metadata",
+  "description": "Schema for metadata.yaml files in Kubeflow Pipeline components and pipelines.",
+  "type": "object",
+  "required": [
+    "name",
+    "stability",
+    "dependencies",
+    "lastVerified"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "stability": {
+      "enum": [
+        "experimental",
+        "alpha",
+        "beta",
+        "stable"
+      ]
+    },
+    "dependencies": {
+      "type": "object",
+      "required": [
+        "kubeflow"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kubeflow": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/dependency"
+          },
+          "contains": {
+            "properties": {
+              "name": {
+                "const": "Pipelines"
+              }
+            },
+            "required": [
+              "name"
+            ]
+          }
+        },
+        "external_services": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/dependency"
+          }
+        }
+      }
+    },
+    "lastVerified": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ci": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "skip_dependency_probe": {
+          "type": "boolean"
+        }
+      }
+    },
+    "links": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "dependency": {
+      "type": "object",
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string",
+          "description": "regex pattern for semantic versioning as per: https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string",
+          "pattern": "^(==|>=|<=|~=)?(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+        }
+      }
+    }
+  }
+}
