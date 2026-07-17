@@ -41,7 +41,8 @@ test = [
     "sdg-hub>=0.7.0,<1.0",
     # Required for pipeline validation (validate_examples, validate_base_images)
     "kfp-kubernetes",
-    "jsonschema"
+    "jsonschema",
+    "rfc3339-validator"
 ]
 # Local development (extends test with additional tools)
 dev = [
