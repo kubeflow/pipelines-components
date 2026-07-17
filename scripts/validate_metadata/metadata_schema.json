@@ -16,6 +16,7 @@
     },
     "stability": {
       "enum": [
+        "experimental",
         "alpha",
         "beta",
         "stable"
@@ -73,12 +74,6 @@
     },
     "links": {
       "type": "object"
-    },
-    "managed": {
-      "type": "boolean"
-    },
-    "description": {
-      "type": "string"
     }
   },
   "$defs": {
