@@ -32,7 +32,7 @@ def check_date_time(instance: Any) -> bool:
     Args:
         instance: instance to validate
     Raises:
-        ValidationError when validation fails
+        ValueError when validation fails
     Returns:
         A boolean stating whether validation succeeded or not.
     """

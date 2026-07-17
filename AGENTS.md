@@ -123,7 +123,7 @@ Whole-repo: `make lint` (check) or `make format` (fix).
 | Markdown lint | [`.markdownlint.json`](.markdownlint.json) | [`markdown-lint.yml`](.github/workflows/markdown-lint.yml) |
 | YAML lint | [`.yamllint.yml`](.yamllint.yml) | [`yaml-lint.yml`](.github/workflows/yaml-lint.yml) |
 | Import guard | [`import_exceptions.yaml`](.github/scripts/check_imports/import_exceptions.yaml); see [`CONTRIBUTING.md`](docs/CONTRIBUTING.md#testing-and-quality) | [`ci-checks.yml`](.github/workflows/ci-checks.yml) |
-| Metadata schema | [`CONTRIBUTING.md` (schema)](docs/CONTRIBUTING.md#metadatayaml-schema); keep required field order and fresh `lastVerified` | [`validate-metadata-schema.yml`](.github/workflows/validate-metadata-schema.yml) |
+| Metadata schema | [`CONTRIBUTING.md` (schema)](docs/CONTRIBUTING.md#metadatayaml-schema); keep fresh `lastVerified` | [`validate-metadata-schema.yml`](.github/workflows/validate-metadata-schema.yml) |
 | Base images | [`validate_base_images/README.md`](scripts/validate_base_images/README.md) | [`base-image-check.yml`](.github/workflows/base-image-check.yml) |
 | README sync | [`generate_readme/README.md`](scripts/generate_readme/README.md) | [`readme-check.yml`](.github/workflows/readme-check.yml) |
 
