@@ -1,6 +1,7 @@
 import argparse
 import re
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -67,8 +68,13 @@ class ValidateMetadataTestDir:
         ),
     ],
 )
-def test_validate_metadata_yaml_success(test_data):
+def test_validate_metadata_yaml_success(test_data, monkeypatch):
     """Test that valid metadata.yaml files pass validation."""
+    monkeypatch.setattr(
+        validate_metadata,
+        "_now_utc",
+        lambda: datetime(3025, 3, 16, tzinfo=timezone.utc),
+    )
     validate_metadata.validate_metadata_yaml(filepath=VALID_METADATA_DIR / test_data.file_name)
     # Asserts that no exceptions have been raised.
     assert True
@@ -230,10 +236,26 @@ def test_validate_metadata_yaml_success(test_data):
         ),
     ],
 )
-def test_validate_metadata_yaml_failure(test_data):
+def test_validate_metadata_yaml_failure(test_data, monkeypatch):
     """Test that invalid metadata.yaml files raise appropriate validation errors."""
+    monkeypatch.setattr(
+        validate_metadata,
+        "_now_utc",
+        lambda: datetime(3025, 3, 16, tzinfo=timezone.utc),
+    )
     with pytest.raises(test_data.expected_exception, match=test_data.expected_exception_msg):
         validate_metadata.validate_metadata_yaml(filepath=INVALID_METADATA_DIR / test_data.file_name)
+
+
+def test_validate_metadata_yaml_rejects_future_last_verified(monkeypatch):
+    """Test that future lastVerified timestamps fail validation."""
+    monkeypatch.setattr(
+        validate_metadata,
+        "_now_utc",
+        lambda: datetime(2026, 1, 1, tzinfo=timezone.utc),
+    )
+    with pytest.raises(ValidationError, match=r"references a future date"):
+        validate_metadata.validate_metadata_yaml(filepath=VALID_METADATA_DIR / "valid_metadata.yaml")
 
 
 @pytest.mark.parametrize(

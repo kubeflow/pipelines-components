@@ -20,6 +20,11 @@ METADATA = "metadata.yaml"
 _jsonschema_format_checker = jsonschema.FormatChecker()
 
 
+def _now_utc() -> datetime:
+    """Return the current UTC timestamp."""
+    return datetime.now(tz=timezone.utc)
+
+
 @_jsonschema_format_checker.checks("date-time", raises=ValueError)
 def check_date_time(instance: Any) -> bool:
     """Performs additional validation of instances marked with format: date-time.
@@ -40,8 +45,13 @@ def check_date_time(instance: Any) -> bool:
     if not (isinstance(instance, str) and re.match(r"\d{4}(-\d{2}){2}T(\d{2}:){2}\d{2}Z$", instance)):
         return False
 
-    now = datetime.now(tz=timezone.utc)
-    if (now - datetime.fromisoformat(instance)).days >= 365:
+    now = _now_utc()
+    verified_date = datetime.fromisoformat(instance)
+
+    if verified_date > now:
+        raise ValueError(f"'{instance}' references a future date (which is considered not valid).")
+
+    if (now - verified_date).days >= 365:
         raise ValueError(f"'{instance}' references a date older than one year (which is considered not valid).")
 
     return True
