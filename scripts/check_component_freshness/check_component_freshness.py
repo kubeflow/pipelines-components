@@ -70,7 +70,7 @@ def scan_repo(repo_path: Path) -> dict:
                 print(f"Warning: Missing lastVerified in {metadata_file}, marking as stale", file=sys.stderr)
                 results["stale"].append(
                     {
-                        "name": metadata.get("name", "unknown"),
+                        "name": metadata.get("name", "unknown") if metadata else "unknown",
                         "path": str(asset),
                         "last_verified": "unknown",
                         "age_days": 0,

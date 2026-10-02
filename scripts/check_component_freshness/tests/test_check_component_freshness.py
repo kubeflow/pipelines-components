@@ -103,6 +103,25 @@ class TestScanRepo:
             assert results["stale"][0]["last_verified"] == "unknown"
             assert results["stale"][0]["age_days"] == 0
 
+    def test_handles_empty_metadata_yaml(self, capsys):
+        """Test that empty metadata.yaml is handled gracefully without crashing."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            comp_dir = tmp / "components" / "test_category" / "empty"
+            comp_dir.mkdir(parents=True)
+            (comp_dir / "metadata.yaml").write_text("")
+
+            results = scan_repo(tmp)
+            assert len(results["stale"]) == 1
+            assert results["stale"][0]["name"] == "unknown"
+            assert results["stale"][0]["path"] == "components/test_category/empty"
+            assert results["stale"][0]["last_verified"] == "unknown"
+            assert results["stale"][0]["age_days"] == 0
+
+            captured = capsys.readouterr()
+            assert "Error processing" not in captured.err
+            assert "Warning: Missing lastVerified" in captured.err
+
     def test_scans_pipelines_directory(self):
         """Test script scans pipelines directory"""
         with tempfile.TemporaryDirectory() as tmpdir:
