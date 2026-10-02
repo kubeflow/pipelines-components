@@ -17,6 +17,12 @@ VALID_OWNERS_DIR = TEST_DATA / "owners" / "valid"
 TEST_DIRS = TEST_DATA / "directories_metadata"
 
 
+def test_check_date_time_rejects_future_timestamp():
+    """Future lastVerified timestamps are invalid."""
+    with pytest.raises(ValueError, match="references a date in the future"):
+        validate_metadata.check_date_time("3025-03-15T00:00:00Z")
+
+
 @dataclass
 class ValidateMetadataTestFile:
     """Test data container for metadata file validation tests.

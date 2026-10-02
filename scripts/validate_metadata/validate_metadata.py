@@ -41,7 +41,10 @@ def check_date_time(instance: Any) -> bool:
         return False
 
     now = datetime.now(tz=timezone.utc)
-    if (now - datetime.fromisoformat(instance)).days >= 365:
+    verified_at = datetime.fromisoformat(instance)
+    if verified_at > now:
+        raise ValueError(f"'{instance}' references a date in the future (which is considered not valid).")
+    if (now - verified_at).days >= 365:
         raise ValueError(f"'{instance}' references a date older than one year (which is considered not valid).")
 
     return True
