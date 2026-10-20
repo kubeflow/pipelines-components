@@ -42,7 +42,9 @@ def discover_packages(repo_root: Path | None = None) -> list[str]:
         include=["components", "components.*", "pipelines", "pipelines.*"],
         exclude=["*.tests", "*.tests.*"],
     )
-    return sorted(["kfp_components"] + [f"kfp_components.{p}" for p in physical])
+    # kfp_components is an implicit namespace package; only its subpackages
+    # are listed (matching validate_package_entries).
+    return sorted(f"kfp_components.{p}" for p in physical)
 
 
 def _read_current_packages(pyproject_path: Path) -> list[str]:

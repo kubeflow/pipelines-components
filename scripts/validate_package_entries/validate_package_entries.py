@@ -49,10 +49,6 @@ def discover_packages(repo_root: Path) -> set[str]:
     """
     packages: set[str] = set()
 
-    # Always include the root package
-    if (repo_root / "__init__.py").exists():
-        packages.add("kfp_components")
-
     # Discover packages in components/
     components_dir = repo_root / "components"
     if components_dir.exists() and (components_dir / "__init__.py").exists():

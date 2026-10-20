@@ -28,13 +28,12 @@ def components_training_structure(tmp_path: Path) -> Path:
 class TestDiscoverPackages:
     """Tests for discover_packages function."""
 
-    def test_discover_root_package(self, tmp_path: Path):
-        """Test discovery of root package."""
-        # Create root __init__.py
+    def test_root_package_not_discovered(self, tmp_path: Path):
+        """Test that the root package is never discovered, even with an __init__.py."""
         (tmp_path / "__init__.py").write_text("")
 
         packages = discover_packages(tmp_path)
-        assert "kfp_components" in packages
+        assert "kfp_components" not in packages
 
     def test_discover_components_packages(self, components_training_structure: Path):
         """Test discovery of component packages."""
@@ -152,8 +151,6 @@ class TestValidatePackageEntries:
 
     def test_valid_sync(self, components_training_structure: Path):
         """Test validation when packages are in sync."""
-        # Create root __init__.py
-        (components_training_structure / "__init__.py").write_text("")
 
         # Create matching pyproject.toml
         pyproject_content = """
@@ -162,7 +159,6 @@ requires = ["setuptools", "wheel"]
 
 [tool.setuptools]
 packages = [
-    "kfp_components",
     "kfp_components.components",
     "kfp_components.components.training",
 ]
@@ -175,8 +171,6 @@ packages = [
 
     def test_missing_packages(self, components_training_structure: Path):
         """Test validation when packages are missing from pyproject.toml."""
-        # Create root __init__.py
-        (components_training_structure / "__init__.py").write_text("")
 
         # Create pyproject.toml missing some packages
         pyproject_content = """
@@ -185,7 +179,6 @@ requires = ["setuptools", "wheel"]
 
 [tool.setuptools]
 packages = [
-    "kfp_components",
     "kfp_components.components",
     # Missing kfp_components.components.training
 ]
@@ -200,8 +193,6 @@ packages = [
 
     def test_extra_packages(self, tmp_path: Path):
         """Test validation when pyproject.toml has extra packages."""
-        # Create minimal directory structure
-        (tmp_path / "__init__.py").write_text("")
 
         # Create pyproject.toml with extra packages
         pyproject_content = """
@@ -210,7 +201,6 @@ requires = ["setuptools", "wheel"]
 
 [tool.setuptools]
 packages = [
-    "kfp_components",
     "kfp_components.components",
     "kfp_components.components.nonexistent",  # Extra package
 ]
@@ -226,8 +216,6 @@ packages = [
 
     def test_both_missing_and_extra(self, components_training_structure: Path):
         """Test validation when both missing and extra packages exist."""
-        # Create root __init__.py
-        (components_training_structure / "__init__.py").write_text("")
 
         # Create pyproject.toml with both issues
         pyproject_content = """
@@ -236,7 +224,6 @@ requires = ["setuptools", "wheel"]
 
 [tool.setuptools]
 packages = [
-    "kfp_components",
     "kfp_components.components",
     # Missing kfp_components.components.training
     "kfp_components.components.nonexistent",  # Extra package
