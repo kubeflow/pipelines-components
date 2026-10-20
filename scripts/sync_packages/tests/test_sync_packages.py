@@ -5,7 +5,34 @@ from unittest import mock
 
 import pytest
 
-from ..sync_packages import _PACKAGES_RE, _read_current_packages, sync_packages
+from ..sync_packages import _PACKAGES_RE, _read_current_packages, discover_packages, sync_packages
+
+
+class TestDiscoverPackages:
+    """Tests for discover_packages."""
+
+    def test_root_package_excluded_without_init_py(self, tmp_path: Path):
+        """Test that the root package is excluded when root __init__.py is absent."""
+        (tmp_path / "components").mkdir()
+        (tmp_path / "components" / "__init__.py").write_text("")
+
+        result = discover_packages(tmp_path)
+
+        assert result == ["kfp_components.components"]
+
+    def test_root_package_always_excluded(self, tmp_path: Path):
+        """Test that the root package is excluded even when root __init__.py exists."""
+        (tmp_path / "__init__.py").write_text("")
+        (tmp_path / "components").mkdir()
+        (tmp_path / "components" / "__init__.py").write_text("")
+
+        result = discover_packages(tmp_path)
+
+        assert result == ["kfp_components.components"]
+
+    def test_empty_repo_returns_no_packages(self, tmp_path: Path):
+        """Test that a repo without components/ or pipelines/ yields no packages."""
+        assert discover_packages(tmp_path) == []
 
 
 class TestReadCurrentPackages:
@@ -145,6 +172,15 @@ class TestSyncPackages:
         assert 'package-dir = {kfp_components = "."}' in content
         assert "[tool.ruff]" in content
         assert "line-length = 100" in content
+
+    def test_empty_discovery_writes_valid_empty_list(self, repo_with_pyproject: Path):
+        """Test that empty discovery rewrites the packages list as valid TOML."""
+        with mock.patch("scripts.sync_packages.sync_packages.discover_packages", return_value=[]):
+            sync_packages(repo_with_pyproject)
+
+        content = (repo_with_pyproject / "pyproject.toml").read_text()
+        assert "packages = []" in content
+        assert _read_current_packages(repo_with_pyproject / "pyproject.toml") == []
 
     def test_raises_when_no_packages_block(self, tmp_path: Path):
         """Test RuntimeError when packages block is missing from file."""

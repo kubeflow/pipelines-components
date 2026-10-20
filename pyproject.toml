@@ -57,11 +57,10 @@ Issues = "https://github.com/kubeflow/pipelines-components/issues"
 
 [tool.setuptools]
 packages = [
-    "kfp_components",
     "kfp_components.components",
     "kfp_components.components.data_processing",
-    "kfp_components.components.data_processing.yoda_data_processor",
     "kfp_components.components.data_processing.sdg",
+    "kfp_components.components.data_processing.yoda_data_processor",
     "kfp_components.components.deployment",
     "kfp_components.components.evaluation",
     "kfp_components.components.training",
@@ -74,7 +73,6 @@ packages = [
 ]
 
 [tool.setuptools.package-dir]
-"kfp_components" = "."
 "kfp_components.components" = "components"
 "kfp_components.pipelines" = "pipelines"
 
