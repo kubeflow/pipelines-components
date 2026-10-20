@@ -151,7 +151,6 @@ class TestValidatePackageEntries:
 
     def test_valid_sync(self, components_training_structure: Path):
         """Test validation when packages are in sync."""
-
         # Create matching pyproject.toml
         pyproject_content = """
 [build-system]
@@ -171,7 +170,6 @@ packages = [
 
     def test_missing_packages(self, components_training_structure: Path):
         """Test validation when packages are missing from pyproject.toml."""
-
         # Create pyproject.toml missing some packages
         pyproject_content = """
 [build-system]
@@ -193,7 +191,6 @@ packages = [
 
     def test_extra_packages(self, tmp_path: Path):
         """Test validation when pyproject.toml has extra packages."""
-
         # Create pyproject.toml with extra packages
         pyproject_content = """
 [build-system]
@@ -216,7 +213,6 @@ packages = [
 
     def test_both_missing_and_extra(self, components_training_structure: Path):
         """Test validation when both missing and extra packages exist."""
-
         # Create pyproject.toml with both issues
         pyproject_content = """
 [build-system]
