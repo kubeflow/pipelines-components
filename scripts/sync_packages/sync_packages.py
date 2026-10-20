@@ -94,7 +94,7 @@ def sync_packages(repo_root: Path | None = None) -> None:
         return
 
     lines = ",\n".join([f'    "{p}"' for p in discovered])
-    new_block = f"packages = [\n{lines},\n]"
+    new_block = f"packages = [\n{lines},\n]" if discovered else "packages = []"
 
     match = _PACKAGES_RE.search(content)
     if not match:

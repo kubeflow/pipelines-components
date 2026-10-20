@@ -173,6 +173,15 @@ class TestSyncPackages:
         assert "[tool.ruff]" in content
         assert "line-length = 100" in content
 
+    def test_empty_discovery_writes_valid_empty_list(self, repo_with_pyproject: Path):
+        """Test that empty discovery rewrites the packages list as valid TOML."""
+        with mock.patch("scripts.sync_packages.sync_packages.discover_packages", return_value=[]):
+            sync_packages(repo_with_pyproject)
+
+        content = (repo_with_pyproject / "pyproject.toml").read_text()
+        assert "packages = []" in content
+        assert _read_current_packages(repo_with_pyproject / "pyproject.toml") == []
+
     def test_raises_when_no_packages_block(self, tmp_path: Path):
         """Test RuntimeError when packages block is missing from file."""
         pyproject = tmp_path / "pyproject.toml"
