@@ -1,0 +1,21 @@
+---
+name: 'Install gh CLI'
+description: 'Installs the GitHub CLI, for runners that do not preinstall it'
+
+runs:
+  using: 'composite'
+  steps:
+    # Depending on the runner, the gh CLI may or may not be available:
+    # GitHub-hosted runner images ship it, while self-hosted runners that
+    # also pick up ubuntu-24.04 jobs (e.g. the CNCF GPU runners) may not.
+    # Jobs that use the gh CLI must therefore not rely on the runner preinstall.
+    - name: Install gh CLI
+      shell: bash
+      run: |
+        if command -v gh > /dev/null 2>&1; then
+          echo "gh CLI already available: $(gh --version | head -1)"
+          exit 0
+        fi
+        sudo apt-get update
+        sudo apt-get install -y gh
+        gh --version
