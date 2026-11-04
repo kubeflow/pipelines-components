@@ -85,6 +85,12 @@ jobs:
     needs: fetch_data
     if: needs.fetch_data.outputs.has_artifact == 'true'
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Install gh CLI
+        uses: ./.github/actions/install-gh-cli
+
       - name: Check and reset label
         run: |
           if [[ "$EVENT_ACTION" == "synchronize" || "$EVENT_ACTION" == "reopened" ]]; then
@@ -104,6 +110,12 @@ jobs:
     needs: [fetch_data, reset_ci_passed_label]
     if: needs.fetch_data.outputs.has_artifact == 'true'
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Install gh CLI
+        uses: ./.github/actions/install-gh-cli
+
       - name: Ensure required labels exist
         run: |
           for label in "ci-passed" "needs-ok-to-test" "ok-to-test"; do
