@@ -43,7 +43,7 @@ The pipeline validates the serving replica settings before running five stages.
 | `p01_persistent_pvc` | `str` | `None` | (Required) Name of the ReadWriteMany PVC used for training checkpoints and model serving. To create one: in RHOAI open your Data Science Project -> Cluster Storage -> Create storage, select ReadWriteMany access mode, minimum 50Gi. Enter only the PVC name (not a path). Example: ``grpo-pipeline-pvc`` |
 | `p02_dataset_uri` | `str` | `None` | (Required) Dataset reference. Supported sources: • Hugging Face: ``hf://org/dataset:config``. References are loaded   directly by Training Hub. • Local/PVC: ``pvc://data.jsonl`` • S3: ``s3://bucket/path/data.jsonl`` • HTTP(S): ``https://example.com/data.jsonl`` Local JSON/JSONL, PVC, S3, and HTTP(S) sources are normalized by the preparation component onto the shared PVC. Non-Hugging Face rows are converted to Training Hub's canonical ``messages`` and ``tools`` format. See the [Training Hub loader format](https://github.com/Red-Hat-AI-Innovation-Team/training_hub/blob/main/src/training_hub/algorithms/lora_grpo.py#L381-L394). |
 | `p03_training_model` | `str` | `None` | (Required) HuggingFace model ID of the base model to fine-tune. If the model is gated, configure the ``hf-token`` secret. Examples: ``Qwen/Qwen3-4B`` or ``ibm-granite/granite-3.3-8b-instruct`` |
-| `p04_model_registry_address` | `str` | `None` | (Required) Model Registry service address. Provide the hostname or IP, optionally prefixed with ``http://`` or ``https://``. If no scheme is provided, the component prepends ``http://``. Do not include the ``/api/model_registry/v1alpha3`` path. Specify the port separately using ``p22_model_registry_port``. |
+| `p04_model_registry_address` | `str` | `None` | (Required) Model Registry service address. Provide the hostname or IP, optionally prefixed with ``http://`` or ``https://``. If no scheme is provided, the component prepends ``http://``. Do not include the ``/api/model_registry/v1alpha3`` path. When using ``https://``, TLS certificate verification is currently disabled by the registry client while the pod's service-account token is used. |
 | `p05_serving_namespace` | `str` | `None` | (Required) OpenShift project where the KServe InferenceService will be created. Must be the same namespace where your PVC is provisioned. Should have KServe enabled - typically your Data Science Project. Example: ``my-ds-project`` |
 | `p06_tokenizer_mode` | `str` | `None` | (Required) vLLM tokenizer mode. Use ``auto`` when the fast tokenizer is compatible, ``slow`` when the model requires its HuggingFace slow tokenizer (for example, Qwen3 in the tested environment), or ``mistral`` for models that require the ``mistral_common`` tokenizer. Do not leave it empty. |
 | `p07_dataset_max_invalid_row_ratio` | `float` | `0.1` | Maximum fraction of invalid rows that the preparation component may skip for local, PVC, S3, and HTTP(S) sources before failing. Defaults to 10% (``0.10``). Enter a fraction between ``0.0`` and ``1.0``; for example, enter ``0.50`` for 50%. Use ``0.0`` for strict validation. It is not applied to direct Hugging Face loading. |
@@ -137,7 +137,11 @@ The supported sources are:
 
 ## Dataset format
 
-- **Single-turn tool-call rows** Each row must contain `question`,
+### Hugging Face datasets
+
+The pipeline passes these datasets directly to Training Hub.
+
+- **Single-turn tool-call rows.** The Training Hub loader expects `question`,
   `available_tools`, and `messages`.
   - The first three messages must be a system message, a user message, and an
     assistant message containing a tool call.
@@ -178,7 +182,41 @@ The following example shows a single-turn tool-call row.
 }
 ```
 
-See the [Training Hub loader format](https://github.com/Red-Hat-AI-Innovation-Team/training_hub/blob/main/src/training_hub/algorithms/lora_grpo.py#L381-L394).
+See the [Training Hub loader format](https://github.com/Red-Hat-AI-Innovation-Team/training_hub/blob/v0.11.2/src/training_hub/algorithms/lora_grpo.py#L381-L394).
+
+### Local/PVC, S3, and HTTP(S) JSON or JSONL files
+
+The dataset preparation component converts these rows to the `messages` and
+`tools` format that Training Hub reads from the shared PVC. It accepts two row
+formats.
+
+- **Compact single-turn rows.** Supply `question`, `tools`, `target_tool_name`,
+  and `target_arguments`. The component builds the conversation messages from
+  these fields. `available_tools` and `messages` can be omitted.
+- **Conversation traces.** Supply the full `messages` list and tool definitions
+  in `tools` or `available_tools`. Include at least one assistant tool call.
+  Keep all turns and tool responses in order. The component preserves the
+  conversation history and normalizes tool calls and responses for Training Hub.
+
+This compact row is sufficient for a local JSON or JSONL input.
+
+```json
+{
+  "question": "Look up the value.",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "lookup_value",
+        "description": "Look up a value.",
+        "parameters": {"type": "object", "properties": {}}
+      }
+    }
+  ],
+  "target_tool_name": "lookup_value",
+  "target_arguments": {}
+}
+```
 
 ## Storage behavior
 

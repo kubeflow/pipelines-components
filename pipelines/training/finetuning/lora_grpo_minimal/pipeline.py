@@ -111,7 +111,9 @@ def lora_grpo_minimal_pipeline(
             Provide the hostname or IP, optionally prefixed with ``http://`` or
             ``https://``. If no scheme is provided, the component prepends
             ``http://``. Do not include the ``/api/model_registry/v1alpha3``
-            path. Specify the port separately using ``p22_model_registry_port``.
+            path. When using ``https://``, TLS certificate verification is
+            currently disabled by the registry client while the pod's
+            service-account token is used.
         p05_serving_namespace: (Required) OpenShift project where the KServe
             InferenceService will be created. Must be the same namespace where
             your PVC is provisioned. Should have
