@@ -43,6 +43,7 @@ GRPO_MODEL_REGISTRY = dsl.component(
 @dsl.component(
     base_image="quay.io/opendatahub/odh-th-torch-cpu-py312:odh-3.6-ea.2",
     install_kfp_package=False,
+    packages_to_install=["kfp==2.17.0"],
 )
 def validate_replica_settings(min_replicas: int, max_replicas: int) -> None:
     """Validate serving replica bounds before expensive pipeline stages run."""
